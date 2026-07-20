@@ -7,12 +7,36 @@
 		y: number;
 	}
 
+	interface Point {
+		x: number;
+		y: number;
+	}
+
+	interface SeatingZone {
+		id: string;
+		name: string;
+		points: Point[]; // Polygon vertices (relative to grid)
+		color: string;
+		squares: Square[];
+	}
+
+	interface Props {
+		zoneWidth?: number;
+		zoneHeight?: number;
+		zone?: SeatingZone;
+		onBack: () => null | void;
+	}
+
+	let { zoneWidth = 80, zoneHeight = 60, zone = $bindable(), onBack }: Props = $props();
+
 	const BOX_SIZE = 20; 
 	const GRID_SIZE = 10;
 
-	// Finite grid parameters
-	let gridWidth = $state(80);
-	let gridHeight = $state(60);
+	// Finite grid parameters initialized from zone size
+	let gridWidth = $state(zoneWidth * 2);
+	let gridHeight = $state(zoneHeight * 2);
+	const STARTING_WIDTH = gridWidth;
+	const STARTING_HEIGHT = gridHeight;
 
 	// Zoom state management runes
 	let scale = $state(1.0);
@@ -25,12 +49,24 @@
 	let isPanning = $state(false);
 	let panStart = $state({ x: 0, y: 0 });
 
-	let squares = $state<Square[]>([
-		{ id: crypto.randomUUID(), x: 40, y: 40 },
-		{ id: crypto.randomUUID(), x: 160, y: 40 }
-	]);
+	// Initialize squares from zone prop or fallback to default
+	let squares = $state<Square[]>(
+		zone?.squares && zone.squares.length > 0 
+			? zone.squares 
+			: [
+				{ id: crypto.randomUUID(), x: 40, y: 40 },
+				{ id: crypto.randomUUID(), x: 160, y: 40 }
+			]
+	);
+
+	// Keep parent zone state updated with latest seats
+	$effect(() => {
+		if (zone) {
+			zone.squares = squares;
+		}
+	});
 	
-	let selectedIds = $state<Set<string>>(new Set([squares[0].id]));
+	let selectedIds = $state<Set<string>>(new Set(squares.length > 0 ? [squares[0].id] : []));
 	let copiedSquares = $state<Square[]>([]);
 
 	// Dragging mechanics
@@ -44,33 +80,34 @@
 	let boxEnd = $state({ x: 0, y: 0 });
 	let canvasElement = $state<HTMLDivElement | null>(null);
 
-        // Automatically push boxes back inward if grid sizing decreases below their positions
+	// Automatically push boxes back inward if grid sizing decreases below their positions
 	$effect(() => {
-		moveSquareOnOutOfBound(gridWidth,gridHeight)
+		moveSquareOnOutOfBound(gridWidth, gridHeight);
 	});
 
-    function moveSquareOnOutOfBound(gridWidth: number, gridHeight: number) {
-        const maxX = gridWidth * GRID_SIZE - BOX_SIZE;
+	function moveSquareOnOutOfBound(gridWidth: number, gridHeight: number) {
+		const maxX = gridWidth * GRID_SIZE - BOX_SIZE;
 		const maxY = gridHeight * GRID_SIZE - BOX_SIZE;
-        squares = untrack(() => 
-            squares.map(s => {
-                if (s.x > maxX || s.y > maxY) {
-                	return {
-                		id: s.id,
-                		x: Math.max(0, Math.min(maxX, s.x)),
-                		y: Math.max(0, Math.min(maxY, s.y))
-                	};
-                }
-                return s;
-            })
-        )
-    }
+		squares = untrack(() => 
+			squares.map(s => {
+				if (s.x > maxX || s.y > maxY) {
+					return {
+						id: s.id,
+						x: Math.max(0, Math.min(maxX, s.x)),
+						y: Math.max(0, Math.min(maxY, s.y))
+					};
+				}
+				return s;
+			})
+		);
+	}
+
 	// Automatically center the grid once the canvas element mounts and is rendered
-    onMount(() => {
+	onMount(() => {
 		if (canvasElement) {
 			centerGrid();
 		}
-	})
+	});
 
 	function centerGrid() {
 		if (!canvasElement) return;
@@ -112,7 +149,7 @@
 
 	function resetZoom() {
 		scale = 1.0;
-		centerGrid(); // Center the grid layout cleanly upon reset
+		centerGrid();
 	}
 
 	function handleWheel(event: WheelEvent) {
@@ -311,6 +348,49 @@
 </script>
 
 <div class="w-full max-w-3xl mx-auto flex flex-col gap-4">
+	<!-- Breadcrumb & Header Bar -->
+	<div class="flex flex-col gap-1.5 border-b border-slate-200 pb-3">
+		<!-- Breadcrumb Navigation -->
+		<nav class="flex items-center gap-1.5 text-xs text-slate-500">
+			<button 
+				onclick={onBack}
+				class="hover:text-indigo-600 transition-colors font-medium flex items-center gap-1"
+			>
+				All Zones
+			</button>
+			<span class="text-slate-300">/</span>
+			<span class="text-slate-800 font-semibold">{zone?.name || "Zone Editor"}</span>
+		</nav>
+
+		<!-- Header Details with Back Arrow & Zone Info -->
+		<div class="flex items-center gap-3">
+			<button 
+				onclick={onBack}
+				class="p-1.5 rounded-lg hover:bg-slate-200/80 bg-slate-100 text-slate-700 transition-colors flex items-center justify-center shrink-0 border border-slate-200"
+				title="Back to Zone Editor"
+				aria-label="Back to Zone Editor"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="19" y1="12" x2="5" y2="12"></line>
+					<polyline points="12 19 5 12 12 5"></polyline>
+				</svg>
+			</button>
+
+			{#if zone?.color}
+				<span 
+					class="w-3 h-3 rounded-full shadow-sm shrink-0 border border-black/10" 
+					style="background-color: {zone.color}"
+				></span>
+			{/if}
+			<h1 class="text-lg font-bold text-slate-900 tracking-tight">
+				{zone?.name || "Zone Editor Workspace"}
+			</h1>
+			<span class="text-xs bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+				{squares.length} Seat{squares.length === 1 ? '' : 's'}
+			</span>
+		</div>
+	</div>
+
 	<!-- Toolbar Actions -->
 	<div class="flex flex-wrap justify-between items-center bg-slate-100 p-2 rounded-lg border border-slate-200 select-none gap-2">
 		<div class="flex items-center gap-2">
@@ -331,7 +411,7 @@
 					type="number" 
 					bind:value={gridWidth} 
 					step={1}
-					min={BOX_SIZE * 2}
+					min={STARTING_WIDTH}
 					max={3000}
 					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0"
 					title="Grid Width (px)"
@@ -341,7 +421,7 @@
 					type="number" 
 					bind:value={gridHeight} 
 					step={1}
-					min={BOX_SIZE * 2}
+					min={STARTING_HEIGHT}
 					max={3000}
 					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0"
 					title="Grid Height (px)"
@@ -378,7 +458,7 @@
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
 			</button>
-            <button 
+			<button 
 				onclick={removeSelected}
 				disabled={selectedIds.size === 0}
 				class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded transition-colors disabled:opacity-50 flex items-center justify-center"

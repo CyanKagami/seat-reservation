@@ -1,7 +1,6 @@
 <script>
-  import SeatEditor from "$lib/components/SeatEditor.svelte";
+
+  import ZoneEditor from "$lib/components/ZoneEditor.svelte";
 
 </script>
-<SeatEditor>
-    
-</SeatEditor>
+<ZoneEditor></ZoneEditor>
