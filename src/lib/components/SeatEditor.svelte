@@ -194,7 +194,6 @@
 	}
 
 	function copySelected() {
-		console.log("Copy")
 		if (selectedIds.size === 0) return;
 		copiedSquares = squares
 			.filter(s => selectedIds.has(s.id))
@@ -351,7 +350,6 @@
 			removeSelected();
 			return;
 		}
-		console.log(event.ctrlKey)
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
 		
