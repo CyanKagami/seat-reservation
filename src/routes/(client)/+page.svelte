@@ -1,6 +1,8 @@
 <script lang="ts">
   import Carousel from "$lib/components/Carousel.svelte";
+  import EventBox from "$lib/components/EventBox.svelte";
     import type { Slide } from "$lib/type/slide";
+    import type { Event } from "$lib/type/event";
   // sample data
     const mySlides: Slide[] = [
     {
@@ -19,5 +21,64 @@
       description: 'Discover hidden spots around the world.'
     }
   ];
+
+  // placeholder
+  const events:Event[] = [
+    {
+        "picture": 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+        "date":"1-6 September",
+        "place":"KMITL Conventional Hall",
+        "host":"พี่เดี่ยว",
+        "name":"KMITL Expo"
+    },
+    {
+        "picture": 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+        "date":"1-6 September",
+        "place":"KMITL Conventional Hall",
+        "host":"พี่เดี่ยว",
+        "name":"KMITL Expo"
+    },
+    {
+        "picture": 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+        "date":"1-6 September",
+        "place":"KMITL Conventional Hall",
+        "host":"พี่เดี่ยว",
+        "name":"KMITL Expo"
+    },
+    {
+        "picture": 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+        "date":"1-6 September",
+        "place":"KMITL Conventional Hall",
+        "host":"พี่เดี่ยว",
+        "name":"KMITL Expo"
+    }
+  ]
 </script>
 <Carousel slides={mySlides} />
+<div>
+    <div class="bg-secondary w-full h-20 flex items-end pl-20 gap-3">
+        <div class="bg-white w-fit px-10 py-2 rounded-t-2xl">
+            <p class="font-semibold text-xl">All Events</p>
+        </div>
+        <div class="bg-dark-secondary w-fit px-10 py-2 rounded-t-2xl">
+            <p class="font-semibold text-xl text-white">Coming Soon</p>
+        </div>
+    </div>
+
+    <!--content-->
+    <div class="pt-8 w-full px-20 flex flex-col gap-10">
+
+        <!--Search bar-->
+        <div>
+            <p class="text-sm font-semibold">Search</p>
+            <input class="rounded-lg w-96">
+        </div>
+
+        <!--Event Registration-->
+        <div class="w-full flex flex-wrap gap-15 gap-y-10">
+        {#each events as event }
+            <EventBox event={event}></EventBox>
+        {/each}
+        </div>
+    </div>
+</div>
