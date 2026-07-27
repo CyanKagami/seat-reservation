@@ -33,13 +33,14 @@
 		{ id: "s_2", x: 160, y: 40 }
 	]);
 	
+	// svelte-ignore state_referenced_locally
 	let selectedIds = $state<Set<string>>(new Set([squares[0].id]));
 	let copiedSquares = $state<Square[]>([]);
 
 	// Dragging mechanics
 	let isDragging = $state(false);
 	let dragStart = $state({ x: 0, y: 0 });
-	let initialPositions = $state<Map<string, { x: number; y: number }>>(new Map());
+	let initialPositions = new Map<string, { x: number; y: number }>();
 
 	// Box Selection (Marquee) state
 	let isBoxSelecting = $state(false);
@@ -88,6 +89,7 @@
 
 	// Export Seating Layout as JSON file
 	function exportAsJSON() {
+		if (overlappingIds.size) return;
 		const exportData = {
 			location_id: locationId,
 			dimension: {
@@ -114,7 +116,7 @@
 	}
 
 	// Derived marquee rectangle boundary coordinates in view space
-	let marqueeRect = $derived(() => {
+	let marqueeRect = $derived.by(() => {
 		if (!isBoxSelecting) return null;
 		const x = Math.min(boxStart.x, boxEnd.x);
 		const y = Math.min(boxStart.y, boxEnd.y);
@@ -123,13 +125,26 @@
 		return { x, y, width, height };
 	});
 
-	let overlappingIds = $derived(() => {
+	let overlappingIds = $derived.by(() => {
+		const cellOf = (v: number) => Math.floor(v / GRID_SIZE);
+		const buckets = new Map<string, Square[]>();
+		for (const s of squares) {
+			const key = `${cellOf(s.x)},${cellOf(s.y)}`;
+			(buckets.get(key) ?? buckets.set(key, []).get(key)!).push(s);
+		}
 		const overlaps = new Set<string>();
-		for (let i = 0; i < squares.length; i++) {
-			for (let j = i + 1; j < squares.length; j++) {
-				if (Math.abs(squares[i].x - squares[j].x) <= GRID_SIZE && Math.abs(squares[i].y - squares[j].y) <= GRID_SIZE) {
-					overlaps.add(squares[i].id);
-					overlaps.add(squares[j].id);
+		for (const s of squares) {
+			const cx = cellOf(s.x), cy = cellOf(s.y);
+			for (let dx = -1; dx <= 1; dx++) {
+				for (let dy = -1; dy <= 1; dy++) {
+					for (const other of buckets.get(`${cx+dx},${cy+dy}`) ?? []) {
+						if (other.id !== s.id &&
+							Math.abs(s.x - other.x) <= GRID_SIZE &&
+							Math.abs(s.y - other.y) <= GRID_SIZE) {
+							overlaps.add(s.id);
+							overlaps.add(other.id);
+						}
+					}
 				}
 			}
 		}
@@ -179,6 +194,7 @@
 	}
 
 	function copySelected() {
+		console.log("Copy")
 		if (selectedIds.size === 0) return;
 		copiedSquares = squares
 			.filter(s => selectedIds.has(s.id))
@@ -261,58 +277,66 @@
 		boxEnd = { x: clientX, y: clientY };
 	}
 
+	let rafPending = false;
+
 	function handleMouseMove(event: MouseEvent) {
-		if (isPanning) {
-			panX = event.clientX - panStart.x;
-			panY = event.clientY - panStart.y;
-		} else if (isDragging) {
-			const dx = (event.clientX - dragStart.x) / scale;
-			const dy = (event.clientY - dragStart.y) / scale;
+		if (rafPending) return;
+		rafPending = true;
+		let {clientX, clientY} = event;
+		requestAnimationFrame(() => {
+			rafPending = false;
+			if (isPanning) {
+				panX = clientX - panStart.x;
+				panY = clientY - panStart.y;
+			} else if (isDragging) {
+				const dx = (clientX - dragStart.x) / scale;
+				const dy = (clientY - dragStart.y) / scale;
 
-			squares = squares.map(s => {
-				const initial = initialPositions.get(s.id);
-				if (initial) {
-					let rawX = initial.x + dx;
-					let rawY = initial.y + dy;
-					
-					let snappedX = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
-					let snappedY = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
-					
-					return {
-						...s,
-						x: Math.max(0, Math.min(gridWidth * GRID_SIZE - BOX_SIZE, snappedX)),
-						y: Math.max(0, Math.min(gridHeight * GRID_SIZE - BOX_SIZE, snappedY))
-					};
-				}
-				return s;
-			});
-		} else if (isBoxSelecting && canvasElement) {
-			const rect = canvasElement.getBoundingClientRect();
-			
-			boxEnd = { 
-				x: event.clientX - rect.left, 
-				y: event.clientY - rect.top 
-			};
-
-			const box = marqueeRect();
-			if (box) {
-				const currentSelection = new Set<string>();
-				squares.forEach(s => {
-					const screenX = s.x * scale + panX;
-					const screenY = s.y * scale + panY;
-					const screenBoxSize = BOX_SIZE * scale;
-
-					const intersects = !(screenX > box.x + box.width || 
-                                          screenX + screenBoxSize < box.x || 
-                                          screenY > box.y + box.height || 
-                                          screenY + screenBoxSize < box.y);
-					if (intersects) {
-						currentSelection.add(s.id);
+				squares = squares.map(s => {
+					const initial = initialPositions.get(s.id);
+					if (initial) {
+						let rawX = initial.x + dx;
+						let rawY = initial.y + dy;
+						
+						let snappedX = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
+						let snappedY = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+						
+						return {
+							...s,
+							x: Math.max(0, Math.min(gridWidth * GRID_SIZE - BOX_SIZE, snappedX)),
+							y: Math.max(0, Math.min(gridHeight * GRID_SIZE - BOX_SIZE, snappedY))
+						};
 					}
+					return s;
 				});
-				selectedIds = currentSelection;
+			} else if (isBoxSelecting && canvasElement) {
+				const rect = canvasElement.getBoundingClientRect();
+				
+				boxEnd = { 
+					x: clientX - rect.left, 
+					y: clientY - rect.top 
+				};
+
+				const box = marqueeRect;
+				if (box) {
+					const currentSelection = new Set<string>();
+					squares.forEach(s => {
+						const screenX = s.x * scale + panX;
+						const screenY = s.y * scale + panY;
+						const screenBoxSize = BOX_SIZE * scale;
+
+						const intersects = !(screenX > box.x + box.width || 
+											screenX + screenBoxSize < box.x || 
+											screenY > box.y + box.height || 
+											screenY + screenBoxSize < box.y);
+						if (intersects) {
+							currentSelection.add(s.id);
+						}
+					});
+					selectedIds = currentSelection;
+				}
 			}
-		}
+		});
 	}
 
 	function handleMouseUp() {
@@ -327,10 +351,10 @@
 			removeSelected();
 			return;
 		}
-
+		console.log(event.ctrlKey)
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
-
+		
 		if (event.key.toLowerCase() === 'c') {
 			event.preventDefault();
 			copySelected();
@@ -344,7 +368,7 @@
 		event.preventDefault(); 
 	}
 </script>
-
+<svelte:body onkeydown={handleKeyDown} />
 <div class="fixed inset-0 w-screen h-screen flex flex-col bg-slate-900 select-none overflow-hidden">
 	<!-- Header / Toolbar Actions -->
 	<header class="flex flex-wrap justify-between items-center bg-slate-800 px-4 py-2.5 border-b border-slate-700 z-10 gap-2">
@@ -386,9 +410,9 @@
 		</div>
 
 		<!-- Zoom Control Interface Sub-Group -->
-		<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300">
+		<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 mx-auto">
 			<button onclick={zoomOut} class="px-2 py-1 text-xs font-bold hover:bg-slate-800 rounded text-slate-300 transition-colors" title="Zoom Out">-</button>
-			<button onclick={resetZoom} class="px-2 py-1 text-xs font-mono font-medium hover:bg-slate-800 rounded text-slate-200 min-w-[50px] text-center transition-colors" title="Reset Camera View">
+			<button onclick={resetZoom} class="px-2 py-1 text-xs font-mono font-medium hover:bg-slate-800 rounded text-slate-200 min-w-12.5 text-center transition-colors" title="Reset Camera View">
 				{Math.round(scale * 100)}%
 			</button>
 			<button onclick={zoomIn} class="px-2 py-1 text-xs font-bold hover:bg-slate-800 rounded text-slate-300 transition-colors" title="Zoom In">+</button>
@@ -434,9 +458,9 @@
 			</button>
 		</div>
 	</header>
-
+	
 	<!-- Fullscreen Workspace Canvas -->
-	<main 
+	<div
 		bind:this={canvasElement}
 		onwheel={handleWheel}
 		oncontextmenu={handleContextMenu}
@@ -444,8 +468,6 @@
 		onmousemove={handleMouseMove}
 		onmouseup={handleMouseUp}
 		onmousedown={handleCanvasMouseDown}
-		onkeydown={handleKeyDown}
-		tabindex="0"
 		role="presentation"
 	>
 		<!-- Finite Grid Area Layer Wrap -->
@@ -461,7 +483,7 @@
 
 		<svg class="w-full h-full absolute inset-0 pointer-events-none">
 			{#each squares as square (square.id)}
-				{@const isOverlapping = overlappingIds().has(square.id)}
+				{@const isOverlapping = overlappingIds.has(square.id)}
 				{@const isSelected = selectedIds.has(square.id)}
 				
 				<rect 
@@ -469,6 +491,8 @@
 					y={square.y * scale + panY} 
 					width={BOX_SIZE * scale} 
 					height={BOX_SIZE * scale} 
+					role="button"
+					tabindex="0"
 					rx={6 * scale}
 					class="cursor-move stroke-2 transition-colors duration-150 pointer-events-auto
 						{isOverlapping 
@@ -478,8 +502,8 @@
 				/>
 			{/each}
 
-			{#if isBoxSelecting && marqueeRect()}
-				{@const mBox = marqueeRect()}
+			{#if isBoxSelecting && marqueeRect}
+				{@const mBox = marqueeRect}
 				<rect 
 					x={mBox?.x} 
 					y={mBox?.y} 
@@ -495,5 +519,5 @@
 		<div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur border border-slate-700 text-slate-300 px-3 py-1.5 rounded-full text-xs pointer-events-none shadow-lg">
 			Scroll wheel zooms. Hold <strong>Right Mouse Button</strong> to pan canvas.
 		</div>
-	</main>
+	</div>
 </div>
