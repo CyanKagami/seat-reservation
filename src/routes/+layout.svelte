@@ -5,7 +5,7 @@
 	let { children } = $props();
 </script>
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<div class="flex flex-col justify-center w-full mt-10">
+<div class="flex flex-col justify-center w-full font-inter">
 	{@render children()}
 </div>
 
