@@ -7,36 +7,15 @@
 		y: number;
 	}
 
-	interface Point {
-		x: number;
-		y: number;
-	}
-
-	interface SeatingZone {
-		id: string;
-		name: string;
-		points: Point[]; // Polygon vertices (relative to grid)
-		color: string;
-		squares: Square[];
-	}
-
-	interface Props {
-		zoneWidth?: number;
-		zoneHeight?: number;
-		zone?: SeatingZone;
-		onBack: () => null | void;
-	}
-
-	let { zoneWidth = 80, zoneHeight = 60, zone = $bindable(), onBack }: Props = $props();
-
 	const BOX_SIZE = 20; 
 	const GRID_SIZE = 10;
 
-	// Finite grid parameters initialized from zone size
-	let gridWidth = $state(zoneWidth * 2);
-	let gridHeight = $state(zoneHeight * 2);
-	const STARTING_WIDTH = gridWidth;
-	const STARTING_HEIGHT = gridHeight;
+	// Location ID configuration
+	let locationId = $state("v_123");
+
+	// Finite grid parameters
+	let gridWidth = $state(80);
+	let gridHeight = $state(60);
 
 	// Zoom state management runes
 	let scale = $state(1.0);
@@ -49,24 +28,12 @@
 	let isPanning = $state(false);
 	let panStart = $state({ x: 0, y: 0 });
 
-	// Initialize squares from zone prop or fallback to default
-	let squares = $state<Square[]>(
-		zone?.squares && zone.squares.length > 0 
-			? zone.squares 
-			: [
-				{ id: crypto.randomUUID(), x: 40, y: 40 },
-				{ id: crypto.randomUUID(), x: 160, y: 40 }
-			]
-	);
-
-	// Keep parent zone state updated with latest seats
-	$effect(() => {
-		if (zone) {
-			zone.squares = squares;
-		}
-	});
+	let squares = $state<Square[]>([
+		{ id: "s_1", x: 40, y: 40 },
+		{ id: "s_2", x: 160, y: 40 }
+	]);
 	
-	let selectedIds = $state<Set<string>>(new Set(squares.length > 0 ? [squares[0].id] : []));
+	let selectedIds = $state<Set<string>>(new Set([squares[0].id]));
 	let copiedSquares = $state<Square[]>([]);
 
 	// Dragging mechanics
@@ -107,12 +74,43 @@
 		if (canvasElement) {
 			centerGrid();
 		}
+		
+		const handleResize = () => centerGrid();
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
 	});
 
 	function centerGrid() {
 		if (!canvasElement) return;
 		panX = (canvasElement.clientWidth - gridWidth * GRID_SIZE * scale) / 2;
 		panY = (canvasElement.clientHeight - gridHeight * GRID_SIZE * scale) / 2;
+	}
+
+	// Export Seating Layout as JSON file
+	function exportAsJSON() {
+		const exportData = {
+			location_id: locationId,
+			dimension: {
+				width: gridWidth,
+				height: gridHeight
+			},
+			seats: squares.map((s, idx) => ({
+				seat_id: s.id.startsWith("s_") ? s.id : `s_${idx + 1}`,
+				x: s.x,
+				y: s.y
+			}))
+		};
+
+		const jsonString = JSON.stringify(exportData, null, 2);
+		const blob = new Blob([jsonString], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = `seating_layout_${locationId}.json`;
+		anchor.click();
+		
+		URL.revokeObjectURL(url);
 	}
 
 	// Derived marquee rectangle boundary coordinates in view space
@@ -166,7 +164,7 @@
 		const targetY = Math.round(((-panY + 60) / scale) / GRID_SIZE) * GRID_SIZE;
 		
 		const newSquare: Square = {
-			id: crypto.randomUUID(),
+			id: `s_${squares.length + 1}`,
 			x: Math.max(0, Math.min(gridWidth * GRID_SIZE - BOX_SIZE, targetX)),
 			y: Math.max(0, Math.min(gridHeight * GRID_SIZE - BOX_SIZE, targetY))
 		};
@@ -193,8 +191,8 @@
 		const nextBatch: Square[] = [];
 		const nextSelected = new Set<string>();
 
-		copiedSquares.forEach(src => {
-			const newId = crypto.randomUUID();
+		copiedSquares.forEach((src, idx) => {
+			const newId = `s_${squares.length + idx + 1}`;
 			const targetX = src.x + GRID_SIZE * 2;
 			const targetY = src.y + GRID_SIZE * 2;
 			
@@ -347,56 +345,13 @@
 	}
 </script>
 
-<div class="w-full max-w-3xl mx-auto flex flex-col gap-4">
-	<!-- Breadcrumb & Header Bar -->
-	<div class="flex flex-col gap-1.5 border-b border-slate-200 pb-3">
-		<!-- Breadcrumb Navigation -->
-		<nav class="flex items-center gap-1.5 text-xs text-slate-500">
-			<button 
-				onclick={onBack}
-				class="hover:text-indigo-600 transition-colors font-medium flex items-center gap-1"
-			>
-				All Zones
-			</button>
-			<span class="text-slate-300">/</span>
-			<span class="text-slate-800 font-semibold">{zone?.name || "Zone Editor"}</span>
-		</nav>
-
-		<!-- Header Details with Back Arrow & Zone Info -->
+<div class="fixed inset-0 w-screen h-screen flex flex-col bg-slate-900 select-none overflow-hidden">
+	<!-- Header / Toolbar Actions -->
+	<header class="flex flex-wrap justify-between items-center bg-slate-800 px-4 py-2.5 border-b border-slate-700 z-10 gap-2">
 		<div class="flex items-center gap-3">
 			<button 
-				onclick={onBack}
-				class="p-1.5 rounded-lg hover:bg-slate-200/80 bg-slate-100 text-slate-700 transition-colors flex items-center justify-center shrink-0 border border-slate-200"
-				title="Back to Zone Editor"
-				aria-label="Back to Zone Editor"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="19" y1="12" x2="5" y2="12"></line>
-					<polyline points="12 19 5 12 12 5"></polyline>
-				</svg>
-			</button>
-
-			{#if zone?.color}
-				<span 
-					class="w-3 h-3 rounded-full shadow-sm shrink-0 border border-black/10" 
-					style="background-color: {zone.color}"
-				></span>
-			{/if}
-			<h1 class="text-lg font-bold text-slate-900 tracking-tight">
-				{zone?.name || "Zone Editor Workspace"}
-			</h1>
-			<span class="text-xs bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-				{squares.length} Seat{squares.length === 1 ? '' : 's'}
-			</span>
-		</div>
-	</div>
-
-	<!-- Toolbar Actions -->
-	<div class="flex flex-wrap justify-between items-center bg-slate-100 p-2 rounded-lg border border-slate-200 select-none gap-2">
-		<div class="flex items-center gap-2">
-			<button 
 				onclick={addSquare} 
-				class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex items-center gap-1.5"
+				class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors flex items-center gap-1.5 shadow-sm"
 				title="Add New Square"
 				aria-label="Add Square"
 			>
@@ -405,25 +360,25 @@
 			</button>
 
 			<!-- Editable Finite Grid Dimension Workspace Controls -->
-			<div class="flex items-center gap-1 text-slate-600 bg-white border border-slate-300 rounded px-2 py-0.5 text-xs">
+			<div class="flex items-center gap-1 text-slate-300 bg-slate-900/80 border border-slate-700 rounded px-2.5 py-1 text-xs">
 				<span class="font-medium text-[11px] uppercase tracking-wider text-slate-400 mr-1">Grid:</span>
 				<input 
 					type="number" 
 					bind:value={gridWidth} 
 					step={1}
-					min={STARTING_WIDTH}
+					min={BOX_SIZE * 2}
 					max={3000}
-					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0"
+					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0 text-white"
 					title="Grid Width (px)"
 				/>
-				<span class="text-slate-300 mx-0.5">×</span>
+				<span class="text-slate-500 mx-0.5">×</span>
 				<input 
 					type="number" 
 					bind:value={gridHeight} 
 					step={1}
-					min={STARTING_HEIGHT}
+					min={BOX_SIZE * 2}
 					max={3000}
-					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0"
+					class="w-12 text-center bg-transparent border-none outline-none focus:ring-0 font-mono p-0 text-white"
 					title="Grid Height (px)"
 				/>
 				<span class="text-slate-400 font-mono text-[10px] ml-0.5">px</span>
@@ -431,19 +386,19 @@
 		</div>
 
 		<!-- Zoom Control Interface Sub-Group -->
-		<div class="flex items-center gap-1 bg-white border border-slate-300 rounded px-1.5 py-0.5">
-			<button onclick={zoomOut} class="px-2 py-1 text-xs font-bold hover:bg-slate-100 rounded text-slate-600" title="Zoom Out">-</button>
-			<button onclick={resetZoom} class="px-2 py-1 text-xs font-mono font-medium hover:bg-slate-100 rounded text-slate-700 min-w-[50px] text-center" title="Reset Camera View">
+		<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300">
+			<button onclick={zoomOut} class="px-2 py-1 text-xs font-bold hover:bg-slate-800 rounded text-slate-300 transition-colors" title="Zoom Out">-</button>
+			<button onclick={resetZoom} class="px-2 py-1 text-xs font-mono font-medium hover:bg-slate-800 rounded text-slate-200 min-w-[50px] text-center transition-colors" title="Reset Camera View">
 				{Math.round(scale * 100)}%
 			</button>
-			<button onclick={zoomIn} class="px-2 py-1 text-xs font-bold hover:bg-slate-100 rounded text-slate-600" title="Zoom In">+</button>
+			<button onclick={zoomIn} class="px-2 py-1 text-xs font-bold hover:bg-slate-800 rounded text-slate-300 transition-colors" title="Zoom In">+</button>
 		</div>
 		
-		<div class="flex gap-2">
+		<div class="flex items-center gap-2">
 			<button 
 				onclick={copySelected}
 				disabled={selectedIds.size === 0}
-				class="p-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-600 disabled:opacity-50 flex items-center justify-center"
+				class="p-1.5 bg-slate-700 border border-slate-600 rounded hover:bg-slate-600 text-slate-200 disabled:opacity-40 disabled:hover:bg-slate-700 flex items-center justify-center transition-colors"
 				title="Copy Selected"
 				aria-label="Copy Selected"
 			>
@@ -452,30 +407,40 @@
 			<button 
 				onclick={pasteSquares}
 				disabled={copiedSquares.length === 0}
-				class="p-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-600 disabled:opacity-50 flex items-center justify-center"
+				class="p-1.5 bg-slate-700 border border-slate-600 rounded hover:bg-slate-600 text-slate-200 disabled:opacity-40 disabled:hover:bg-slate-700 flex items-center justify-center transition-colors"
 				title="Paste Group"
 				aria-label="Paste Group"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1-2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
 			</button>
 			<button 
 				onclick={removeSelected}
 				disabled={selectedIds.size === 0}
-				class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded transition-colors disabled:opacity-50 flex items-center justify-center"
+				class="p-1.5 bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/80 rounded transition-colors disabled:opacity-40 flex items-center justify-center mr-2"
 				title="Delete Selected ({selectedIds.size})"
 				aria-label="Delete Selected"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
 			</button>
-		</div>
-	</div>
 
-	<!-- Layout Workspace Canvas -->
-	<div 
+			<!-- Export JSON Button (Top Right) -->
+			<button 
+				onclick={exportAsJSON}
+				class="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors flex items-center gap-1.5 shadow-sm"
+				title="Export Seating Layout as JSON"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+				Export JSON
+			</button>
+		</div>
+	</header>
+
+	<!-- Fullscreen Workspace Canvas -->
+	<main 
 		bind:this={canvasElement}
 		onwheel={handleWheel}
 		oncontextmenu={handleContextMenu}
-		class="w-full h-[480px] bg-slate-900 border border-slate-300 rounded-lg relative overflow-hidden select-none outline-none focus:ring-1 focus:ring-slate-300"
+		class="relative flex-1 w-full h-full bg-slate-900 select-none outline-none"
 		onmousemove={handleMouseMove}
 		onmouseup={handleMouseUp}
 		onmousedown={handleCanvasMouseDown}
@@ -483,9 +448,9 @@
 		tabindex="0"
 		role="presentation"
 	>
-		<!-- The Finite Active Canvas Area Layer Wrap -->
+		<!-- Finite Grid Area Layer Wrap -->
 		<div 
-			class="absolute bg-white shadow-xl pointer-events-none border border-slate-200"
+			class="absolute bg-white shadow-2xl pointer-events-none border border-slate-200"
 			style="left: {panX}px; top: {panY}px; width: {gridWidth * GRID_SIZE * scale}px; height: {gridHeight * GRID_SIZE * scale}px;"
 		>
 			<div 
@@ -520,13 +485,15 @@
 					y={mBox?.y} 
 					width={mBox?.width} 
 					height={mBox?.height} 
-					class="fill-indigo-50/30 stroke-indigo-400 stroke-1" 
+					class="fill-indigo-500/20 stroke-indigo-400 stroke-1" 
 					style="stroke-dasharray: 4;"
 				/>
 			{/if}
 		</svg>
-	</div>
-	<p class="text-[11px] text-slate-400 text-center italic">
-		Tip: Scroll wheel zooms. Hold the <strong>Right Mouse Button</strong> to drag and look around the finite map layout workspace.
-	</p>
+
+		<!-- Floating Tip Toast -->
+		<div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur border border-slate-700 text-slate-300 px-3 py-1.5 rounded-full text-xs pointer-events-none shadow-lg">
+			Scroll wheel zooms. Hold <strong>Right Mouse Button</strong> to pan canvas.
+		</div>
+	</main>
 </div>
