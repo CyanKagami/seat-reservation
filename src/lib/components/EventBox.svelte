@@ -10,6 +10,6 @@
         <h1 class="text-2xl font-semibold">{event.name}</h1>
         <p class="text-sm font-semibold">{event.date}:{event.place}</p>
         <p class="text-sm text-gray-400">{event.host}</p>
-        <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg">Register</button>
+        <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg">Event Information</button>
     </div>
 </div>
