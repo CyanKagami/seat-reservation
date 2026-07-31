@@ -1,5 +1,12 @@
 <script lang='ts'>
+  import { setContext, untrack } from "svelte";
+
     const {event} = $props()
+
+    const date = untrack(()=>event.date)
+    const show_date = (date.start.month === date.end.month) ?
+    date.start.day + " - " + date.end.day + " " + date.start.month
+    : date.start.day + " " + date.start.month + " - " + date.end.day + " " + date.end.month
 </script>
 
 <div class="w-96 h-84 border border-gray-400 rounded-lg">
@@ -8,8 +15,11 @@
     </div>
     <div class="p-5">
         <h1 class="text-2xl font-semibold">{event.name}</h1>
-        <p class="text-sm font-semibold">{event.date}:{event.place}</p>
+        <p class="text-sm font-semibold">{show_date}:{event.place}</p>
         <p class="text-sm text-gray-400">{event.host}</p>
-        <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg">Event Information</button>
+        <a href="/event-info/1">
+            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer">Event Information</button>
+        </a>
+
     </div>
 </div>
