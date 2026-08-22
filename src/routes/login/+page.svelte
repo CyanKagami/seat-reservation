@@ -13,13 +13,13 @@
       <input class="rounded-lg border-gray-400" />
       <p class="text-sm font-semibold">PASSWORD</p>
       <input class="rounded-lg border-gray-400" />
-      <button class="bg-accent w-full h-10 rounded-lg text-white font-semibold">LOG IN</button>
+      <button class="bg-accent hover:bg-accent-hover transition-colors duration-200 w-full h-10 rounded-lg text-white font-semibold">LOG IN</button>
       <div class="flex items-center my-4">
         <div class="grow border-t border-black"></div>
         <span class="px-4 text-sm font-medium text-black">OR</span>
         <div class="grow border-t border-black"></div>
       </div>
-      <button class="bg-secondary w-full h-10 rounded-lg text-white font-semibold">GOOGLE AUTH</button>
+      <button class="bg-secondary hover:bg-secondary-hover transition-colors duration-200 w-full h-10 rounded-lg text-white font-semibold">GOOGLE AUTH</button>
     </div>
   </div>
 </div>

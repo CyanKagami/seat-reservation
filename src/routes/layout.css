@@ -5,8 +5,10 @@
 @theme {
   --font-inter: "Inter", "Kanit";
   --color-accent: #D33B52;
+  --color-accent-hover: #A1162E;
   --color-dark: #091F26;
   --color-secondary: #1D738B;
+  --color-secondary-hover: #114D5E;
   --color-pale:#D0E0EF;
   --color-dark-secondary: #145061;
 }
