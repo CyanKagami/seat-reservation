@@ -94,7 +94,7 @@
   }
 </script>
 <button
-  class="bg-secondary w-full h-10 rounded-lg text-white font-semibold"
+  class="bg-secondary hover:bg-secondary-hover w-full h-10 rounded-lg text-white font-semibold"
   onclick={handleCustomLogin}
   disabled={!isLoaded}
 >
