@@ -3,6 +3,7 @@
   import EventBox from "$lib/components/EventBox.svelte";
     import type { Slide } from "$lib/type/slide";
     import type { Event } from "$lib/type/event";
+
   // sample data
     const mySlides: Slide[] = [
     {

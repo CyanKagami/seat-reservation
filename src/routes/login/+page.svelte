@@ -1,3 +1,12 @@
+<script lang="ts">
+  import GoogleAuthButton from "$lib/components/GoogleAuthButton.svelte";
+  import type { GoogleUser } from "$lib/type/googleUser";
+
+  let user: GoogleUser | null = null;
+  let errorMessage: string = '';
+
+  const GOOGLE_CLIENT_ID: string = "105840083664-qflud4d4d32sqo6fp27d57v7rm6pd0m3.apps.googleusercontent.com";
+</script>
 <div class="w-full bg-[url(/image/placeholder.png)] h-screen bg-cover">
     <div class="self-center justify-self-center flex items-center flex-col mt-14">
   <div class="w-fit flex flex-col items-center">
@@ -19,7 +28,7 @@
         <span class="px-4 text-sm font-medium text-black">OR</span>
         <div class="grow border-t border-black"></div>
       </div>
-      <button class="bg-secondary w-full h-10 rounded-lg text-white font-semibold">GOOGLE AUTH</button>
+      <GoogleAuthButton clientId={GOOGLE_CLIENT_ID}></GoogleAuthButton>
     </div>
   </div>
 </div>
