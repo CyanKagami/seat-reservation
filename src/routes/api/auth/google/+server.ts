@@ -1,38 +1,36 @@
 // src/routes/api/auth/google/+server.ts
+import type { GoogleUser } from '$lib/type/googleUser';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET, NODE_ENV, GOOGLE_CLIENT_ID } from '$env/static/private';
 
-const CLIENT_ID = '105840083664-qflud4d4d32sqo6fp27d57v7rm6pd0m3.apps.googleusercontent.com';
-const client = new OAuth2Client(CLIENT_ID);
-
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const GET: RequestHandler = async ({ request, cookies }) => {
   try {
-    const { token } = await request.json();
-    const ticket = await client.verifyIdToken({ idToken: token, audience: CLIENT_ID });
-    const payload = ticket.getPayload();
+        // Read cookie or Bearer token
+        const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
 
-    if (!payload) return json({ success: false }, { status: 401 });
+        // Verify the token signature
+        const decoded = jwt.verify(token, JWT_SECRET);
 
-    const user = {
-      googleId: payload.sub,
-      email: payload.email,
-      name: payload.name ?? '',
-      picture: payload.picture ?? ''
-    };
+        // Fetch user details from database using decoded.userId
+        const user = decoded // Assuming you have a function to get user by ID
+        return json({
+            statusCode: 200,
+            body: user
+        });
+    } catch (err) {
+        return json({
+            statusCode: 401,
+            body: null
+        });
+    }
+};
 
-    // 1. ฝากข้อมูล User ไว้ใน Cookie (เข้ารหัส/แปลงเป็น JSON String)
-    cookies.set('user_session', JSON.stringify(user), {
-      path: '/',
-      httpOnly: true, // ป้องกัน XSS
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 // หมดอายุใน 1 วัน
+export const DELETE: RequestHandler = async ({ cookies }) => {
+    cookies.delete('user_session', { path: '/' });
+    return json({
+        statusCode: 200,
+        body: { message: 'Logged out successfully' }
     });
-
-    // 2. ส่ง response บอก Frontend ว่าให้ไปหน้าไหนต่อ
-    return json({ success: true, redirectTo: '/', user });
-
-  } catch (error) {
-    return json({ success: false, message: 'Invalid token' }, { status: 401 });
-  }
 };
