@@ -7,7 +7,7 @@
 
   const GOOGLE_CLIENT_ID: string = "105840083664-qflud4d4d32sqo6fp27d57v7rm6pd0m3.apps.googleusercontent.com";
 </script>
-<div class="w-full bg-[url(/image/placeholder.png)] h-screen bg-cover">
+<div class="w-full h-screen bg-[url(/image/kmitlbuilding.webp)] bg-cover bg-blend-overlay">
     <div class="self-center justify-self-center flex items-center flex-col mt-14">
   <div class="w-fit flex flex-col items-center">
     <h1 class="text-7xl font-semibold">
@@ -18,10 +18,10 @@
   <div class="flex flex-col items-center mt-14 gap-3 bg-white/80 w-fit py-8 rounded-xl px-25 h-fit">
     <h2 class="font-semibold text-xl">Authentication via email or google authentication</h2>
     <div class="w-md flex flex-col gap-3">
-      <p class="text-sm font-semibold">EMAIL ADDRESS ( @kmitl.ac.th )</p>
-      <input class="rounded-lg border-gray-400" />
+      <p class="text-sm font-semibold">EMAIL ADDRESS</p>
+      <input class="rounded-lg border-gray-400" placeholder="@kmitl.ac.th" />
       <p class="text-sm font-semibold">PASSWORD</p>
-      <input class="rounded-lg border-gray-400" />
+      <input type="PASSWORD" class="rounded-lg border-gray-400" />
       <button class="bg-accent hover:bg-accent-hover transition-colors duration-200 w-full h-10 rounded-lg text-white font-semibold">LOG IN</button>
       <div class="flex items-center my-4">
         <div class="grow border-t border-black"></div>
