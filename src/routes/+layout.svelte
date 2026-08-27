@@ -32,7 +32,7 @@
 	});
 </script>
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<div class="flex flex-col justify-center w-full font-inter mb-20">
+<div class="flex flex-col justify-center w-full font-inter">
 	{#if loading}
 		<div class="fixed top-0 left-0 w-screen h-screen flex items-center justify-center">
 			<p>กำลังโหลดข้อมูลผู้ใช้...</p>
