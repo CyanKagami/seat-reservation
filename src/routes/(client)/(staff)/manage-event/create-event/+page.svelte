@@ -85,25 +85,14 @@
     }
   }
 </script>
-<div class="flex flex-col items-center">
-    <h1 class="text-4xl font-bold">สร้าง Event</h1>
+<div class="flex flex-col items-center mt-5 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12">
+    <h1 class="text-4xl font-bold">เพิ่มกิจกรรม</h1>
     <form class="flex flex-col">
-        <label for="name">ชื่อกิจกรรม</label>
-        <input name="name">
-        <label for="start">วันที่เริ่ม</label>
-        <input type="datetime-local" name="start">
-        <label for="end">วันที่สิ้นสุด</label>
-        <input type="datetime-local" name="end">
-        <label for="place">สถานที่จัด</label>
-        <input name="place">
-        <label for="detail">รายละเอียด</label>
-        <textarea name="detail" class="resize-none"></textarea>
-
         <label for="picture">รูปภาพปก</label>
-        <div class="flex items-center gap-4">
+        <div class="flex flex-col items-center gap-4">
             <!-- Preview Box -->
             {#if previewUrl}
-            <div class="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+            <div class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                 <img src={previewUrl} alt="Preview" class="w-full h-full object-cover" />
             </div>
             {/if}
@@ -116,6 +105,17 @@
             class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
             />
         </div>
+
+        <label for="name">ชื่อกิจกรรม</label>
+        <input name="name">
+        <label for="start">วันที่เริ่ม</label>
+        <input type="datetime-local" name="start">
+        <label for="end">วันที่สิ้นสุด</label>
+        <input type="datetime-local" name="end">
+        <label for="place">สถานที่จัด</label>
+        <input name="place">
+        <label for="detail">รายละเอียด</label>
+        <textarea name="detail" class="resize-none"></textarea>
 
         <div class="my-10">
             <label for="timetable">ตารางเวลากิจกรรม</label>
