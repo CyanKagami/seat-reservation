@@ -87,13 +87,16 @@
 </script>
 <div class="flex flex-col items-center mt-5 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-bold">เพิ่มกิจกรรม</h1>
-    <form class="flex flex-col">
-        <label for="picture">รูปภาพปก</label>
-        <div class="flex flex-col items-center gap-4">
+    <form class="flex flex-col gap-5">
+        <label for="picture">รูปภาพหน้าปก</label>
+        <div class="flex flex-col items-center gap-4 border-b pb-5 border-dashed">
             <!-- Preview Box -->
             {#if previewUrl}
             <div class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                 <img src={previewUrl} alt="Preview" class="w-full h-full object-cover" />
+            </div>
+            {:else}
+            <div class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
             </div>
             {/if}
 
@@ -102,20 +105,46 @@
             type="file"
             accept="image/png, image/jpeg, image/webp"
             onchange={handleFileSelect}
-            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+            class="block w-full text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent  hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer"
             />
+
         </div>
 
-        <label for="name">ชื่อกิจกรรม</label>
-        <input name="name">
-        <label for="start">วันที่เริ่ม</label>
-        <input type="datetime-local" name="start">
-        <label for="end">วันที่สิ้นสุด</label>
-        <input type="datetime-local" name="end">
-        <label for="place">สถานที่จัด</label>
-        <input name="place">
-        <label for="detail">รายละเอียด</label>
-        <textarea name="detail" class="resize-none"></textarea>
+        <div class="flex w-full gap-3 justify-between">
+          <label for="name">ชื่อกิจกรรม</label>
+          <input name="name" class="w-100 rounded-sm">
+        </div>
+        <div class="flex w-full gap-3 justify-between">
+          <label for="place">สถานที่จัด</label>
+          <input name="place" class="w-100 rounded-sm">
+        </div>
+        <div class="flex w-full gap-3 justify-between">
+          <label for="detail">รายละเอียด</label>
+          <textarea name="detail" class="resize-none w-100 h-30 rounded-sm"></textarea>
+        </div>
+        <div class="flex w-full gap-3 justify-between">
+          <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
+          <input name="condition" class="w-100 rounded-sm">
+        </div>
+
+         <div class="flex w-full gap-3 justify-between items-center">
+          <label for="start">ช่วงเวลาจัดกิจกรรม</label>
+          <div class="flex w-100 justify-between items-center">
+            <input type="datetime-local" name="start" class="w-45 rounded-sm">
+            <p>-</p>
+            <input type="datetime-local" name="end" class="w-45 rounded-sm">
+          </div>
+        </div>
+        <div class="flex w-full gap-3 justify-between items-center">
+          <label for="start">เวลาเปิดลงทะเบียน</label>
+          <div class="w-100 flex justify-between items-center">
+             <input type="datetime-local" name="register-date-start" class="w-45 rounded-sm">
+              <p>-</p>
+              <input type="datetime-local" name="register-date-end" class="w-45 rounded-sm">
+          </div>
+
+        </div>
+
 
         <div class="my-10">
             <label for="timetable">ตารางเวลากิจกรรม</label>
@@ -140,13 +169,6 @@
                 </button>
             </div>
         </div>
-
-        <label for="register-date-start">วันที่เริ่มลงทะเบียน</label>
-        <input type="datetime-local" name="register-date-start">
-        <label for="register-date-end">วันที่ปิดลงทะเบียน</label>
-        <input type="datetime-local" name="register-date-end">
-        <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
-        <input name="condition">
 
         <div class="flex justify-end mt-5">
             <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer">สร้าง</button>
