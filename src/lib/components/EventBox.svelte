@@ -18,7 +18,7 @@
         <p class="text-sm font-semibold">{show_date}:{event.place}</p>
         <p class="text-sm text-gray-400">{event.host}</p>
         <a href="/event-info/1">
-            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer">Event Information</button>
+            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200">Event Information</button>
         </a>
 
     </div>
