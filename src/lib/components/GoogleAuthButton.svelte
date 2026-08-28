@@ -25,7 +25,7 @@
 </script>
 
 <button
-  class="bg-secondary hover:bg-secondary-hover w-full h-10 rounded-lg text-white font-semibold"
+  class="bg-secondary hover:bg-secondary-hover transition-colors duration-200 cursor-pointer w-full h-10 rounded-lg text-white font-semibold"
   onclick={handleGoogleRedirect}
 >
   GOOGLE AUTH
