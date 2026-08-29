@@ -1,4 +1,5 @@
 <script lang="ts">
+
     let timetable = $state([
     { start: '09:00', end: '10:00', activity: '' }
   ]);
@@ -64,12 +65,17 @@
     }
 
     isSubmitting = true;
+    let data = new FormData()
+    if (e.target) {
+      let formData = new FormData(e.target as HTMLFormElement)
+      if (imageFile) formData.append("img", imageFile, imageFile?.name)
+      data = formData
+    }
 
     try {
-      const res = await fetch('/api/timetable', {
+      const res = await fetch('/api/event', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timetable })
+        body: data
       });
 
       if (res.ok) {
@@ -87,8 +93,8 @@
 </script>
 <div class="flex flex-col items-center mt-5 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-bold">เพิ่มกิจกรรม</h1>
-    <form class="flex flex-col gap-5">
-        <label for="picture">รูปภาพหน้าปก</label>
+    <form class="flex flex-col gap-5" onsubmit={handleSubmit} enctype="multipart/form-data">
+        <label for="picture" class="text-xl font-bold">รูปภาพหน้าปก</label>
         <div class="flex flex-col items-center gap-4 border-b pb-5 border-dashed">
             <!-- Preview Box -->
             {#if previewUrl}
@@ -105,7 +111,7 @@
             type="file"
             accept="image/png, image/jpeg, image/webp"
             onchange={handleFileSelect}
-            class="block w-full text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent  hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer"
+            class="block w-fit text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent  hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer self-start"
             />
 
         </div>
@@ -147,7 +153,7 @@
 
 
         <div class="my-10">
-            <label for="timetable">ตารางเวลากิจกรรม</label>
+            <label for="timetable" class="text-xl font-bold">ตารางเวลากิจกรรม</label>
             {#each timetable as item, index}
                 <div class="flex flex-col sm:flex-row gap-2 items-center bg-gray-50 p-3 {index === 0 ? "border-t" : ""} border-b">
                     <input type="time" bind:value={item.start} class="border p-2 rounded w-full sm:w-32" required />
