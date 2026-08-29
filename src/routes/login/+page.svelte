@@ -39,7 +39,7 @@
       </div>
 
 
-      <button class="bg-accent hover:bg-accent-hover transition-colors duration-200 w-full h-10 rounded-lg text-white font-semibold">LOG IN</button>
+      <button class="bg-accent hover:bg-accent-hover transition-colors duration-200 cursor-pointer w-full h-10 rounded-lg text-white font-semibold">LOG IN</button>
       <div class="flex items-center my-4">
         <div class="grow border-t border-black"></div>
         <span class="px-4 text-sm font-medium text-black">OR</span>
