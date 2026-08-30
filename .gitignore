@@ -23,7 +23,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 #localstack
-volume
-
-# DB
-dynamoDB/data
+localstack

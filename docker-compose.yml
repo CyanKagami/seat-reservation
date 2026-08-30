@@ -13,5 +13,5 @@ services:
       - DEBUG=${DEBUG:-0}
       - PERSISTENCE=${PERSISTENCE:-0}
     volumes:
-      - '${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack'
+      - '${LOCALSTACK_VOLUME_DIR:-./localstack/volume}:/var/lib/localstack'
       - '/var/run/docker.sock:/var/run/docker.sock'
