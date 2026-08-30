@@ -1,5 +1,6 @@
 import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import "dotenv/config"
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
 
