@@ -78,5 +78,12 @@ export async function addData(tableName:string, item:Object) {
       console.warn("Collision detected! Retrying with a new ID...");
       addData(tableName, item); // Recursive retry strategy
     }
+    if (error.$responseBodyText) {
+    console.error("Raw response text:", error.$responseBodyText);
+  }
+  // Inspect the full HTTP response object
+  if (error.$response) {
+    console.error("HTTP Status Code:", error.$response.statusCode);
+  }
   }
 }

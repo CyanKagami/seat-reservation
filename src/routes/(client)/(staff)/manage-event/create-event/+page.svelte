@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { userStore } from "$lib/store/auth.svelte";
   import type { Daytable } from "$lib/type/event";
 
   interface ValidationResult {
@@ -149,6 +150,7 @@
       let formData = new FormData(e.target as HTMLFormElement)
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
       formData.append("timetable",JSON.stringify(timetable))
+      formData.append("host", userStore.currentUser?.email ? userStore.currentUser?.email : "")
       data = formData
     }
 

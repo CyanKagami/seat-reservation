@@ -14,7 +14,8 @@ interface EventFormData {
     'register-date-start': string,
     'register-date-end': string,
     img?: File,
-    timetable? : string
+    timetable? : string,
+    host:string
 }
 
 function formatData(data:EventFormData): Event {
@@ -27,7 +28,7 @@ function formatData(data:EventFormData): Event {
     event.date.end = data.end
     event["register-date"].start = data["register-date-start"]
     event["register-date"].end = data["register-date-end"]
-    event.host = userStore.currentUser?.email as string
+    event.host = data.host
 
     event.name = data.name
     event.place = data.place
