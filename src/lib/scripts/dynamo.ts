@@ -1,5 +1,5 @@
 import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
@@ -86,4 +86,59 @@ export async function addData(tableName:string, item:Object) {
     console.error("HTTP Status Code:", error.$response.statusCode);
   }
   }
+}
+
+export async function fetchAllEvent(tableName: string): Promise<Record<string, any>[]> {
+  const allItems: Record<string, any>[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+  try {
+    do {
+      // Configure scan parameters
+      const params: ScanCommandInput = {
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey, // Resume from the last checkpoint
+      };
+
+      // Execute the scan command
+      const command = new ScanCommand(params);
+      const response = await docClient.send(command);
+
+      // Store retrieved items
+      if (response.Items) {
+        allItems.push(...response.Items);
+      }
+
+      // Track the pagination token
+      lastEvaluatedKey = response.LastEvaluatedKey;
+
+    } while (lastEvaluatedKey); // Continue loop if there are more pages
+
+    return allItems;
+  } catch (error) {
+    console.error("Error scanning DynamoDB table:", error);
+    throw error;
+  }
+}
+
+export async function fetchEventFromHost(email:string) {
+  const paginatorConfig = { client: docClient, pageSize: 25 };
+  const scanParams = {
+    TableName: "events",
+    FilterExpression: "host = :email",
+    ExpressionAttributeValues: {
+      ":email": email
+    }
+  };
+
+  const allItems = [];
+
+  for await (const page of paginateScan(paginatorConfig, scanParams)) {
+    if (page.Items) {
+      allItems.push(...page.Items);
+    }
+  }
+
+  console.log("Total items matching filter:", allItems.length);
+  return allItems;
 }
