@@ -1,10 +1,11 @@
+import { AWS_LOCALSTACK_URL, AWS_REGION } from "$env/static/private";
 import { S3Client, PutObjectCommand, CreateBucketCommand } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
-const localstackUrl = process.env.AWS_LOCALSTACK_URL;
+const localstackUrl = AWS_LOCALSTACK_URL;
 
 export const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: AWS_REGION || "us-east-1",
   credentials: {
       accessKeyId: "test",
       secretAccessKey: "test",
@@ -39,12 +40,14 @@ function removeInvalidXmlCharacters(str:string) {
 }
 
 export async function addFile(bucket:string, filename:string, fileBuffer:Buffer) {
-    console.log(localstackUrl)
+    let cleanFileName = removeInvalidXmlCharacters(filename);
     await s3Client.send(new PutObjectCommand({
           Bucket: bucket,
-          Key: removeInvalidXmlCharacters(filename),
+          Key: cleanFileName,
           Body: fileBuffer,
       }));
-    return `https://${bucket}.s3.${process.env.AWS_REGION}://${removeInvalidXmlCharacters(filename)}`
+    if (localstackUrl) {
+      return `${localstackUrl}/${bucket}/${cleanFileName}`
+    }
+    return `https://${bucket}.s3.${AWS_REGION}://${cleanFileName}`
 }
-
