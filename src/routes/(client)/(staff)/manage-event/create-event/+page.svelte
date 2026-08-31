@@ -1,20 +1,38 @@
 <script lang="ts">
+  import type { Daytable } from "$lib/type/event";
 
-    let timetable = $state([
-    { start: '09:00', end: '10:00', activity: '' }
-  ]);
+  interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  }
+
+  let timetable:Daytable [] = $state([])
   let isSubmitting = $state(false);
 
   // ฟังก์ชันเพิ่มแถว
-  function addRow() {
-    // ดึงเวลา end ของแถวล่าสุดมาตั้งเป็น start ของแถวใหม่ (ถ้ามี)
-    const lastEnd = timetable.length > 0 ? timetable[timetable.length - 1].end : '09:00';
-    timetable.push({ start: lastEnd, end: '', activity: '' });
+  function addDate() {
+    timetable.push({
+      date: "",
+      activity: []
+    })
   }
 
-  // ฟังก์ชันลบแถว
-  function removeRow(index:Number) {
-    timetable = timetable.filter((_, i) => i !== index);
+  function addActivity(index:number) {
+    timetable[index].activity.push(
+      {
+        start:"",
+        end:"",
+        activity:""
+      }
+    )
+  }
+
+  function deleteDay(index:number) {
+    timetable.splice(index, 1)
+  }
+
+  function deleteActivity(dayIndex:number, activityIndex:number) {
+    timetable[dayIndex].activity.splice(activityIndex, 1)
   }
 
   let imageFile = $state<File | null>(null);
@@ -48,20 +66,81 @@
     previewUrl = URL.createObjectURL(file);
   }
 
+  function validateTimetable(days: Daytable[]): ValidationResult {
+  const errors: string[] = [];
+
+  // 1. ตรวจสอบว่าต้องมีอย่างน้อย 1 วัน
+  if (!Array.isArray(days) || days.length === 0) {
+    return { isValid: true, errors: [] };
+  }
+
+  const seenDates = new Set<string>();
+
+  days.forEach((day, dayIndex) => {
+    const dayNum = dayIndex + 1;
+
+    // 2. ตรวจสอบรูปแบบวันที่ (YYYY-MM-DD)
+    if (!day.date || isNaN(Date.parse(day.date))) {
+      errors.push(`วันที่ในรายการที่ ${dayNum} ไม่ถูกต้อง`);
+    } else {
+      // ตรวจสอบวันที่ซ้ำกัน
+      if (seenDates.has(day.date)) {
+        errors.push(`วันที่ ${day.date} มีรายการซ้ำกัน`);
+      }
+      seenDates.add(day.date);
+    }
+
+    // 3. ตรวจสอบว่ามีกิจกรรมในวันนั้นหรือไม่
+    if (!Array.isArray(day.activity) || day.activity.length === 0) {
+      errors.push(`วันที่ ${day.date || dayNum} ต้องมีอย่างน้อย 1 กิจกรรม`);
+      return;
+    }
+
+    // เรียงกิจกรรมตามเวลาเริ่มเพื่อใช้วิเคราะห์การซ้อนทับ (Overlap)
+    const sortedActivities = [...day.activity].sort((a, b) => a.start.localeCompare(b.start));
+
+    sortedActivities.forEach((act, actIndex) => {
+      const actNum = actIndex + 1;
+
+      // 4. ตรวจสอบการกรอกข้อมูลให้ครบถ้วน
+      if (!act.start || !act.end || !act.activity.trim()) {
+        errors.push(`วันที่ ${day.date}: กิจกรรมที่ ${actNum} กรอกข้อมูลไม่ครบถ้วน`);
+        return;
+      }
+
+      // 5. ตรวจสอบว่า เวลาจบ ต้องมากกว่า เวลาเริ่ม
+      if (act.start >= act.end) {
+        errors.push(
+          `วันที่ ${day.date}: กิจกรรม "${act.activity}" มีเวลาจบ (${act.end}) ไม่ถูกต้อง (ต้องมากกว่าเวลาเริ่ม ${act.start})`
+        );
+      }
+
+      // 6. ตรวจสอบเวลาซ้อนทับกับกิจกรรมก่อนหน้า (Time Overlap Check)
+      if (actIndex > 0) {
+        const prevAct = sortedActivities[actIndex - 1];
+        if (act.start < prevAct.end) {
+          errors.push(
+            `วันที่ ${day.date}: กิจกรรม "${act.activity}" (${act.start}-${act.end}) มีเวลาซ้อนทับกับ "${prevAct.activity}" (${prevAct.start}-${prevAct.end})`
+          );
+        }
+      }
+    });
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
   // Form Submit Handler
   async function handleSubmit(e:SubmitEvent) {
     e.preventDefault();
 
     // Validation เบื้องต้น
-    for (const item of timetable) {
-      if (!item.start || !item.end || !item.activity.trim()) {
-        alert('กรุณากรอกข้อมูลในทุกช่องให้ครบถ้วน');
-        return;
-      }
-      if (item.start >= item.end) {
-        alert(`เวลาจบ (${item.end}) ต้องมากกว่าเวลาเริ่ม (${item.start})`);
-        return;
-      }
+    if (!validateTimetable(timetable).isValid) {
+      alert (validateTimetable(timetable).errors)
+      return
     }
 
     isSubmitting = true;
@@ -118,7 +197,7 @@
 
         <div class="flex w-full gap-3 justify-between">
           <label for="name">ชื่อกิจกรรม</label>
-          <input name="name" class="w-100 rounded-sm">
+          <input name="name" class="w-100 rounded-sm" required>
         </div>
         <div class="flex w-full gap-3 justify-between">
           <label for="place">สถานที่จัด</label>
@@ -153,30 +232,32 @@
 
 
         <div class="my-10">
-            <label for="timetable" class="text-xl font-bold">ตารางเวลากิจกรรม</label>
-            {#each timetable as item, index}
-                <div class="flex flex-col sm:flex-row gap-2 items-center bg-gray-50 p-3 {index === 0 ? "border-t" : ""} border-b">
-                    <input type="time" bind:value={item.start} class="border p-2 rounded w-full sm:w-32" required />
-                    <span class="hidden sm:inline">-</span>
-                    <input type="time" bind:value={item.end} class="border p-2 rounded w-full sm:w-32" required />
-                    <input type="text" bind:value={item.activity} placeholder="ชื่อกิจกรรม" class="border p-2 rounded flex-1 w-full" required />
+            <label for="timetable" class="text-xl font-bold block">ตารางเวลากิจกรรม</label>
+            <div>
+                {#each timetable as table, dayIndex}
+                  <input type="date" class="w-45 rounded-sm block" bind:value={table.date}>
+                  {#each table.activity as activity, activityIndex }
+                  <div class="flex">
+                    <input type="time" class="w-45 rounded-sm block" bind:value={activity.start}>
+                    <input type="time" class="w-45 rounded-sm block" bind:value={activity.end}>
+                    <input type="text" class="w-45 rounded-sm block" bind:value={activity.activity}>
+                    <button type="button" onclick={() => deleteActivity(dayIndex, activityIndex)} class="bg-red-500 text-white p-3">ลบ</button>
+                  </div>
+                  {/each}
+                  <div class="flex justify-end w-full">
+                    <button type="button" onclick={() => addActivity(dayIndex)} class="bg-secondary p-3 text-white rounded-lg">เพิ่มกิจกรรม</button>
+                    <button type="button" onclick={() => deleteDay(dayIndex)} class="bg-red-500 p-3 text-white rounded-lg">ลบวัน</button>
+                  </div>
+              {/each}
 
-                    {#if timetable.length > 1}
-                        <button type="button" onclick={() => removeRow(index)} class="text-red-500 hover:bg-red-50 p-2 rounded">
-                        ลบ
-                        </button>
-                    {/if}
-                </div>
-            {/each}
+            </div>
 
-            <div class="flex justify-end pt-4">
-                <button type="button" onclick={addRow} class="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg">
-                + เพิ่มรายการ
-                </button>
+            <div class="flex justify-end">
+              <button type="button" onclick={addDate} class="bg-accent p-3 text-white rounded-lg">เพิ่มวัน</button>
             </div>
         </div>
 
-        <div class="flex justify-end mt-5">
+        <div class="flex w-full justify-end mt-5">
             <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer">สร้าง</button>
         </div>
     </form>

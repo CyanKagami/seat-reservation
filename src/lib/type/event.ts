@@ -2,27 +2,25 @@ export interface Event {
     picture:string,
     name:string,
     date:{
-        start:{
-            day:string,
-            month:string,
-            year:string,
-            time:string
-        },
-        end:{
-            day:string,
-            month:string,
-            year:string,
-            time:string
-        }
+        start:string,
+        end:string
     },
     place:string,
     host:string,
     detail:string,
-    timetable: {
+    timetable:Daytable[],
+    "register-date":{
         start:string,
-        end:string,
-        activity:string
-    }[],
-    "register-date":string,
+        end:string
+    },
     condition?:string
+}
+
+export interface Daytable {
+        date: string
+        activity:{
+            start:string,
+            end:string,
+            activity:string
+        }[]
 }
