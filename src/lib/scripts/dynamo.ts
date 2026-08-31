@@ -44,17 +44,32 @@ export async function createMyTable() {
   }
 }
 
+function removeInvalidXmlCharacters(str:string) {
+  if (typeof str !== 'string') return '';
+
+  // Matches forbidden XML 1.0 control characters
+  // Keeps normal whitespace: tabs (\t), newlines (\n), carriage returns (\r)
+  const invalidXmlRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F]/g;
+
+  return str.replace(invalidXmlRegex, '');
+}
+
 export async function addData(tableName:string, item:Object) {
   const uniqueId = uuidv4();
+  const updatedObj = Object.fromEntries(
+  Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
+);
   const params = {
     TableName: tableName,
     Item: {
       eventId: uniqueId,
-      ...item
+      ...updatedObj
     },
     ConditionExpression: "attribute_not_exists(eventId)",
   };
   console.log(uniqueId)
+
+
   try {
     const data = await docClient.send(new PutCommand(params));
     console.log('result : ' + JSON.stringify(data));

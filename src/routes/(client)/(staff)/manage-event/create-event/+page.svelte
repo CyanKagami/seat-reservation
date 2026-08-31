@@ -148,6 +148,7 @@
     if (e.target) {
       let formData = new FormData(e.target as HTMLFormElement)
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
+      formData.append("timetable",JSON.stringify(timetable))
       data = formData
     }
 
