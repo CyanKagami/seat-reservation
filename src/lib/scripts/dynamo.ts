@@ -1,5 +1,6 @@
 import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
@@ -43,16 +44,24 @@ export async function createMyTable() {
   }
 }
 
-export async function addData(tableName:string, item:JSON) {
+export async function addData(tableName:string, item:Object) {
+  const uniqueId = uuidv4();
   const params = {
     TableName: tableName,
-    Item: item,
+    Item: {
+      eventId: uniqueId,
+      ...item
+    },
+    ConditionExpression: "attribute_not_exists(eventId)",
   };
-
+  console.log(uniqueId)
   try {
     const data = await docClient.send(new PutCommand(params));
     console.log('result : ' + JSON.stringify(data));
-  } catch (error) {
-    console.error("Error:", error);
+  } catch (error:any) {
+    if (error.name === "ConditionalCheckFailedException") {
+      console.warn("Collision detected! Retrying with a new ID...");
+      addData(tableName, item); // Recursive retry strategy
+    }
   }
 }

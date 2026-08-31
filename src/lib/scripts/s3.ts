@@ -45,4 +45,6 @@ export async function addFile(bucket:string, filename:string, fileBuffer:Buffer)
           Key: removeInvalidXmlCharacters(filename),
           Body: fileBuffer,
       }));
+    return `https://${bucket}.s3.${process.env.AWS_REGION}://${removeInvalidXmlCharacters(filename)}`
 }
+
