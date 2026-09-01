@@ -1,9 +1,13 @@
 import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
+
+interface Key {
+  [key:string]:any
+}
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION || "us-east-1",
@@ -85,5 +89,127 @@ export async function addData(tableName:string, item:Object) {
     if (error.$response) {
       console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
     }
+  }
+}
+
+export async function fetchAllEvent(tableName: string): Promise<Record<string, any>[]> {
+  const allItems: Record<string, any>[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+  try {
+    do {
+      // Configure scan parameters
+      const params: ScanCommandInput = {
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey, // Resume from the last checkpoint
+      };
+
+      // Execute the scan command
+      const command = new ScanCommand(params);
+      const response = await docClient.send(command);
+
+      // Store retrieved items
+      if (response.Items) {
+        allItems.push(...response.Items);
+      }
+
+      // Track the pagination token
+      lastEvaluatedKey = response.LastEvaluatedKey;
+
+    } while (lastEvaluatedKey); // Continue loop if there are more pages
+
+    return allItems;
+  } catch (error) {
+    console.error("Error scanning DynamoDB table:", error);
+    throw error;
+  }
+}
+
+export async function fetchEventFromHost(email:string) {
+  const paginatorConfig = { client: docClient, pageSize: 25 };
+  const scanParams = {
+    TableName: "events",
+    FilterExpression: "host = :email",
+    ExpressionAttributeValues: {
+      ":email": email
+    }
+  };
+
+  const allItems = [];
+
+  for await (const page of paginateScan(paginatorConfig, scanParams)) {
+    if (page.Items) {
+      allItems.push(...page.Items);
+    }
+  }
+
+  console.log("Total items matching filter:", allItems.length);
+  return allItems;
+}
+
+export async function fetchEventFromEventId(eventId:string) {
+  const paginatorConfig = { client: docClient, pageSize: 25 };
+  const scanParams = {
+    TableName: "events",
+    FilterExpression: "eventId = :eventId",
+    ExpressionAttributeValues: {
+      ":eventId": eventId
+    }
+  };
+
+  const allItems = [];
+
+  for await (const page of paginateScan(paginatorConfig, scanParams)) {
+    if (page.Items) {
+      allItems.push(...page.Items);
+    }
+  }
+
+  console.log("Total items matching filter:", allItems.length);
+  return allItems;
+}
+
+export async function updateAllAttributes(tableName:string, primaryKey:Key, attributesToUpdate:Object) {
+  const updateParts = [];
+  const expressionAttributeNames:{[key:string]:any} = {};
+  const expressionAttributeValues:{[key:string]:any} = {};
+
+  // Extract primary key names to prevent trying to update them
+  const primaryKeyNames = Object.keys(primaryKey);
+
+  let count = 0
+  for (const [key, value] of Object.entries(attributesToUpdate)) {
+    // Skip primary key fields (DynamoDB throwing an error if updated)
+    if (primaryKeyNames.includes(key)) continue;
+
+    const namePlaceholder = `#attr_${count}`;
+    const valuePlaceholder = `:val_${count}`;
+    count++;
+
+    updateParts.push(`${namePlaceholder} = ${valuePlaceholder}`);
+    expressionAttributeNames[namePlaceholder] = key;
+    expressionAttributeValues[valuePlaceholder] = value;
+  }
+
+  console.log(updateParts.join(", "))
+  // If no attributes are left to update, exit
+  if (updateParts.length === 0) return;
+
+  const params = {
+    TableName: tableName,
+    Key: primaryKey, // e.g., { userId: "12345" }
+    UpdateExpression: `SET ${updateParts.join(", ")}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "ALL_NEW" // Returns the entire item after modification
+  };
+
+  try {
+    // @ts-ignore
+    const response = await docClient.send(new UpdateCommand(params));
+    return response.Attributes;
+  } catch (error) {
+    console.error("Error updating item:", error);
+    throw error;
   }
 }
