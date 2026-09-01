@@ -142,3 +142,25 @@ export async function fetchEventFromHost(email:string) {
   console.log("Total items matching filter:", allItems.length);
   return allItems;
 }
+
+export async function fetchEventFromEventId(eventId:string) {
+  const paginatorConfig = { client: docClient, pageSize: 25 };
+  const scanParams = {
+    TableName: "events",
+    FilterExpression: "eventId = :eventId",
+    ExpressionAttributeValues: {
+      ":eventId": eventId
+    }
+  };
+
+  const allItems = [];
+
+  for await (const page of paginateScan(paginatorConfig, scanParams)) {
+    if (page.Items) {
+      allItems.push(...page.Items);
+    }
+  }
+
+  console.log("Total items matching filter:", allItems.length);
+  return allItems;
+}

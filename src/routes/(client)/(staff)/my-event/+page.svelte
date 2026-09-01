@@ -1,5 +1,5 @@
 <script lang='ts'>
-    import EventBox from "$lib/components/EventBox.svelte";
+    import StaffEventBox from "$lib/components/staff/StaffEventBox.svelte";
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
     let events:Event[] = $state([])
@@ -153,8 +153,13 @@
 
         <!--Event Registration-->
         <div class="w-full flex flex-wrap gap-15 gap-y-10">
+        {#if events.length === 0}
+        <div class="flex justify-center items-center w-full">
+            <p class="text-gray-400 text-xl">คุณยังไม่มีกิจกรรม</p>
+        </div>
+        {/if}
         {#each events as event }
-            <EventBox event={event}></EventBox>
+            <StaffEventBox event={event}></StaffEventBox>
         {/each}
         </div>
     </div>
