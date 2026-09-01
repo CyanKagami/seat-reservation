@@ -7,11 +7,22 @@
     errors: string[];
   }
 
-  let timetable: Daytable[] = $state([]);
+  let timetable: Daytable[] = $state([
+    {
+      date: "",
+      activity: [
+        {
+          start: "",
+          end: "",
+          activity: ""
+        }
+      ]
+    }
+  ]);
   let isSubmitting = $state(false);
 
   // ฟังก์ชันเพิ่มแถว
-  function addDate() {
+function addDate() {
     timetable.push({
       date: "",
       activity: [
@@ -20,8 +31,8 @@
           end: "",
           activity: ""
         }
-      ],
-    });
+      ]
+    })
   }
 
   function addActivity(index: number) {
@@ -271,12 +282,24 @@
     <div class="flex flex-col gap-8">
         {#each timetable as table, dayIndex}
         <div class="flex flex-col gap-3">
-            <input
-                type="date"
-                class="w-45 rounded-lg border border-gray-300 px-3 py-2"
-                bind:value={table.date}
-            />
+            <div class="flex items-center justify-between">
+                <input
+                    type="date"
+                    class="w-45 rounded-lg border border-gray-300 px-3 py-2"
+                    bind:value={table.date}
+                />
+                {#if dayIndex === 0}
+                <button
+                    type="button"
+                    onclick={addDate}
+                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
+                >
+                    เพิ่มวัน
+                </button>
+                {/if}
+            </div>
 
+            {#if table.activity.length > 0}
             <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
                     <tr class="bg-white border-b border-gray-200">
@@ -302,7 +325,8 @@
                             <button
                                 type="button"
                                 onclick={() => deleteActivity(dayIndex, activityIndex)}
-                                class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
+                                disabled={table.activity.length === 1}
+                                class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors duration-200"
                             >
                                 ลบ
                             </button>
@@ -311,8 +335,17 @@
                     {/each}
                 </tbody>
             </table>
+            {/if}
 
             <div class="flex justify-end gap-3">
+                <button
+                    type="button"
+                    onclick={() => deleteDay(dayIndex)}
+                    disabled={timetable.length === 1}
+                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+                >
+                    ลบวัน
+                </button>
                 <button
                     type="button"
                     onclick={() => addActivity(dayIndex)}
@@ -320,35 +353,9 @@
                 >
                     เพิ่มกิจกรรม
                 </button>
-                <button
-                    type="button"
-                    onclick={() => deleteDay(dayIndex)}
-                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
-                >
-                    ลบวัน
-                </button>
-                <button
-                    type="button"
-                    onclick={addDate}
-                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
-                >
-                    เพิ่มวัน
-                </button>
             </div>
         </div>
         {/each}
-
-        {#if timetable.length === 0}
-        <div class="flex justify-end">
-            <button
-                type="button"
-                onclick={addDate}
-                class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200" 
-            >
-                เพิ่มวัน
-            </button>
-        </div>
-        {/if}
     </div>
 </div>
 
