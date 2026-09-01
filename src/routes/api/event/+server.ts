@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { addFile, createBucket } from "$lib/scripts/s3";
-import { addData, fetchEventFromHost, updateAllAttributes } from "$lib/scripts/dynamo";
+import { addData, fetchEventFromHost, updateAllAttributes, fetchAllData } from "$lib/scripts/dynamo";
 import type { Event } from "$lib/type/event";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, NODE_ENV, GOOGLE_CLIENT_ID } from '$env/static/private';
@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
     // Verify the token signature
     const decoded:GoogleUser = jwt.verify(token, JWT_SECRET) as GoogleUser;
-    let data = await fetchEventFromHost(decoded.email)
+    let data = await fetchAllData("events")
     return json(
         {
             statusCode: 200,

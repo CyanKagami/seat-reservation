@@ -4,7 +4,7 @@
     import { onMount } from "svelte";
     let events:Event[] = $state([])
     onMount(async () => {
-        events = await fetch('/api/event', {
+        events = await fetch('/api/event/getFromHost', {
             method: "GET",
             credentials: 'include'
         })

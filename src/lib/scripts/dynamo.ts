@@ -92,7 +92,7 @@ export async function addData(tableName:string, item:Object) {
   }
 }
 
-export async function fetchAllEvent(tableName: string): Promise<Record<string, any>[]> {
+export async function fetchAllData(tableName: string): Promise<Record<string, any>[]> {
   const allItems: Record<string, any>[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
