@@ -7,12 +7,12 @@ Resources:
     Properties:
       TableName: users
       AttributeDefinitions:
-        - AttributeName: googleId
+        - AttributeName: userId
           AttributeType: S
         - AttributeName: email
           AttributeType: S
       KeySchema:
-        - AttributeName: googleId
+        - AttributeName: userId
           KeyType: HASH
         - AttributeName: email
           KeyType: RANGE
