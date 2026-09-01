@@ -7,18 +7,7 @@
     errors: string[];
   }
 
-  let timetable: Daytable[] = $state([
-    {
-      date: "",
-      activity: [
-        {
-          start: "",
-          end: "",
-          activity: ""
-        }
-      ]
-    }
-  ]);
+  let timetable: Daytable[] = $state([]);
   let isSubmitting = $state(false);
 
   // ฟังก์ชันเพิ่มแถว
@@ -278,8 +267,23 @@ function addDate() {
 
 <div class="my-10">
     <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
+    <div class="w-full flex justify-end">
+      <button
+                    type="button"
+                    onclick={addDate}
+                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
+                >
+                    เพิ่มวัน
+                </button>
+    </div>
 
     <div class="flex flex-col gap-8">
+        {#if timetable.length === 0}
+        <div class="flex items-center justify-center w-full">
+          <p class="text-gray-400">ยังไม่มีข้อมูลตารางเวลากิจกรรม</p>
+        </div>
+        {/if}
+
         {#each timetable as table, dayIndex}
         <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between">
@@ -288,15 +292,6 @@ function addDate() {
                     class="w-45 rounded-lg border border-gray-300 px-3 py-2"
                     bind:value={table.date}
                 />
-                {#if dayIndex === 0}
-                <button
-                    type="button"
-                    onclick={addDate}
-                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
-                >
-                    เพิ่มวัน
-                </button>
-                {/if}
             </div>
 
             {#if table.activity.length > 0}
@@ -341,8 +336,7 @@ function addDate() {
                 <button
                     type="button"
                     onclick={() => deleteDay(dayIndex)}
-                    disabled={timetable.length === 1}
-                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                     ลบวัน
                 </button>
