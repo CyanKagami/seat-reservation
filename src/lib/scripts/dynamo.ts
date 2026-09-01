@@ -165,6 +165,7 @@ export async function fetchEventFromEventId(eventId:string) {
     }
   }
 
+  console.log(eventId)
   console.log("Total items matching filter:", allItems.length);
   return allItems;
 }
