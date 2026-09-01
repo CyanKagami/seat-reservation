@@ -1,8 +1,8 @@
-import type { GoogleUser } from "$lib/type/googleUser";
 import { browser } from '$app/environment';
+import type { User } from "$lib/type/user";
 
 class UserStore {
-    user: GoogleUser | null = $state(null);
+    user: User | null = $state(null);
     
     get isAuthenticated() {
         return this.user !== null;
@@ -12,7 +12,7 @@ class UserStore {
         return this.user;
     }
     // Call this after Lambda authenticates the Google payload
-    setUser(user:GoogleUser | null) {
+    setUser(user:User | null) {
         this.user = user;
     }
 

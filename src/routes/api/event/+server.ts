@@ -61,7 +61,7 @@ export const POST: RequestHandler = async ({request }) => {
         ...formatData(data)
     }
     console.log(processData)
-    addData("events", processData)
+    await addData("events", processData)
     return json(
         {
             statusCode: 200,
@@ -102,7 +102,7 @@ export const PATCH: RequestHandler = async ({request}) => {
         ...formatData(data)
     }
     console.log(processData)
-    updateAllAttributes("events", {eventId: processData.eventId}, processData)
+    await updateAllAttributes("events", {eventId: processData.eventId}, processData)
     return json(
         {
             statusCode: 200,

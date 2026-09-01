@@ -8,7 +8,7 @@
     }
 </script>
 <div class="w-full h-20 py-5 px-10 bg-pale flex justify-between fixed top-0 z-50">
-    <a href="/" class="text-4xl font-semibold">K-<span class="text-accent">SEAT</span></a>
+    <a href="/admin" class="text-4xl font-semibold">K-<span class="text-accent">SEAT</span></a>
     <div class="flex gap-10 items-center">
         <a href="/my-event" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">My Events</a>
         <div>

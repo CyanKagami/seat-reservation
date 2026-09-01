@@ -1,7 +1,8 @@
-import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient, CreateTableCommand, GetItemCommand, type GetItemCommandInput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
+import type { User } from "$lib/type/user";
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
 
@@ -61,8 +62,8 @@ function removeInvalidXmlCharacters(str:string) {
 export async function addData(tableName:string, item:Object) {
   const uniqueId = uuidv4();
   const updatedObj = Object.fromEntries(
-  Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
-);
+    Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
+  );
   const params = {
     TableName: tableName,
     Item: {
@@ -92,7 +93,42 @@ export async function addData(tableName:string, item:Object) {
   }
 }
 
+<<<<<<< HEAD
 export async function fetchAllData(tableName: string): Promise<Record<string, any>[]> {
+=======
+export async function addDataIfNotExists(tableName:string, item:Object, primaryKey:string) {
+  const updatedObj = Object.fromEntries(
+  Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
+);
+  const params = {
+    TableName: tableName,
+    Item: {
+      ...updatedObj
+    },
+    ConditionExpression: `attribute_not_exists(${primaryKey})`,
+  };
+
+  try {
+    const data = await docClient.send(new PutCommand(params));
+    console.log('result : ' + JSON.stringify(data));
+    return 0; // Item added successfully
+  } catch (error:any) {
+    if (error.name === "ConditionalCheckFailedException") {
+      return 1; // Item already exists
+    }
+    if (error.$responseBodyText) {
+      console.error("Dynamo Raw response text:", error.$responseBodyText);
+    }
+  // Inspect the full HTTP response object
+    if (error.$response) {
+      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
+    }
+    return -1; // Error occurred
+  }
+}
+
+export async function fetchAllEvent(tableName: string): Promise<Record<string, any>[]> {
+>>>>>>> 9057bba22020a9fde8d933b2195c51e469320439
   const allItems: Record<string, any>[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
@@ -211,6 +247,90 @@ export async function updateAllAttributes(tableName:string, primaryKey:Key, attr
     return response.Attributes;
   } catch (error) {
     console.error("Error updating item:", error);
+    throw error;
+  }
+}
+
+export async function addUser(user:Object) {
+  const uniqueId = uuidv4();
+  const params:PutCommandInput = {
+    TableName: 'users',
+    // Define the exact primary key match
+    Item: {
+      userId: uniqueId,
+      ...user
+    },
+    ConditionExpression: "attribute_not_exists(userId)"
+  };
+
+  try {
+    const data = await docClient.send(new PutCommand(params));
+    console.log('result : ' + JSON.stringify(data));
+  } catch (error:any) {
+    if (error.name === "ConditionalCheckFailedException") {
+      console.warn("Collision detected! Retrying with a new ID...");
+      await addUser(user); // Recursive retry strategy
+    }
+    if (error.$responseBodyText) {
+      console.error("Dynamo Raw response text:", error.$responseBodyText);
+    }
+  // Inspect the full HTTP response object
+    if (error.$response) {
+      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
+    }
+  }
+}
+
+export async function fetchUser(userId:string, email:string) {
+  const params = {
+    TableName: 'users',
+    // Define the exact primary key match
+    Key: {
+      userId: userId, // Partition Key (HASH)
+      email: email,       // Sort Key (RANGE)
+    },
+  };
+
+  try {
+    const command = new GetCommand(params);
+    const response = await docClient.send(command);
+
+    if (response.Item) {
+      console.log('Item found:', response.Item);
+      return response.Item;
+    } else {
+      console.log('No item found with the specified key.');
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting item:', error);
+    throw error;
+  }
+}
+
+export async function paginateReadData(tableName:string, limit:number, nextToken?:string) {
+  try {
+
+    const params:ScanCommandInput = {
+      TableName: tableName,
+      Limit: limit,
+      ExclusiveStartKey: nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8')) : undefined
+    };
+
+    // Execute DynamoDB Scan
+    const command = new ScanCommand(params);
+    const data = await docClient.send(command);
+
+    // Encode LastEvaluatedKey for the client response
+    let newNextToken = null;
+    if (data.LastEvaluatedKey) {
+      newNextToken = Buffer.from(JSON.stringify(data.LastEvaluatedKey)).toString('base64');
+    }
+    return {
+      items: data.Items || [],
+      nextToken: newNextToken,
+    }
+  } catch (error) {
     throw error;
   }
 }
