@@ -1,9 +1,13 @@
 import { DynamoDBClient, CreateTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
+
+interface Key {
+  [key:string]:any
+}
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION || "us-east-1",
@@ -163,4 +167,49 @@ export async function fetchEventFromEventId(eventId:string) {
 
   console.log("Total items matching filter:", allItems.length);
   return allItems;
+}
+
+export async function updateAllAttributes(tableName:string, primaryKey:Key, attributesToUpdate:Object) {
+  const updateParts = [];
+  const expressionAttributeNames:{[key:string]:any} = {};
+  const expressionAttributeValues:{[key:string]:any} = {};
+
+  // Extract primary key names to prevent trying to update them
+  const primaryKeyNames = Object.keys(primaryKey);
+
+  let count = 0
+  for (const [key, value] of Object.entries(attributesToUpdate)) {
+    // Skip primary key fields (DynamoDB throwing an error if updated)
+    if (primaryKeyNames.includes(key)) continue;
+
+    const namePlaceholder = `#attr_${count}`;
+    const valuePlaceholder = `:val_${count}`;
+    count++;
+
+    updateParts.push(`${namePlaceholder} = ${valuePlaceholder}`);
+    expressionAttributeNames[namePlaceholder] = key;
+    expressionAttributeValues[valuePlaceholder] = value;
+  }
+
+  console.log(updateParts.join(", "))
+  // If no attributes are left to update, exit
+  if (updateParts.length === 0) return;
+
+  const params = {
+    TableName: tableName,
+    Key: primaryKey, // e.g., { userId: "12345" }
+    UpdateExpression: `SET ${updateParts.join(", ")}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "ALL_NEW" // Returns the entire item after modification
+  };
+
+  try {
+    // @ts-ignore
+    const response = await docClient.send(new UpdateCommand(params));
+    return response.Attributes;
+  } catch (error) {
+    console.error("Error updating item:", error);
+    throw error;
+  }
 }

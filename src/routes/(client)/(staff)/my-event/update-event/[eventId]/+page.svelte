@@ -176,12 +176,13 @@
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
       formData.append("timetable",JSON.stringify(timetable))
       formData.append("host", userStore.currentUser?.email ? userStore.currentUser?.email : "")
+      formData.append("eventId", params.eventId)
       data = formData
     }
 
     try {
       const res = await fetch('/api/event', {
-        method: 'POST',
+        method: 'PATCH',
         body: data
       });
 
@@ -243,17 +244,21 @@
          <div class="flex w-full gap-3 justify-between items-center">
           <label for="start">ช่วงเวลาจัดกิจกรรม</label>
           <div class="flex w-100 justify-between items-center">
-            <input type="datetime-local" name="start" class="w-45 rounded-sm" >
+            <input type="datetime-local" name="start" class="w-45 rounded-sm"
+            value="{event.date && event.date.start ? event.date.start : ""}">
             <p>-</p>
-            <input type="datetime-local" name="end" class="w-45 rounded-sm">
+            <input type="datetime-local" name="end" class="w-45 rounded-sm"
+            value="{event.date && event.date.end ? event.date.end : ""}">
           </div>
         </div>
         <div class="flex w-full gap-3 justify-between items-center">
           <label for="start">เวลาเปิดลงทะเบียน</label>
           <div class="w-100 flex justify-between items-center">
-             <input type="datetime-local" name="register-date-start" class="w-45 rounded-sm">
+             <input type="datetime-local" name="register-date-start" class="w-45 rounded-sm"
+             value="{event["register-date"] && event["register-date"].start ? event["register-date"].start : ""}">
               <p>-</p>
-              <input type="datetime-local" name="register-date-end" class="w-45 rounded-sm">
+              <input type="datetime-local" name="register-date-end" class="w-45 rounded-sm"
+              value="{event["register-date"] && event["register-date"].end ? event["register-date"].end : ""}">
           </div>
 
         </div>
@@ -286,7 +291,7 @@
         </div>
 
         <div class="flex w-full justify-end mt-5">
-            <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer">สร้าง</button>
+            <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer">อัพเดท</button>
         </div>
     </form>
 </div>
