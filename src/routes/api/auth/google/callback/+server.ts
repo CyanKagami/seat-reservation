@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 // Add CLIENT_SECRET to your environment variables (.env)
 import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET, NODE_ENV } from '$env/static/private';
 import type { GoogleUser } from '$lib/type/googleUser';
+import { addData } from '$lib/scripts/dynamo';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
@@ -40,6 +41,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
         name: payload.name ?? '',
         picture: payload.picture ?? ''
     };
+    
+    await addData('users', user); // Store user data in DynamoDB
     
     const signedToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1d' });
     
