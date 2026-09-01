@@ -143,9 +143,12 @@
     <div class="pt-8 w-full px-20 flex flex-col gap-10">
 
         <!--Search bar-->
-        <div>
-            <p class="text-sm font-semibold">Search</p>
-            <input class="rounded-lg w-96">
+        <div class="flex justify-between">
+            <div>
+                <p class="text-sm font-semibold">Search</p>
+                <input class="rounded-lg w-96">
+            </div>
+            <a href="/my-event/create-event" class="bg-secondary px-5 flex items-center h-10 text-white rounded-lg hover:bg-secondary-hover hover:cursor-pointer">+ สร้างกิจกรรม</a>
         </div>
 
         <!--Event Registration-->
