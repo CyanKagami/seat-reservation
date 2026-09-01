@@ -13,7 +13,8 @@ export interface Event {
         start:string,
         end:string
     },
-    condition?:string
+    condition?:string,
+    eventId:string
 }
 
 export interface Daytable {
