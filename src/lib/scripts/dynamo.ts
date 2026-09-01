@@ -93,9 +93,6 @@ export async function addData(tableName:string, item:Object) {
   }
 }
 
-<<<<<<< HEAD
-export async function fetchAllData(tableName: string): Promise<Record<string, any>[]> {
-=======
 export async function addDataIfNotExists(tableName:string, item:Object, primaryKey:string) {
   const updatedObj = Object.fromEntries(
   Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
@@ -128,7 +125,6 @@ export async function addDataIfNotExists(tableName:string, item:Object, primaryK
 }
 
 export async function fetchAllEvent(tableName: string): Promise<Record<string, any>[]> {
->>>>>>> 9057bba22020a9fde8d933b2195c51e469320439
   const allItems: Record<string, any>[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
