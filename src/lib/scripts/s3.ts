@@ -41,7 +41,8 @@ function removeInvalidXmlCharacters(str:string) {
 
 export async function addFile(bucket:string, filename:string, fileBuffer:Buffer) {
     let cleanFileName = removeInvalidXmlCharacters(filename);
-    await s3Client.send(new PutObjectCommand({
+    try {
+      await s3Client.send(new PutObjectCommand({
           Bucket: bucket,
           Key: cleanFileName,
           Body: fileBuffer,
@@ -50,4 +51,14 @@ export async function addFile(bucket:string, filename:string, fileBuffer:Buffer)
       return `${localstackUrl}/${bucket}/${cleanFileName}`
     }
     return `https://${bucket}.s3.${AWS_REGION}://${cleanFileName}`
+  }
+  catch (error:any) {
+    if (error.$responseBodyText) {
+    console.error("S3 Raw response text:", error.$responseBodyText);
+  }
+  // Inspect the full HTTP response object
+  if (error.$response) {
+    console.error("S3 HTTP Status Code:", error.$response.statusCode);
+  }
+  }
 }

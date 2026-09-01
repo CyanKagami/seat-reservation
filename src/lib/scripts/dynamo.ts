@@ -79,11 +79,11 @@ export async function addData(tableName:string, item:Object) {
       addData(tableName, item); // Recursive retry strategy
     }
     if (error.$responseBodyText) {
-    console.error("Raw response text:", error.$responseBodyText);
-  }
+      console.error("Dynamo Raw response text:", error.$responseBodyText);
+    }
   // Inspect the full HTTP response object
-  if (error.$response) {
-    console.error("HTTP Status Code:", error.$response.statusCode);
-  }
+    if (error.$response) {
+      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
+    }
   }
 }
