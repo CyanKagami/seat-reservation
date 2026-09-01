@@ -4,7 +4,7 @@
     import { onMount } from "svelte";
     let events:Event[] = $state([])
     onMount(async () => {
-        events = await fetch('/api/event', {
+        events = await fetch('/api/event/getFromHost', {
             method: "GET",
             credentials: 'include'
         })
@@ -137,7 +137,7 @@
 
 
 </script>
-<div class="my-24 flex flex-col items-center">
+<div class="mt-10 flex flex-col items-center">
     <h1 class="text-4xl font-semibold">กิจกรรมของฉัน</h1>
 
     <div class="pt-8 w-full px-20 flex flex-col gap-10">
