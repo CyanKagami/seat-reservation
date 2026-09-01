@@ -2,11 +2,12 @@
 import { redirect, type RequestHandler } from '@sveltejs/kit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from "uuid";
 
 // Add CLIENT_SECRET to your environment variables (.env)
 import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET, NODE_ENV } from '$env/static/private';
-import type { GoogleUser } from '$lib/type/googleUser';
-import { addData } from '$lib/scripts/dynamo';
+import { addData, addDataIfNotExists, addUser } from '$lib/scripts/dynamo';
+import type { User } from '$lib/type/user';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const code = url.searchParams.get('code');
@@ -34,15 +35,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     if (!payload || !payload.email_verified) {
       throw redirect(303, '/login?error=unverified_email');
     }
-
-    const user: GoogleUser = {
-        googleId: payload.sub,
+    const user = {
+        googleId: payload.sub ?? '',
         email: payload.email ?? '',
         name: payload.name ?? '',
-        picture: payload.picture ?? ''
+        picture: payload.picture ?? '',
+        role: 'admin'
     };
     
-    await addData('users', user); // Store user data in DynamoDB
+    await addUser(user); // Store user data in DynamoDB
     
     const signedToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1d' });
     
