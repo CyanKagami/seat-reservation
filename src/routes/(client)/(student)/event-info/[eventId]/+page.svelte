@@ -37,7 +37,7 @@
             <p class="text-xl text-gray-400">By {event.host || ""}</p>
         </div>
         <!--register button-->
-        <a href="/event-info/1">
+        <a href="/reservation/{params.eventId}">
             <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-xl hover:cursor-pointer">Register</button>
         </a>
     </div>
