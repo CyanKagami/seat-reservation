@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
     // Verify the token signature
     const decoded:GoogleUser = jwt.verify(token, JWT_SECRET) as GoogleUser;
-    let data = await fetchEventFromHost(decoded.email)
+    let data = await fetchEventFromHost(decoded.googleId);
     return json(
         {
             statusCode: 200,

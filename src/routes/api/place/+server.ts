@@ -1,11 +1,12 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { updateAllAttributes } from "$lib/scripts/dynamo";
+import { addFile, createBucket } from "$lib/scripts/s3";
+import { addData, fetchAllData, fetchEventFromHost, fetchUser, paginateReadData, updateAllAttributes } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
 
-export const POST: RequestHandler = async ({request, cookies, url}) => {
+export const GET: RequestHandler = async ({request, cookies}) => {
     const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
     
     // Verify the token signature
@@ -18,22 +19,14 @@ export const POST: RequestHandler = async ({request, cookies, url}) => {
             }
         );
     }
-    let googleId = url.searchParams.get('googleId') || undefined;
-    let role = url.searchParams.get('role') || undefined;
-    if (!googleId || !role) {
-        return json(
-            {
-                statusCode: 400,
-                body: { error: "Missing required parameters" }
-            }
-        );
-    }
+
     try {
-        let newAttributes = await updateAllAttributes("users", { googleId }, {googleId, role})
+        let data = await fetchAllData("places");
+        console.log("Fetched data from 'places' table:", data);
         return json(
             {
                 statusCode: 200,
-                body: { message: "User role updated successfully", newAttributes }
+                body: { data }
             }
         )
     }

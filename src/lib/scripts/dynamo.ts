@@ -157,13 +157,13 @@ export async function fetchAllData(tableName: string): Promise<Record<string, an
   }
 }
 
-export async function fetchEventFromHost(email:string) {
+export async function fetchEventFromHost(googleId:string) {
   const paginatorConfig = { client: docClient, pageSize: 25 };
   const scanParams = {
     TableName: "events",
-    FilterExpression: "host = :email",
+    FilterExpression: "host = :googleId",
     ExpressionAttributeValues: {
-      ":email": email
+      ":googleId": googleId
     }
   };
 
@@ -248,15 +248,10 @@ export async function updateAllAttributes(tableName:string, primaryKey:Key, attr
 }
 
 export async function addUser(user:Object) {
-  const uniqueId = uuidv4();
   const params:PutCommandInput = {
     TableName: 'users',
     // Define the exact primary key match
-    Item: {
-      userId: uniqueId,
-      ...user
-    },
-    ConditionExpression: "attribute_not_exists(userId)"
+    Item: user,
   };
 
   try {
@@ -277,16 +272,15 @@ export async function addUser(user:Object) {
   }
 }
 
-export async function fetchUser(userId:string, email:string) {
+export async function fetchUser(googleId:string) {
   const params = {
     TableName: 'users',
     // Define the exact primary key match
     Key: {
-      userId: userId, // Partition Key (HASH)
-      email: email,       // Sort Key (RANGE)
+      googleId: googleId, // Partition Key (HASH)
     },
   };
-
+  console.log("Fetching user with params:", params);
   try {
     const command = new GetCommand(params);
     const response = await docClient.send(command);

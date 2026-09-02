@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 // Add CLIENT_SECRET to your environment variables (.env)
 import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET, NODE_ENV } from '$env/static/private';
-import { addData, addDataIfNotExists, addUser } from '$lib/scripts/dynamo';
+import { addData, addDataIfNotExists, addUser, fetchUser } from '$lib/scripts/dynamo';
 import type { User } from '$lib/type/user';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     if (!payload || !payload.email_verified) {
       throw redirect(303, '/login?error=unverified_email');
     }
-    const user = {
+    const user: User = {
         googleId: payload.sub ?? '',
         email: payload.email ?? '',
         name: payload.name ?? '',
@@ -43,8 +43,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
         role: 'admin'
     };
     
-    await addUser(user); // Store user data in DynamoDB
-    
+    let existingUser = await fetchUser(user.googleId);
+    if (!existingUser) {
+      console.log("User not found in DynamoDB. Adding new user:", user);
+      await addUser(user); // Store user data in DynamoDB
+    }
     const signedToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1d' });
     
         // 1. ฝากข้อมูล User ไว้ใน Cookie (เข้ารหัส/แปลงเป็น JSON String)

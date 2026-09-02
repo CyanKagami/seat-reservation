@@ -45,7 +45,7 @@
     }
 
     async function saveRole(index:number) {
-        await fetch(`/api/user/editRole?userId=${encodeURIComponent(users[index].userId)}&email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
+        await fetch(`/api/user/editRole?googleId=${encodeURIComponent(users[index].googleId)}&email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
             method: 'POST',
             credentials: 'include'
         })
