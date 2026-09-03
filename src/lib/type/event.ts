@@ -7,6 +7,7 @@ export interface Event {
     },
     place:string,
     host:string,
+    creatorId:string,
     detail:string,
     timetable:Daytable[],
     "register-date":{

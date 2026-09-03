@@ -175,7 +175,7 @@
       let formData = new FormData(e.target as HTMLFormElement)
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
       formData.append("timetable",JSON.stringify(timetable))
-      formData.append("host", userStore.currentUser?.email ? userStore.currentUser?.email : "")
+      formData.append("creatorId", userStore.currentUser?.googleId ? userStore.currentUser?.googleId : "")
       formData.append("eventId", params.eventId)
       data = formData
     }
@@ -228,6 +228,10 @@
           <label for="name">ชื่อกิจกรรม</label>
           <input name="name" class="w-100 rounded-sm" required value="{(event.name ? event.name : "")}">
         </div>
+        <div class="flex w-full gap-3 justify-between">
+        <label for="host">ชื่อผู้จัด</label>
+        <input name="host" class="w-100 rounded-sm" required value="{(event.host ? event.host : "")}"/>
+      </div>
         <div class="flex w-full gap-3 justify-between">
           <label for="place">สถานที่จัด</label>
           <input name="place" class="w-100 rounded-sm" value="{(event.place ? event.place : "")}">

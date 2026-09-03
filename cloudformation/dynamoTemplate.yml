@@ -25,3 +25,15 @@ Resources:
         - AttributeName: eventId
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+
+  PlacesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: places
+      AttributeDefinitions:
+        - AttributeName: placeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: placeId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST

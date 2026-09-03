@@ -161,7 +161,7 @@ export async function fetchEventFromHost(googleId:string) {
   const paginatorConfig = { client: docClient, pageSize: 25 };
   const scanParams = {
     TableName: "events",
-    FilterExpression: "host = :googleId",
+    FilterExpression: "creatorId = :googleId",
     ExpressionAttributeValues: {
       ":googleId": googleId
     }
