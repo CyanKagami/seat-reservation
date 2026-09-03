@@ -267,20 +267,18 @@ function addDate() {
 
 <div class="my-10">
     <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
-    <div class="w-full flex justify-end">
-      <button
-                    type="button"
-                    onclick={addDate}
-                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
-                >
-                    เพิ่มวัน
-                </button>
-    </div>
 
     <div class="flex flex-col gap-8">
         {#if timetable.length === 0}
-        <div class="flex items-center justify-center w-full">
+        <div class="flex items-center justify-between w-full">
           <p class="text-gray-400">ยังไม่มีข้อมูลตารางเวลากิจกรรม</p>
+          <button
+              type="button"
+              onclick={addDate}
+              class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
+          >
+              เพิ่มวัน
+          </button>
         </div>
         {/if}
 
@@ -292,6 +290,15 @@ function addDate() {
                     class="w-45 rounded-lg border border-gray-300 px-3 py-2"
                     bind:value={table.date}
                 />
+                {#if dayIndex === 0}
+                <button
+                    type="button"
+                    onclick={addDate}
+                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
+                >
+                    เพิ่มวัน
+                </button>
+                {/if}
             </div>
 
             {#if table.activity.length > 0}
@@ -353,10 +360,9 @@ function addDate() {
     </div>
 </div>
 
+
     <div class="flex w-full justify-end mt-5">
-      <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer"
-        >สร้าง</button
-      >
+      <button type="submit" class=" bg-secondary py-2 px-6 text-white rounded-lg cursor-pointer hover:bg-secondary-hover transition-colors duration-200">สร้าง</button>
     </div>
   </form>
 </div>
