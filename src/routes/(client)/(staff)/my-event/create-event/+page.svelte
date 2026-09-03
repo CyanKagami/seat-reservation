@@ -170,8 +170,8 @@ function addDate() {
       if (imageFile) formData.append("img", imageFile, imageFile?.name);
       formData.append("timetable", JSON.stringify(timetable));
       formData.append(
-        "host",
-        userStore.currentUser?.email ? userStore.currentUser?.email : "",
+        "creatorId",
+        userStore.currentUser?.googleId ? userStore.currentUser?.googleId : "",
       );
       data = formData;
     }
@@ -236,6 +236,10 @@ function addDate() {
     <div class="flex w-full gap-3 justify-between">
       <label for="name">ชื่อกิจกรรม</label>
       <input name="name" class="w-100 rounded-sm" required />
+    </div>
+    <div class="flex w-full gap-3 justify-between">
+      <label for="host">ชื่อผู้จัด</label>
+      <input name="host" class="w-100 rounded-sm" required />
     </div>
     <div class="flex w-full gap-3 justify-between">
       <label for="place">สถานที่จัด</label>

@@ -20,6 +20,7 @@ interface EventFormData {
     img?: File,
     timetable? : string,
     host:string,
+    creatorId:string,
     eventId?: string
 }
 
@@ -36,6 +37,7 @@ function formatData(data:EventFormData): Event {
     event.host = data.host
 
     event.name = data.name
+    event.creatorId = data.creatorId
     event.place = data.place
     event.detail = data.detail
     if (data.timetable) event.timetable = JSON.parse(data.timetable)
