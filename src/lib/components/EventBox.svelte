@@ -16,7 +16,7 @@
         <img class="object-cover w-full h-full" src={event.picture} alt={event.name}>
     </div>
     <div class="p-5">
-        <h1 class="text-2xl font-semibold">{event.name}</h1>
+        <h1 class="text-2xl font-semibold truncate">{event.name}</h1>
         <p class="text-sm font-semibold">{formatThaiDateTimeShort(start_date, end_date)}:{event.place}</p>
         <p class="text-sm text-gray-400">{event.host}</p>
         <a href="/event-info/{event.eventId}">
