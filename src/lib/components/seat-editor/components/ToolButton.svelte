@@ -1,0 +1,56 @@
+<script lang="ts">
+	import type { ToolConfig } from '$lib/components/seat-editor/config/tools';
+	import type { ToolType } from '$lib/components/seat-editor/types';
+
+	let { tool, activeTool, onSelect }: {
+		tool: ToolConfig;
+		activeTool: ToolType;
+		onSelect: (id: ToolType) => void;
+	} = $props();
+
+	const isActive = $derived(activeTool === tool.id);
+</script>
+
+<button
+	onclick={() => onSelect(tool.id)}
+	class="w-8 h-8 border rounded flex items-center justify-center transition-colors relative
+		{isActive 
+			? 'bg-slate-300 border-slate-400 text-slate-900 shadow-inner' 
+			: 'bg-[#e2e8f0] border-slate-300 text-slate-700 hover:bg-slate-300'}"
+	title="{tool.label} {tool.shortcut ? `(${tool.shortcut})` : ''}"
+>
+	{#if tool.icon === 'pointer'}
+		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M3 3l7 18 3-7 7-3L3 3z"/>
+		</svg>
+	{:else if tool.icon === 'box-select'}
+		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3">
+			<rect x="3" y="3" width="18" height="18" rx="2"/>
+		</svg>
+	{:else if tool.icon === 'lasso'}
+		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M6 3c-2 0-3 2-3 4 0 5 8 9 8 14 0 0 3-1 3-3s-2-3-4-3-3 2-3 2"/>
+		</svg>
+	{:else if tool.icon === 'add-square'}
+		<div class="w-3.5 h-3.5 bg-slate-800 rounded-xs"></div>
+	{:else if tool.icon === 'add-line'}
+		<div class="flex gap-0.5 items-center">
+			<div class="w-1 h-3 bg-slate-800"></div>
+			<div class="w-1 h-3 bg-slate-800"></div>
+			<div class="w-1 h-3 bg-slate-800"></div>
+		</div>
+	{:else if tool.icon === 'add-array'}
+		<div class="grid grid-cols-2 gap-0.5">
+			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
+			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
+			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
+			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
+		</div>
+	{:else if tool.icon === 'add-rect'}
+		<div class="w-4 h-3 border-2 border-slate-800 rounded-xs"></div>
+	{/if}
+
+	{#if tool.category === 'create'}
+		<span class="absolute top-0 right-0.5 text-[8px] font-bold text-slate-600">+</span>
+	{/if}
+</button>
