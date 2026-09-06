@@ -35,7 +35,7 @@
 
     <!--Create Place Popup-->
     {#if isCreatePopupOpen}
-    <div class="w-full h-full bg-black/50 fixed top-0 left-0 z-50 flex items-center justify-center">
+    <form method="POST" action="/api/place" class="w-full h-full bg-black/50 fixed top-0 left-0 z-50 flex items-center justify-center">
         <div class="bg-white h-75 w-120 rounded-lg flex flex-col items-center p-7 gap-4">
             <p class="text-2xl font-semibold">เพิ่มสถานที่</p>
             <div class="w-full">
@@ -53,6 +53,6 @@
                 <button class="w-1/2 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg">สร้าง</button>
             </div>
         </div>
-    </div>
+    </form>
     {/if}
 </div>

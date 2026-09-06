@@ -5,10 +5,11 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
+import { request } from "node:http";
 
 export const GET: RequestHandler = async ({request, cookies}) => {
     const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
+
     // Verify the token signature
     const decoded:User = jwt.verify(token, JWT_SECRET) as User;
     if (!(await verifyAccess(decoded, ['admin']))) {
@@ -39,4 +40,11 @@ export const GET: RequestHandler = async ({request, cookies}) => {
             }
         );
     }
+}
+
+export const POST: RequestHandler = async ({request, cookies}) => {
+    // Doing some verify
+
+    addData("places", Object.entries(request.formData()))
+    return json({status:200, body: {message:"ok"}})
 }
