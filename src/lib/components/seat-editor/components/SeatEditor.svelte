@@ -6,7 +6,7 @@
 	import RightSidebar from "./RightSidebar.svelte";
 	import Canvas from "./Canvas.svelte";
 
-	let {state = $bindable(), placeId} = $props();
+	let {state = $bindable(), placeId, backLink} = $props();
 
 	state = new SeatEditorState(placeId);
 	// Reactive side-effect triggered when grid dimensions change
@@ -19,7 +19,7 @@
 <svelte:body onkeydown={state.handleKeyDown} onkeyup={state.handleKeyUp} onblur={state.handleWindowBlur} />
 
 <div class="fixed inset-0 top-20 flex flex-col bg-[#e8ecef] select-none text-slate-800 font-sans overflow-hidden">
-	<SubHeader {state} />
+	<SubHeader {state} {backLink} />
 	<Toolbar {state} />
 
 	<div class="flex-1 flex overflow-hidden">

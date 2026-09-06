@@ -321,6 +321,7 @@ export class SeatEditorState {
 			if (Array.isArray(data.objects)) {
 				this.objects = data.objects;
 				this.selectedIds.clear();
+				this.centerGrid();
 				//this.clearHistory?.();
 			}
 		} catch (err) {

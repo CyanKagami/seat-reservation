@@ -1,9 +1,10 @@
 <script lang="ts">
 	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
 	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
-	import { onMount } from "svelte";
+	import { onMount, tick } from "svelte";
 	let { params } = $props();
-	let state: SeatEditorState | undefined = $state();
+	let seatState: SeatEditorState | undefined = $state();
+	let isLoading = $state(true);
 	onMount(async () => {
 		fetch(`/api/place/layout?placeId=${params.placeId}`, {
 			method: 'GET',
@@ -12,16 +13,19 @@
 		.then((response) => {
 			return response.arrayBuffer()
 		})
-		.then((data) => {
-			state?.loadFromMessagePack(data);
-			// if (data.statusCode === 200){
-			// 	state?.loadFromMessagePack(data.body.layout);
-			// }
+		.then(async (data) => {
+			seatState?.loadFromMessagePack(data);
+			await tick()
+			isLoading = false;
 		})
 		.catch((err) => {
 			alert(err);
 		})
 	})
 </script>
-
-<SeatEditor placeId={params.placeId} bind:state={state}></SeatEditor>
+{#if isLoading}
+	<div class="fixed w-screen h-screen flex items-center justify-center p-8 text-xs text-slate-500">
+		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
+	</div>
+{/if}
+<SeatEditor placeId={params.placeId} bind:state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
