@@ -10,13 +10,13 @@
 			credentials:'include'
 		})
 		.then((response) => {
-			return response.json()
+			return response.arrayBuffer()
 		})
 		.then((data) => {
-			console.log(data);
-			if (data.statusCode === 200){
-				state?.loadFromJSON(data.body.layout);
-			}
+			state?.loadFromMessagePack(data);
+			// if (data.statusCode === 200){
+			// 	state?.loadFromMessagePack(data.body.layout);
+			// }
 		})
 		.catch((err) => {
 			alert(err);

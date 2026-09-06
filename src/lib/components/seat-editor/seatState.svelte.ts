@@ -7,6 +7,7 @@ import type { ArrayToolStrategy } from "./tools/ArrayTool";
 import type { CircleToolStrategy } from "./tools/CircleTool";
 import type { RectToolStrategy } from "./tools/RectTool";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
+import { decode, encode } from "@msgpack/msgpack";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
@@ -238,16 +239,27 @@ export class SeatEditorState {
 	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
+		await this.uploadToAPI()
+	}
+
+	async uploadToAPI(apiEndpoint = '/api/place/layout') {
 		this.isSaving = true;
 		this.selectedIds.clear();
-		let file = this.saveToFile(`${this.locationId}_seating-layout.json`)
-    	let formData = new FormData();
-      	formData.append("layoutFile", file, file.name);
-		formData.append("placeId", this.locationId);
+		const binaryData = this.exportToMessagePack();
+
+		const blob = new Blob([binaryData], { type: 'application/msgpack' });
+		const file = new File([blob], `${this.locationId}.msgpack`, {
+			type: blob.type,
+			lastModified: Date.now()
+		});
+		const formData = new FormData();
+		formData.append('layoutFile', file);
+		formData.append('placeId', this.locationId);
+
 		try {
 			const res = await fetch("/api/place/layout", {
 				method: "PUT",
-				body: formData,
+				body: formData
 			});
 
 			if (res.ok) {
@@ -260,10 +272,10 @@ export class SeatEditorState {
 			alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
 		} finally {
 			this.isSaving = false;
-		}
+		}	
 	}
 
-	exportToJSON(): string {
+	exportToMessagePack(): Uint8Array {
 		const layoutPayload = {
 			version: "1.0",
 			timestamp: new Date().toISOString(),
@@ -271,38 +283,48 @@ export class SeatEditorState {
 				gridWidth: this.gridWidth,
 				gridHeight: this.gridHeight,
 			},
-			// Strip Svelte 5 reactive proxy wrappers using $state.snapshot
+			// Strip Svelte 5 reactive proxy wrappers before binary encoding
 			objects: $state.snapshot(this.objects)
 		};
 
-		return JSON.stringify(layoutPayload, null, 2);
+		return encode(layoutPayload);
 	}
 
-	saveToFile(filename = "seating-layout.json") {
-		const jsonString = this.exportToJSON();
-		const blob = new Blob([jsonString], { type: "application/json" });
-		const layoutFile = new File([blob], filename, {
-			type: blob.type,
-			lastModified: Date.now()
-		});
-		return layoutFile;
+	saveToMessagePackFile(filename = "seating-layout.msgpack") {
+		const binaryData = this.exportToMessagePack();
+		
+		// Create binary Blob
+		const blob = new Blob([binaryData], { type: "application/msgpack" });
+		const url = URL.createObjectURL(blob);
+
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+		anchor.click();
+
+		URL.revokeObjectURL(url);
+
+		// Freeze editing after save
+		this.isSaving = true;
+		this.selectedIds.clear();
 	}
 
-	// Optional: Load saved layout JSON back into canvas
-	loadFromJSON(jsonString: string) {
+	loadFromMessagePack(buffer: ArrayBuffer) {
 		try {
-			const data = JSON.parse(jsonString);
+			const data = decode(buffer) as any;
+
 			if (data.canvas) {
 				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
 				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
 			}
+
 			if (Array.isArray(data.objects)) {
 				this.objects = data.objects;
 				this.selectedIds.clear();
 				//this.clearHistory?.();
 			}
 		} catch (err) {
-			console.error("Failed to parse seating layout JSON:", err);
+			console.error("Failed to parse MessagePack layout file:", err);
 		}
 	}
 

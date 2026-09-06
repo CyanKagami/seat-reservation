@@ -84,3 +84,23 @@ export async function readFileAsString(bucketName:string, fileKey:string) {
   }
 }
 
+export async function readFileAsByteArray(bucketName:string, fileKey:string) {
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: fileKey,
+  });
+
+  try {
+    const response = await s3Client.send(command);
+    // 2. Convert the stream to a string directly
+    if (response.Body){
+       const fileContent = await response.Body.transformToByteArray();
+       return fileContent
+    }
+    return new Uint8Array();
+  } catch (error) {
+    console.error("Error reading file from S3:", error);
+    return new Uint8Array();
+  }
+}
+
