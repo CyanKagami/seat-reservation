@@ -1,7 +1,6 @@
-<script lang="ts">
-	import SeatmapEditor from '$lib/components/seatmap/SeatmapEditor.svelte';
+<script>
+import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
+	let { params } = $props();
 </script>
 
-<div style="height: 100vh;">
-	<SeatmapEditor roomId="room-i-1" roomName="แผนผังของ I-1" />
-</div>
+<SeatEditor placeId={params.placeId}></SeatEditor>

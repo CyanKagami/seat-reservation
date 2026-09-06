@@ -1,21 +1,20 @@
-export type ToolType = 'pointer' | 'box-select' | 'lasso' | 'add-square' | 'add-line' | 'add-array'| 'add-rect';
+export type ToolType = 'pointer' | 'lasso' | 'add-square' | 'add-line' | 'add-array'| 'add-rect' | 'add-circle' | 'add-polygon';
+export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
 
-
-export interface EnvObject {
+export interface CanvasObject {
 	id: string;
-	type: 'rect';
+	type: ObjectType;
 	x: number;
 	y: number;
 	width: number;
 	height: number;
 	rotation?: number;
-}
-
-export interface Square {
-	id: string;
-	x: number;
-	y: number;
-	rotation?: number; // Rotation in degrees (0 - 360)
+	points?:Point[];
+	iconType?: string;
+	label?: string;
+	metadata?:{
+	[key: string]: any;
+	}
 }
 
 export interface Point {

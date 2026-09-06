@@ -1,44 +1,127 @@
 import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
-import type { Square, Point, Rect, ToolType, EnvObject } from "./types";
+import type { Point, Rect, ToolType, CanvasObject } from "./types";
+import { toolRegistry } from "./tools";
+import type { LineToolStrategy } from "./tools/LineTool";
+import type { ArrayToolStrategy } from "./tools/ArrayTool";
+import type { CircleToolStrategy } from "./tools/CircleTool";
+import type { RectToolStrategy } from "./tools/RectTool";
+import type { PolygonToolStrategy } from "./tools/PolygonTool";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
 
-	activeTool = $state<ToolType>("pointer");
+	// Canvas & Active Tool State
+	objects = $state<CanvasObject[]>([]);
+	copiedObjects = $state<CanvasObject[]>([]);
+	selectedIds = $state<Set<string>>(new Set());
+	activeTool = $state<ToolType>('pointer');
+	canvasElement = $state<HTMLDivElement | null>(null);
 
-	scale = $state(1.0);
+	// Viewport State
 	panX = $state(0);
 	panY = $state(0);
+	scale = $state(1);
+
+	// Interaction Flags & Points
 	isPanning = $state(false);
 	panStart = $state<Point>({ x: 0, y: 0 });
-
-	squares = $state<Square[]>([
-		{ id: "s_1", x: 40, y: 40 },
-		{ id: "s_2", x: 160, y: 40 }
-	]);
-
-	selectedIds = $state<Set<string>>(new Set(["s_1"]));
-	copiedSquares = $state<Square[]>([]);
 
 	isDragging = $state(false);
 	dragStart = $state<Point>({ x: 0, y: 0 });
 	initialPositions = new Map<string, Point>();
 
-	// Marquee Box Selection
+	isRotating = $state(false);
+	rotateStartAngle = $state(0);
+	rotateCenter = $state<Point>({ x: 0, y: 0 });
+	initialStates = new Map<string, { x: number; y: number; rotation: number }>();
+
 	isBoxSelecting = $state(false);
 	boxStart = $state<Point>({ x: 0, y: 0 });
 	boxEnd = $state<Point>({ x: 0, y: 0 });
 
-	// Freeform Lasso Selection
 	isLassoSelecting = $state(false);
 	lassoPoints = $state<Point[]>([]);
 
-	canvasElement = $state<HTMLDivElement | null>(null);
+	isLineDrawing = $state(false);
+	lineStart = $state<Point>({ x: 0, y: 0 });
+	lineEnd = $state<Point>({ x: 0, y: 0 });
+
+	isArrayDrawing = $state(false);
+	arrayStart = $state<Point>({ x: 0, y: 0 });
+	arrayEnd = $state<Point>({ x: 0, y: 0 });
+
+	isRectDrawing = $state(false);
+	rectStart = $state<Point>({ x: 0, y: 0 });
+	rectEnd = $state<Point>({ x: 0, y: 0 });
+
+	isCircleDrawing = $state(false);
+	circleStart = $state<Point>({ x: 0, y: 0 });
+	circleEnd = $state<Point>({ x: 0, y: 0 });
+	isShiftPressed = $state(false);
+
+	constructor(locationId:string) {
+		this.locationId = locationId;
+	}
 
 	private rafPending = false;
+
+	// Call strategy calculation directly inside reactivity derivations
+	previewLineSeats = $derived.by<Point[]>(() => {
+		if (!this.isLineDrawing) return [];
+		const lineTool = toolRegistry['add-line'] as LineToolStrategy;
+		return lineTool.calculateLineSeats(this.lineStart, this.lineEnd, this);
+	});
+
+	previewArraySeats = $derived.by<Point[]>(() => {
+		if (!this.isArrayDrawing) return [];
+		const arrayTool = toolRegistry['add-array'] as ArrayToolStrategy;
+		return arrayTool.calculateArraySeats(this.arrayStart, this.arrayEnd, this);
+	});
+
+	// Live unscaled rectangle bounds derived during mouse drag
+	previewRect = $derived.by<Rect | null>(() => {
+		if (!this.isRectDrawing) return null;
+		const rectTool = toolRegistry['add-rect'] as RectToolStrategy;
+		return rectTool.calculateRectBounds(
+			this.rectStart,
+			this.rectEnd,
+			this.isShiftPressed,
+			this
+		);
+	});
+
+	// --- Add to Derived Properties ---
+	previewCircle = $derived.by<Rect | null>(() => {
+		if (!this.isCircleDrawing) return null;
+		const circleTool = toolRegistry['add-circle'] as CircleToolStrategy;
+		return circleTool.calculateCircleBounds(
+			this.circleStart,
+			this.circleEnd,
+			this.isShiftPressed,
+			this
+		);
+	});
+
+	// --- Add State Fields ---
+	isPolygonDrawing = $state(false);
+	polygonPoints = $state<Point[]>([]);
+	polygonCursor = $state<Point>({ x: 0, y: 0 });
+
+	// --- Add Derived Preview String ---
+	previewPolygonSvgPoints = $derived.by<string>(() => {
+		if (!this.isPolygonDrawing || this.polygonPoints.length === 0) return '';
+
+		// Render existing placed points in screen coordinates
+		const pointsStr = this.polygonPoints
+			.map((p) => `${p.x * this.scale + this.panX},${p.y * this.scale + this.panY}`)
+			.join(' ');
+
+		// Append active cursor position
+		return `${pointsStr} ${this.polygonCursor.x},${this.polygonCursor.y}`;
+	});
 
 	marqueeRect = $derived.by<Rect | null>(() => {
 		if (!this.isBoxSelecting) return null;
@@ -55,18 +138,18 @@ export class SeatEditorState {
 	});
 
 	overlappingIds = $derived.by<Set<string>>(() => {
-		// Spatial bucket size set to seat bounding dimension
+		const seats = this.objects.filter((o) => o.type === 'seat');
 		const cellSize = BOX_SIZE;
 		const cellOf = (v: number) => Math.floor(v / cellSize);
 
-		const buckets = new Map<string, Square[]>();
+		const buckets = new Map<string, CanvasObject[]>();
 
-		// 1. Assign seats to spatial buckets based on continuous bounding box
-		for (const s of this.squares) {
+		for (const s of seats) {
+			if (!s.width || !s.height) continue;
 			const minX = cellOf(s.x);
-			const maxX = cellOf(s.x + BOX_SIZE - 0.001);
+			const maxX = cellOf(s.x + s.width - 0.001);
 			const minY = cellOf(s.y);
-			const maxY = cellOf(s.y + BOX_SIZE - 0.001);
+			const maxY = cellOf(s.y + s.height - 0.001);
 
 			for (let cx = minX; cx <= maxX; cx++) {
 				for (let cy = minY; cy <= maxY; cy++) {
@@ -83,18 +166,14 @@ export class SeatEditorState {
 
 		const overlaps = new Set<string>();
 
-		// 2. Perform continuous AABB intersection tests within buckets
 		for (const bucket of buckets.values()) {
 			if (bucket.length < 2) continue;
-
 			for (let i = 0; i < bucket.length; i++) {
 				for (let j = i + 1; j < bucket.length; j++) {
 					const a = bucket[i];
 					const b = bucket[j];
-
 					if (a.id === b.id) continue;
 
-					// Two square seats overlap if their bounding boxes intersect on both axes
 					if (Math.abs(a.x - b.x) < BOX_SIZE && Math.abs(a.y - b.y) < BOX_SIZE) {
 						overlaps.add(a.id);
 						overlaps.add(b.id);
@@ -109,21 +188,24 @@ export class SeatEditorState {
 	moveSquareOnOutOfBound(gridWidth: number, gridHeight: number) {
 		const maxX = gridWidth * GRID_SIZE - BOX_SIZE;
 		const maxY = gridHeight * GRID_SIZE - BOX_SIZE;
-		this.squares = untrack(() =>
-			this.squares.map(s => {
-				if (s.x > maxX || s.y > maxY) {
-					return {
-						id: s.id,
-						x: Math.max(0, Math.min(maxX, s.x)),
-						y: Math.max(0, Math.min(maxY, s.y))
-					};
+		this.objects = untrack(() =>
+			this.objects.map(o => {
+				if (o.type === 'seat') {
+					const s = o;
+					if (s.x > maxX || s.y > maxY) {
+						return {
+							...s,
+							x: Math.max(0, Math.min(maxX, s.x)),
+							y: Math.max(0, Math.min(maxY, s.y))
+						} as CanvasObject;
+					}
 				}
-				return s;
+				return o;
 			})
 		);
 	}
 
-	private isPointInPolygon(point: Point, polygon: Point[]): boolean {
+	isPointInPolygon(point: Point, polygon: Point[]): boolean {
 		let inside = false;
 		for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
 			const xi = polygon[i].x, yi = polygon[i].y;
@@ -154,320 +236,480 @@ export class SeatEditorState {
 		this.centerGrid();
 	};
 
-	exportAsJSON = () => {
-		if (this.overlappingIds.size) return;
-		if (typeof document === 'undefined') return;
+	handleSaveButtonClick = (event:MouseEvent) => {
+		this.saveToFile(`${this.locationId}_seating-layout.json`)
+	}
 
-		const exportData = {
-			location_id: this.locationId,
-			dimension: { width: this.gridWidth, height: this.gridHeight },
-			seats: this.squares.map((s, idx) => ({
-				seat_id: s.id.startsWith("s_") ? s.id : `s_${idx + 1}`,
-				x: s.x,
-				y: s.y
-			}))
+	exportToJSON(): string {
+		const layoutPayload = {
+			version: "1.0",
+			timestamp: new Date().toISOString(),
+			canvas: {
+				gridWidth: this.gridWidth,
+				gridHeight: this.gridHeight,
+			},
+			// Strip Svelte 5 reactive proxy wrappers using $state.snapshot
+			objects: $state.snapshot(this.objects)
 		};
 
-		const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+		return JSON.stringify(layoutPayload, null, 2);
+	}
+
+	saveToFile(filename = "seating-layout.json") {
+		const jsonString = this.exportToJSON();
+		const blob = new Blob([jsonString], { type: "application/json" });
 		const url = URL.createObjectURL(blob);
+		
 		const anchor = document.createElement("a");
 		anchor.href = url;
-		anchor.download = `seating_layout_${this.locationId}.json`;
+		anchor.download = filename;
 		anchor.click();
-		URL.revokeObjectURL(url);
-	};
-
-	// Replace existing addSquare method with addSquareAt
-	addSquareAt = (screenX: number, screenY: number) => {
-		// Convert screen coordinates relative to canvas into unscaled grid coordinates
-		const rawX = (screenX - this.panX) / this.scale;
-		const rawY = (screenY - this.panY) / this.scale;
-
-
-		const maxX = this.gridWidth * GRID_SIZE - BOX_SIZE;
-		const maxY = this.gridHeight * GRID_SIZE - BOX_SIZE;
-
-		const newSquare: Square = {
-			id: `s_${this.squares.length + 1}`,
-			x: Math.max(0, Math.min(maxX, rawX - BOX_SIZE / 2)), // Center the square on the click position
-			y: Math.max(0, Math.min(maxY, rawY - BOX_SIZE / 2))
-		};
-
-		this.squares = [...this.squares, newSquare];
-		this.selectedIds = new Set([newSquare.id]);
-		this.activeTool = "box-select"; // Switch back to pointer tool after adding
-	};
-
-	// Add state variables inside SeatEditorState class:
-	isLineDrawing = $state(false);
-	lineStart = $state<Point>({ x: 0, y: 0 });
-	lineEnd = $state<Point>({ x: 0, y: 0 });
-
-	// Derived preview seats calculated during mouse drag
-	previewLineSeats = $derived.by<Point[]>(() => {
-		if (!this.isLineDrawing) return [];
-		return this.calculateLineSeats(this.lineStart, this.lineEnd);
-	});
-
-	private snapToAngle(start: Point, end: Point, stepDegrees: number = 15): Point {
-		const dx = end.x - start.x;
-		const dy = end.y - start.y;
-		const distance = Math.hypot(dx, dy);
-
-		if (distance === 0) return end;
-
-		const angle = Math.atan2(dy, dx);
-		const stepRadians = (stepDegrees * Math.PI) / 180;
-		const snappedAngle = Math.round(angle / stepRadians) * stepRadians;
-
-		return {
-			x: start.x + distance * Math.cos(snappedAngle),
-			y: start.y + distance * Math.sin(snappedAngle)
-		};
-	}
-	// Interpolates coordinates along a line and snaps them to the grid
-	calculateLineSeats(startScreen: Point, endScreen: Point): Point[] {
-		const x1 = (startScreen.x - this.panX) / this.scale;
-		const y1 = (startScreen.y - this.panY) / this.scale;
-		const x2 = (endScreen.x - this.panX) / this.scale;
-		const y2 = (endScreen.y - this.panY) / this.scale;
-
-		const dx = x2 - x1;
-		const dy = y2 - y1;
-		const distance = Math.hypot(dx, dy);
-
-		const maxX = this.gridWidth * GRID_SIZE - BOX_SIZE;
-		const maxY = this.gridHeight * GRID_SIZE - BOX_SIZE;
-
-		if (distance === 0) {
-			return [{
-				x: Math.max(0, Math.min(maxX, x1)),
-				y: Math.max(0, Math.min(maxY, y1))
-			}];
-		}
-
-		// Step continuously along vector direction spaced by seat width
-		const stepSize = BOX_SIZE + GAP; // 10px gap between seats
-		const seatCount = Math.floor(distance / stepSize);
-		const ux = dx / distance;
-		const uy = dy / distance;
-
-		const lineSeats: Point[] = [];
-
-		for (let i = 0; i <= seatCount; i++) {
-			const posX = Math.max(0, Math.min(maxX, x1 + ux * i * stepSize));
-			const posY = Math.max(0, Math.min(maxY, y1 + uy * i * stepSize));
-			lineSeats.push({ x: posX, y: posY });
-		}
-
-		return lineSeats;
-	}
-
-	// 1. Add array tool state variables inside SeatEditorState class:
-	isArrayDrawing = $state(false);
-	arrayStart = $state<Point>({ x: 0, y: 0 });
-	arrayEnd = $state<Point>({ x: 0, y: 0 });
-
-	// Live ghost preview during drag
-	previewArraySeats = $derived.by<Point[]>(() => {
-		if (!this.isArrayDrawing) return [];
-		return this.calculateArraySeats(this.arrayStart, this.arrayEnd);
-	});
-
-	// 2. Add matrix seat calculation logic
-	calculateArraySeats(startScreen: Point, endScreen: Point): Point[] {
-		const x1 = (startScreen.x - this.panX) / this.scale;
-		const y1 = (startScreen.y - this.panY) / this.scale;
-		const x2 = (endScreen.x - this.panX) / this.scale;
-		const y2 = (endScreen.y - this.panY) / this.scale;
-
-		const minX = Math.min(x1, x2);
-		const maxX = Math.max(x1, x2);
-		const minY = Math.min(y1, y2);
-		const maxY = Math.max(y1, y2);
-
-		const boundMaxX = this.gridWidth * GRID_SIZE - BOX_SIZE;
-		const boundMaxY = this.gridHeight * GRID_SIZE - BOX_SIZE;
-
-		// Stride includes seat size + 10px gap
-		const stride = BOX_SIZE + GAP;
-
-		const width = maxX - minX;
-		const height = maxY - minY;
-
-		// Calculate fitted rows and columns with gap spacing
-		const cols = width < BOX_SIZE ? 1 : Math.floor((width - BOX_SIZE) / stride) + 1;
-		const rows = height < BOX_SIZE ? 1 : Math.floor((height - BOX_SIZE) / stride) + 1;
-
-		const arraySeats: Point[] = [];
-
-		for (let r = 0; r < rows; r++) {
-			for (let c = 0; c < cols; c++) {
-				const posX = Math.max(0, Math.min(boundMaxX, minX + c * stride));
-				const posY = Math.max(0, Math.min(boundMaxY, minY + r * stride));
-
-				const overlapsExisting = this.squares.some(
-					s => Math.abs(s.x - posX) < BOX_SIZE && Math.abs(s.y - posY) < BOX_SIZE
-				);
-
-				if (!overlapsExisting) {
-					arraySeats.push({ x: posX, y: posY });
-				}
-			}
-		}
-
-		return arraySeats;
-	}
-
-	envObjects = $state<EnvObject[]>([]);
-	isRectDrawing = $state(false);
-	rectStart = $state<Point>({ x: 0, y: 0 });
-	rectEnd = $state<Point>({ x: 0, y: 0 });
-
-	// Live unscaled rectangle bounds derived during mouse drag
-	previewRect = $derived.by<Rect | null>(() => {
-		if (!this.isRectDrawing) return null;
 		
-		const x1 = (this.rectStart.x - this.panX) / this.scale;
-		const y1 = (this.rectStart.y - this.panY) / this.scale;
-		const x2 = (this.rectEnd.x - this.panX) / this.scale;
-		const y2 = (this.rectEnd.y - this.panY) / this.scale;
+		URL.revokeObjectURL(url);
+	}
 
-		const x = Math.min(x1, x2);
-		const y = Math.min(y1, y2);
-		const width = Math.abs(x1 - x2);
-		const height = Math.abs(y1 - y2);
+	// Optional: Load saved layout JSON back into canvas
+	loadFromJSON(jsonString: string) {
+		try {
+			const data = JSON.parse(jsonString);
+			if (data.canvas) {
+				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
+				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
+			}
+			if (Array.isArray(data.objects)) {
+				this.objects = data.objects;
+				this.selectedIds.clear();
+				//this.clearHistory?.();
+			}
+		} catch (err) {
+			console.error("Failed to parse seating layout JSON:", err);
+		}
+	}
 
-		return { x, y, width, height };
-	});
+	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
+		this.objects = this.objects.map((obj) => {
+			if (this.selectedIds.has(obj.id)) {
+				return {
+					...obj,
+					metadata: {
+						...(obj.metadata || {}),
+						...metadataUpdates
+					}
+				};
+			}
+			return obj;
+		});
+	}
+	// --- Add State Variables for Vertex Manipulation ---
+	activeVertexDrag = $state<{ objId: string; index: number } | null>(null);
+
+	// --- Drop Handler ---
+	handleDrop = (event: DragEvent) => {
+		event.preventDefault();
+		const iconType = event.dataTransfer?.getData('iconType') as 'toilet' | 'entrance' | 'stage';
+		const label = event.dataTransfer?.getData('label') || '';
+		if (!iconType || !this.canvasElement) return;
+
+		const rect = this.canvasElement.getBoundingClientRect();
+		const screenX = event.clientX - rect.left;
+		const screenY = event.clientY - rect.top;
+
+		const canvasPt = {
+			x: (screenX - this.panX) / this.scale,
+			y: (screenY - this.panY) / this.scale
+		};
+
+		const w = 120;
+		const h = 80;
+
+		// Initial rectangular polygon vertices
+		const initialPoints = [
+			{ x: 0, y: 0 },
+			{ x: w, y: 0 },
+			{ x: w, y: h },
+			{ x: 0, y: h }
+		];
+
+		const newObj = {
+			id: `icon_poly_${Date.now()}`,
+			type: 'env-icon-polygon' as const,
+			iconType,
+			label,
+			x: Math.max(0, Math.min(canvasPt.x - (w / 2), this.gridWidth * GRID_SIZE - BOX_SIZE)),
+			y: Math.max(0, Math.min(canvasPt.y - (h / 2), this.gridHeight * GRID_SIZE - BOX_SIZE)),
+			width: w,
+			height: h,
+			points: initialPoints,
+			rotation: 0
+		};
+
+		this.objects = [...this.objects, newObj];
+		this.selectedIds = new Set([newObj.id]);
+	};
+
+	handleDragOver = (event: DragEvent) => {
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'copy';
+		}
+	};
+
+	isPointInsideCanvas(worldX: number, worldY: number): boolean {
+		const canvasWidth = this.gridWidth * GRID_SIZE;
+		const canvasHeight = this.gridHeight * GRID_SIZE;
+
+		return worldX >= 0 && worldX <= canvasWidth && worldY >= 0 && worldY <= canvasHeight;
+	}
+
+	// --- Vertex Interaction Handlers ---
+	handleVertexMouseDown = (objId: string, index: number, event: MouseEvent) => {
+		event.stopPropagation();
+		this.activeVertexDrag = { objId, index };
+	};
+
+	addVertexAtMidpoint = (objId: string, index: number, event: MouseEvent) => {
+		event.stopPropagation();
+		const obj = this.objects.find((o) => o.id === objId);
+		if (!obj || !obj.points) return;
+
+		const nextIdx = (index + 1) % obj.points.length;
+		const p1 = obj.points[index];
+		const p2 = obj.points[nextIdx];
+
+		const midpoint = {
+			x: (p1.x + p2.x) / 2,
+			y: (p1.y + p2.y) / 2
+		};
+
+		const newPoints = [...obj.points];
+		newPoints.splice(index + 1, 0, midpoint);
+
+		this.objects = this.objects.map((o) => (o.id === objId ? { ...o, points: newPoints } : o));
+		this.activeVertexDrag = { objId, index:index + 1};
+	};
 
 	// --- Add inside SeatEditorState class ---
-	// Add inside SeatEditorState class:
-	isRotating = $state(false);
-	rotateStartAngle = $state(0);
-	rotateCenter = $state<Point>({ x: 0, y: 0 });
-	initialStates = new Map<string, { x: number; y: number; rotation: number }>();
 
 	// Bounding box and geometric center of current selection (in grid space)
 	selectionBounds = $derived.by(() => {
 		if (this.selectedIds.size === 0) return null;
-		const selected = this.squares.filter(s => this.selectedIds.has(s.id));
-		
-		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-		for (const s of selected) {
-			minX = Math.min(minX, s.x);
-			minY = Math.min(minY, s.y);
-			maxX = Math.max(maxX, s.x + BOX_SIZE);
-			maxY = Math.max(maxY, s.y + BOX_SIZE);
-		}
 
-		return {
-			minX,
-			minY,
-			maxX,
-			maxY,
-			centerX: (minX + maxX) / 2,
-			centerY: (minY + maxY) / 2
-		};
-	});
+		const selectedObjs = this.objects.filter((o) => this.selectedIds.has(o.id));
+		if (selectedObjs.length === 0) return null;
 
-	// Start rotation interaction when user clicks rotation handle
-	handleRotateStart = (event: MouseEvent) => {
-		event.stopPropagation();
-		if (!this.selectionBounds || !this.canvasElement) return;
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
 
-		this.isRotating = true;
-		
-		// Lock the center pivot point of the current selection group
-		this.rotateCenter = {
-			x: this.selectionBounds.centerX,
-			y: this.selectionBounds.centerY
-		};
+		selectedObjs.forEach((obj) => {
+			const rad = ((obj.rotation || 0) * Math.PI) / 180;
+			const cos = Math.cos(rad);
+			const sin = Math.sin(rad);
 
-		const rect = this.canvasElement.getBoundingClientRect();
-		const screenCenterX = this.rotateCenter.x * this.scale + this.panX;
-		const screenCenterY = this.rotateCenter.y * this.scale + this.panY;
+			if (obj.points && obj.points.length > 0) {
+				// Polygon Objects: Calculate bounds using actual vertex positions
+				const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
+				const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+				const cx = obj.x + centerRelX;
+				const cy = obj.y + centerRelY;
 
-		const clientX = event.clientX - rect.left;
-		const clientY = event.clientY - rect.top;
+				obj.points.forEach((p) => {
+					const relX = p.x - centerRelX;
+					const relY = p.y - centerRelY;
+					const worldX = cx + (relX * cos - relY * sin);
+					const worldY = cy + (relX * sin + relY * cos);
+					minX = Math.min(minX, worldX);
+					minY = Math.min(minY, worldY);
+					maxX = Math.max(maxX, worldX);
+					maxY = Math.max(maxY, worldY);
+				});
+			} else {
+				// Standard Rect / Circle / Seat Objects
+				const cx = obj.x + obj.width / 2;
+				const cy = obj.y + obj.height / 2;
+				const hw = obj.width / 2;
+				const hh = obj.height / 2;
 
-		this.rotateStartAngle = Math.atan2(clientY - screenCenterY, clientX - screenCenterX);
+				const corners = [
+					{ x: -hw, y: -hh },
+					{ x: hw, y: -hh },
+					{ x: hw, y: hh },
+					{ x: -hw, y: hh }
+				];
 
-		// Store initial position and rotation for each selected seat
-		this.initialStates.clear();
-		this.squares.forEach(s => {
-			if (this.selectedIds.has(s.id)) {
-				this.initialStates.set(s.id, {
-					x: s.x,
-					y: s.y,
-					rotation: s.rotation ?? 0
+				corners.forEach((p) => {
+					const worldX = cx + (p.x * cos - p.y * sin);
+					const worldY = cy + (p.x * sin + p.y * cos);
+					minX = Math.min(minX, worldX);
+					minY = Math.min(minY, worldY);
+					maxX = Math.max(maxX, worldX);
+					maxY = Math.max(maxY, worldY);
 				});
 			}
 		});
+
+		return { minX, minY, maxX, maxY };
+	});
+	rotatePoint(
+		px: number, 
+		py: number, 
+		cx: number, 
+		cy: number, 
+		angleDegrees: number
+	): { x: number; y: number } {
+		const rad = (angleDegrees * Math.PI) / 180;
+		const cos = Math.cos(rad);
+		const sin = Math.sin(rad);
+		const dx = px - cx;
+		const dy = py - cy;
+
+		return {
+			x: cx + (dx * cos - dy * sin),
+			y: cy + (dx * sin + dy * cos)
+		};
+	}
+
+	getObjectWorldExtents(
+		obj: CanvasObject,
+		customPos?: { x: number; y: number }
+	): { minX: number; maxX: number; minY: number; maxY: number } {
+		const posX = customPos ? customPos.x : obj.x;
+		const posY = customPos ? customPos.y : obj.y;
+		const rotation = obj.rotation ?? 0;
+
+		let points: { x: number; y: number }[] = [];
+
+		if ((obj.type === 'env-polygon' || obj.type === 'env-icon-polygon') && obj.points) {
+			const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
+			const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+			const cx = posX + centerRelX;
+			const cy = posY + centerRelY;
+
+			points = obj.points.map((p) => 
+				this.rotatePoint(posX + p.x, posY + p.y, cx, cy, rotation)
+			);
+		} else if (obj.type === 'env-circle') {
+			const cx = posX + obj.width / 2;
+			const cy = posY + obj.height / 2;
+			const a = obj.width / 2;
+			const b = obj.height / 2;
+			const rad = (rotation * Math.PI) / 180;
+
+			const rx = Math.sqrt(Math.pow(a * Math.cos(rad), 2) + Math.pow(b * Math.sin(rad), 2));
+			const ry = Math.sqrt(Math.pow(a * Math.sin(rad), 2) + Math.pow(b * Math.cos(rad), 2));
+
+			return { minX: cx - rx, maxX: cx + rx, minY: cy - ry, maxY: cy + ry };
+		} else {
+			const cx = posX + obj.width / 2;
+			const cy = posY + obj.height / 2;
+			const corners = [
+				{ x: posX, y: posY },
+				{ x: posX + obj.width, y: posY },
+				{ x: posX + obj.width, y: posY + obj.height },
+				{ x: posX, y: posY + obj.height }
+			];
+			points = corners.map((p) => this.rotatePoint(p.x, p.y, cx, cy, rotation));
+		}
+
+		const xs = points.map((p) => p.x);
+		const ys = points.map((p) => p.y);
+
+		return {
+			minX: Math.min(...xs),
+			maxX: Math.max(...xs),
+			minY: Math.min(...ys),
+			maxY: Math.max(...ys)
+		};
+	}
+
+	isObjectOutOfBounds(obj: CanvasObject): boolean {
+		const canvasWidth = this.gridWidth * GRID_SIZE;
+		const canvasHeight = this.gridHeight * GRID_SIZE;
+		const rotation = obj.rotation ?? 0;
+
+		let worldPoints: { x: number; y: number }[] = [];
+
+		if ((obj.type === 'env-polygon' || obj.type === 'env-icon-polygon') && obj.points) {
+			// 1. Polygon: Centroid pivot + relative points
+			const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
+			const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+			const cx = obj.x + centerRelX;
+			const cy = obj.y + centerRelY;
+
+			worldPoints = obj.points.map((p) => 
+				this.rotatePoint(obj.x + p.x, obj.y + p.y, cx, cy, rotation)
+			);
+		} else if (obj.type === 'env-circle') {
+			// 2. Ellipse: Calculate rotated bounding extents
+			const cx = obj.x + obj.width / 2;
+			const cy = obj.y + obj.height / 2;
+			const a = obj.width / 2;
+			const b = obj.height / 2;
+			const rad = (rotation * Math.PI) / 180;
+
+			const rx = Math.sqrt(Math.pow(a * Math.cos(rad), 2) + Math.pow(b * Math.sin(rad), 2));
+			const ry = Math.sqrt(Math.pow(a * Math.sin(rad), 2) + Math.pow(b * Math.cos(rad), 2));
+
+			worldPoints = [
+				{ x: cx - rx, y: cy - ry },
+				{ x: cx + rx, y: cy - ry },
+				{ x: cx + rx, y: cy + ry },
+				{ x: cx - rx, y: cy + ry }
+			];
+		} else {
+			// 3. Rectangle / Seat: Bounding corners rotated around center
+			const cx = obj.x + obj.width / 2;
+			const cy = obj.y + obj.height / 2;
+
+			const unrotatedCorners = [
+				{ x: obj.x, y: obj.y },
+				{ x: obj.x + obj.width, y: obj.y },
+				{ x: obj.x + obj.width, y: obj.y + obj.height },
+				{ x: obj.x, y: obj.y + obj.height }
+			];
+
+			worldPoints = unrotatedCorners.map((p) => 
+				this.rotatePoint(p.x, p.y, cx, cy, rotation)
+			);
+		}
+
+		// Returns true if ANY rotated vertex goes outside [0, canvasLimit]
+		return worldPoints.some(
+			(pt) => pt.x < 0 || pt.x > canvasWidth || pt.y < 0 || pt.y > canvasHeight
+		);
+	}
+
+	// Start rotation interaction when user clicks rotation handle
+	handleRotateStart = (event: MouseEvent) => {
+		if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
+			event.stopPropagation();
+
+			this.isRotating = true;
+
+			// Snapshot initial positions and rotations
+			this.initialPositions = new Map();
+			this.objects.forEach((obj) => {
+				if (this.selectedIds.has(obj.id)) {
+					this.initialStates.set(obj.id, {
+						x: obj.x,
+						y: obj.y,
+						rotation: obj.rotation ?? 0
+					});
+				}
+			});
+
+			// Save group center pivot in WORLD coordinates
+			const bounds = this.selectionBounds;
+			const worldCenterX = (bounds.minX + bounds.maxX) / 2;
+			const worldCenterY = (bounds.minY + bounds.maxY) / 2;
+			this.rotateCenter = { x: worldCenterX, y: worldCenterY };
+
+			// Calculate initial mouse angle relative to group center screen position
+			const rect = this.canvasElement.getBoundingClientRect();
+			const mouseX = event.clientX - rect.left;
+			const mouseY = event.clientY - rect.top;
+
+			const screenCenterX = worldCenterX * this.scale + this.panX;
+			const screenCenterY = worldCenterY * this.scale + this.panY;
+
+			this.rotateStartAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
 	};
 
 	removeSelected = () => {
 		if (this.selectedIds.size === 0) return;
-		this.squares = this.squares.filter(s => !this.selectedIds.has(s.id));
+		this.objects = this.objects.filter(o => !this.selectedIds.has(o.id));
 		this.selectedIds = new Set();
 	};
 
 	copySelected = () => {
 		if (this.selectedIds.size === 0) return;
-		this.copiedSquares = this.squares
-			.filter(s => this.selectedIds.has(s.id))
-			.map(s => ({ ...s }));
+		this.copiedObjects = this.objects
+			.filter(o => this.selectedIds.has(o.id))
+			.map(o => ({ ...o }));
+
+		console.log(this.copiedObjects)
 	};
 
 	pasteSquares = () => {
-		if (this.copiedSquares.length === 0) return;
+		if (this.copiedObjects.length === 0) return;
 
-		const nextBatch: Square[] = [];
+		const nextBatch: CanvasObject[] = [];
 		const nextSelected = new Set<string>();
 
-		this.copiedSquares.forEach((src, idx) => {
-			const newId = `s_${this.squares.length + idx + 1}`;
+		this.copiedObjects.forEach((src, idx) => {
+			const newId = `${src.type}_${this.objects.length + idx + 1}`;
 			const targetX = src.x + GRID_SIZE * 2;
 			const targetY = src.y + GRID_SIZE * 2;
 
 			nextBatch.push({
 				id: newId,
 				x: Math.max(0, Math.min(this.gridWidth * GRID_SIZE - BOX_SIZE, targetX)),
-				y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, targetY))
+				y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, targetY)),
+				type: src.type,
+				width: src.width,
+				height: src.height,
+				iconType:src.iconType,
+				label:src.label,
+				points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
+				rotation: src.rotation
 			});
 			nextSelected.add(newId);
 		});
 
-		this.squares = [...this.squares, ...nextBatch];
+		this.objects = [...this.objects, ...nextBatch];
+		console.log(this.objects)
 		this.selectedIds = nextSelected;
-		this.copiedSquares = nextBatch.map(s => ({ ...s }));
+		this.copiedObjects = nextBatch.map(s => ({ ...s }));
 	};
 
-	handleSquareMouseDown = (square: Square, event: MouseEvent) => {
-		if (event.button === 2) return;
+	// Generic MouseDown handler for seats AND environment rectangles
+	handleObjectMouseDown = (obj: CanvasObject, event: MouseEvent) => {
+		if (event.button !== 0) return;
 		event.stopPropagation();
+
 		const hasModifier = event.shiftKey || event.metaKey || event.ctrlKey;
 
 		if (hasModifier) {
-			if (this.selectedIds.has(square.id)) {
-				this.selectedIds.delete(square.id);
-				this.selectedIds = new Set(this.selectedIds);
+			const next = new Set(this.selectedIds);
+			if (next.has(obj.id)) {
+				next.delete(obj.id);
 			} else {
-				this.selectedIds = new Set([...this.selectedIds, square.id]);
+				next.add(obj.id);
 			}
+			this.selectedIds = next;
 		} else {
-			if (!this.selectedIds.has(square.id)) {
-				this.selectedIds = new Set([square.id]);
+			if (!this.selectedIds.has(obj.id)) {
+				this.selectedIds = new Set([obj.id]);
 			}
 		}
+
+		// Prepare unified drag
+		this.isDragging = true;
+		this.dragStart = { x: event.clientX, y: event.clientY };
+		this.initialPositions.clear();
+		this.objects.forEach(o => {
+			if (this.selectedIds.has(o.id)) {
+				this.initialPositions.set(o.id, { x: o.x, y: o.y });
+			}
+		});
+	};
+
+	handleSelectionBoundsMouseDown = (event: MouseEvent) => {
+		// Only trigger on primary left click
+		if (event.button !== 0) return;
+		
+		// Prevent event from bubbling to the canvas background
+		event.stopPropagation();
 
 		this.isDragging = true;
 		this.dragStart = { x: event.clientX, y: event.clientY };
 
-		this.initialPositions.clear();
-		this.squares.forEach(s => {
-			if (this.selectedIds.has(s.id)) {
-				this.initialPositions.set(s.id, { x: s.x, y: s.y });
+		// Store initial positions for all currently selected objects
+		this.initialPositions = new Map();
+		this.objects.forEach((obj) => {
+			if (this.selectedIds.has(obj.id)) {
+				this.initialPositions.set(obj.id, { x: obj.x, y: obj.y });
 			}
 		});
 	};
@@ -475,265 +717,218 @@ export class SeatEditorState {
 	handleCanvasMouseDown = (event: MouseEvent) => {
 		if (!this.canvasElement) return;
 
-		if (event.button === 2) {
+		if (event.button === 2 || event.button === 1) {
 			this.isPanning = true;
 			this.panStart = { x: event.clientX - this.panX, y: event.clientY - this.panY };
 			return;
 		}
 
 		const rect = this.canvasElement.getBoundingClientRect();
-		const clientX = event.clientX - rect.left;
-		const clientY = event.clientY - rect.top;
+		const worldX = (event.clientX - rect.left - this.panX) / this.scale;
+		const worldY = (event.clientY - rect.top - this.panY) / this.scale;
 
-		// Place a square at mouse position when tool is active
-		if (this.activeTool === "add-square") {
-			this.addSquareAt(clientX, clientY);
+		// Ignore creation clicks outside the finite grid bounds
+		if (this.activeTool !== 'pointer' && this.activeTool !== 'lasso'  && !this.isPointInsideCanvas(worldX, worldY)) {
 			return;
 		}
 
-		if (this.activeTool === "add-line") {
-			this.isLineDrawing = true;
-			this.lineStart = { x: clientX, y: clientY };
-			this.lineEnd = { x: clientX, y: clientY };
-			return;
-		}
-		if (this.activeTool === "add-array") {
-			this.isArrayDrawing = true;
-			this.arrayStart = { x: clientX, y: clientY };
-			this.arrayEnd = { x: clientX, y: clientY };
-			return;
-		}
-		if (this.activeTool === "add-rect") {
-			this.isRectDrawing = true;
-			this.rectStart = { x: clientX, y: clientY };
-			this.rectEnd = { x: clientX, y: clientY };
-			return;
-		}
+		const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+		const canvasPoint = {
+			x: (screenPoint.x - this.panX) / this.scale,
+			y: (screenPoint.y - this.panY) / this.scale
+		};
 
-		const hasModifier = event.shiftKey || event.metaKey || event.ctrlKey;
-		if (!hasModifier) {
-			this.selectedIds = new Set();
-		}
-
-
-		if (this.activeTool === "lasso") {
-			this.isLassoSelecting = true;
-			this.lassoPoints = [{ x: clientX, y: clientY }];
-		} else {
-			this.isBoxSelecting = true;
-			this.boxStart = { x: clientX, y: clientY };
-			this.boxEnd = { x: clientX, y: clientY };
-		}
+		const ctx = { state: this, event, screenPoint, canvasPoint };
+		toolRegistry[this.activeTool]?.onMouseDown?.(ctx);
 	};
 
 	handleMouseMove = (event: MouseEvent) => {
+		this.isShiftPressed = event.shiftKey;
 		if (this.rafPending) return;
 		this.rafPending = true;
-		let { clientX, clientY } = event;
 
 		requestAnimationFrame(() => {
 			this.rafPending = false;
+			if (!this.canvasElement) return;
+
+			const rect = this.canvasElement.getBoundingClientRect();
+			const clientX = event.clientX;
+			const clientY = event.clientY;
+
+			// 1. Viewport Panning (Right Click)
 			if (this.isPanning) {
 				this.panX = clientX - this.panStart.x;
 				this.panY = clientY - this.panStart.y;
+				return;
 			}
-			else if (this.isRectDrawing && this.canvasElement) {
+
+			// 2. Group Rotation (Rotation Handle Drag)
+			if (this.isRotating) {
 				const rect = this.canvasElement.getBoundingClientRect();
-				this.rectEnd = { x: clientX - rect.left, y: clientY - rect.top };
-			} 
-			else if (this.isRotating && this.canvasElement) {
-				const rect = this.canvasElement.getBoundingClientRect();
+				const mouseX = event.clientX - rect.left;
+				const mouseY = event.clientY - rect.top;
+
 				const screenCenterX = this.rotateCenter.x * this.scale + this.panX;
 				const screenCenterY = this.rotateCenter.y * this.scale + this.panY;
 
-				const currentPointX = clientX - rect.left;
-				const currentPointY = clientY - rect.top;
+				const currentAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
+				let deltaAngle = currentAngle - this.rotateStartAngle;
 
-				const currentAngle = Math.atan2(currentPointY - screenCenterY, currentPointX - screenCenterX);
-				let deltaDeg = ((currentAngle - this.rotateStartAngle) * 180) / Math.PI;
+				// --- 1. ROTATION SNAPPING ---
+				const SNAP_INCREMENT = 15; // Degrees to snap to
 
-				// Shift key snaps rotation angle to 15° steps
-				if (event.shiftKey) {
-					deltaDeg = Math.round(deltaDeg / 15) * 15;
-				}
+				if (this.isShiftPressed) {
+					if (this.selectedIds.size === 1) {
+						// Single Object: Snap target absolute angle to nearest step (e.g. 0°, 15°, 45°, 90°)
+						const singleObjId = Array.from(this.selectedIds)[0];
+						const initRot = this.initialStates.get(singleObjId)?.rotation ?? 0;
+						const targetAbsoluteRot = initRot + deltaAngle;
+						const snappedAbsoluteRot = Math.round(targetAbsoluteRot / SNAP_INCREMENT) * SNAP_INCREMENT;
 
-				const deltaRad = (deltaDeg * Math.PI) / 180;
-				const cos = Math.cos(deltaRad);
-				const sin = Math.sin(deltaRad);
-
-				const boundMaxX = this.gridWidth * GRID_SIZE - BOX_SIZE;
-				const boundMaxY = this.gridHeight * GRID_SIZE - BOX_SIZE;
-
-				this.squares = this.squares.map(s => {
-					const initial = this.initialStates.get(s.id);
-					if (initial) {
-						// 1. Get initial center of the individual seat
-						const initialCenterX = initial.x + BOX_SIZE / 2;
-						const initialCenterY = initial.y + BOX_SIZE / 2;
-
-						// 2. Vector offset relative to group rotation center
-						const dx = initialCenterX - this.rotateCenter.x;
-						const dy = initialCenterY - this.rotateCenter.y;
-
-						// 3. 2D rotation matrix formula (orbiting transformation)
-						const rotatedDx = dx * cos - dy * sin;
-						const rotatedDy = dx * sin + dy * cos;
-
-						const newCenterX = this.rotateCenter.x + rotatedDx;
-						const newCenterY = this.rotateCenter.y + rotatedDy;
-
-						// 4. Update individual orientation angle
-						let newRotation = (initial.rotation + deltaDeg) % 360;
-						if (newRotation < 0) newRotation += 360;
-
-						return {
-							...s,
-							x: Math.max(0, Math.min(boundMaxX, newCenterX - BOX_SIZE / 2)),
-							y: Math.max(0, Math.min(boundMaxY, newCenterY - BOX_SIZE / 2)),
-							rotation: newRotation
-						};
+						deltaAngle = snappedAbsoluteRot - initRot;
+					} else {
+						// Group Selection: Snap group delta step to preserve relative spatial alignment
+						deltaAngle = Math.round(deltaAngle / SNAP_INCREMENT) * SNAP_INCREMENT;
 					}
-					return s;
-				});
-			} else if (this.isArrayDrawing && this.canvasElement) {
-				const rect = this.canvasElement.getBoundingClientRect();
-				this.arrayEnd = { x: clientX - rect.left, y: clientY - rect.top };
-			} else if (this.isLineDrawing && this.canvasElement) {
-				const rect = this.canvasElement.getBoundingClientRect();
-				const currentPoint = { x: clientX - rect.left, y: clientY - rect.top };
-				if (event.shiftKey) {
-					// Snaps to 15-degree increments (24 directions)
-					this.lineEnd = this.snapToAngle(this.lineStart, currentPoint, 22.5);
-				} else {
-					this.lineEnd = currentPoint;
 				}
-			} else if (this.isDragging) {
-				const dx = (clientX - this.dragStart.x) / this.scale;
-				const dy = (clientY - this.dragStart.y) / this.scale;
 
-				this.squares = this.squares.map(s => {
-					const initial = this.initialPositions.get(s.id);
-					if (initial) {
-						let rawX = initial.x + dx;
-						let rawY = initial.y + dy;
+				// --- 2. ORBIT CALCULATIONS ---
+				const rad = (deltaAngle * Math.PI) / 180;
+				const cos = Math.cos(rad);
+				const sin = Math.sin(rad);
 
-						return {
-							...s,
-							x: Math.max(0, Math.min(this.gridWidth * GRID_SIZE - BOX_SIZE, rawX)),
-							y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, rawY))
-						};
-					}
-					return s;
+				const updatedObjects = this.objects.map((obj) => {
+					if (!this.selectedIds.has(obj.id)) return obj;
+
+					const init = this.initialStates.get(obj.id);
+					if (!init) return obj;
+
+					// Orbit origin (x, y) around group pivot center
+					const dx = init.x - this.rotateCenter.x;
+					const dy = init.y - this.rotateCenter.y;
+
+					const newX = this.rotateCenter.x + (dx * cos - dy * sin);
+					const newY = this.rotateCenter.y + (dx * sin + dy * cos);
+
+					// Increment orientation
+					const newRot = (init.rotation + deltaAngle) % 360;
+
+					return {
+						...obj,
+						x: newX,
+						y: newY,
+						rotation: newRot < 0 ? newRot + 360 : newRot
+					};
 				});
-			} else if (this.isLassoSelecting && this.canvasElement) {
-				const rect = this.canvasElement.getBoundingClientRect();
-				this.lassoPoints = [
-					...this.lassoPoints,
-					{ x: clientX - rect.left, y: clientY - rect.top }
-				];
-			} else if (this.isBoxSelecting && this.canvasElement) {
-				const rect = this.canvasElement.getBoundingClientRect();
-				this.boxEnd = { x: clientX - rect.left, y: clientY - rect.top };
 
-				const box = this.marqueeRect;
-				if (box) {
-					const currentSelection = new Set<string>();
-					this.squares.forEach(s => {
-						const screenX = s.x * this.scale + this.panX;
-						const screenY = s.y * this.scale + this.panY;
-						const screenBoxSize = BOX_SIZE * this.scale;
+				// --- 3. BOUNDARY VALIDATION ---
+				const hasViolation = updatedObjects.some(
+					(obj) => this.selectedIds.has(obj.id) && this.isObjectOutOfBounds(obj)
+				);
 
-						const intersects = !(screenX > box.x + box.width ||
-							screenX + screenBoxSize < box.x ||
-							screenY > box.y + box.height ||
-							screenY + screenBoxSize < box.y);
-						if (intersects) {
-							currentSelection.add(s.id);
-						}
-					});
-					this.selectedIds = currentSelection;
+				if (!hasViolation) {
+					this.objects = updatedObjects;
 				}
+				return;
 			}
+
+			// 3. Object Dragging (Universal Object Movement)
+			if (this.isDragging) {
+				const rawDx = (event.clientX - this.dragStart.x) / this.scale;
+				const rawDy = (event.clientY - this.dragStart.y) / this.scale;
+
+				const canvasWidth = this.gridWidth * GRID_SIZE;
+				const canvasHeight = this.gridHeight * GRID_SIZE;
+
+				// Calculate current collective bounding box of all selected objects at initial positions
+				let groupMinX = Infinity, groupMaxX = -Infinity;
+				let groupMinY = Infinity, groupMaxY = -Infinity;
+
+				this.objects.forEach((obj) => {
+					if (!this.selectedIds.has(obj.id)) return;
+					const init = this.initialPositions.get(obj.id) || { x: obj.x, y: obj.y };
+					const extents = this.getObjectWorldExtents(obj, { x: init.x, y: init.y });
+
+					groupMinX = Math.min(groupMinX, extents.minX);
+					groupMaxX = Math.max(groupMaxX, extents.maxX);
+					groupMinY = Math.min(groupMinY, extents.minY);
+					groupMaxY = Math.max(groupMaxY, extents.maxY);
+				});
+
+				// Calculate maximum permissible delta along each axis
+				const minAllowedDx = 0 - groupMinX;
+				const maxAllowedDx = canvasWidth - groupMaxX;
+				const minAllowedDy = 0 - groupMinY;
+				const maxAllowedDy = canvasHeight - groupMaxY;
+
+				// Clamp delta values independently (enables wall sliding)
+				const clampedDx = Math.max(minAllowedDx, Math.min(maxAllowedDx, rawDx));
+				const clampedDy = Math.max(minAllowedDy, Math.min(maxAllowedDy, rawDy));
+
+				this.objects = this.objects.map((obj) => {
+					if (!this.selectedIds.has(obj.id)) return obj;
+					const init = this.initialPositions.get(obj.id);
+					if (!init) return obj;
+
+					return { ...obj, x: init.x + clampedDx, y: init.y + clampedDy };
+				});
+				return;
+			}
+
+			if (this.activeVertexDrag) {
+				const { objId, index } = this.activeVertexDrag;
+				const rect = this.canvasElement.getBoundingClientRect();
+				const mouseX = (event.clientX - rect.left - this.panX) / this.scale;
+				const mouseY = (event.clientY - rect.top - this.panY) / this.scale;
+
+				this.objects = this.objects.map((obj) => {
+					if (obj.id !== objId || !obj.points) return obj;
+
+					// Create candidate vertex position relative to obj origin
+					const candidatePoints = [...obj.points];
+					candidatePoints[index] = { x: mouseX - obj.x, y: mouseY - obj.y };
+
+					const candidateObj = { ...obj, points: candidatePoints };
+
+					// Only update if candidate polygon stays inside canvas
+					return this.isObjectOutOfBounds(candidateObj) ? obj : candidateObj;
+				});
+				return;
+			}
+
+			// 4. Delegate to tool-specific creation logic
+			const screenPoint = { x: clientX - rect.left, y: clientY - rect.top };
+			const canvasPoint = {
+				x: (screenPoint.x - this.panX) / this.scale,
+				y: (screenPoint.y - this.panY) / this.scale
+			};
+
+			const ctx = { state: this, event, screenPoint, canvasPoint };
+			toolRegistry[this.activeTool]?.onMouseMove?.(ctx);
 		});
 	};
 
-	handleMouseUp = () => {
-		this.isRotating = false;
-		if (this.isLassoSelecting && this.lassoPoints.length > 2) {
-			const gridPolygon: Point[] = this.lassoPoints.map(p => ({
-				x: (p.x - this.panX) / this.scale,
-				y: (p.y - this.panY) / this.scale
-			}));
-
-			const newlySelected = new Set(this.selectedIds);
-			this.squares.forEach(s => {
-				const seatCenter: Point = {
-					x: s.x + BOX_SIZE / 2,
-					y: s.y + BOX_SIZE / 2
-				};
-				if (this.isPointInPolygon(seatCenter, gridPolygon)) {
-					newlySelected.add(s.id);
-				}
-			});
-
-			this.selectedIds = newlySelected;
+	handleMouseUp = (event: MouseEvent) => {
+		if (this.activeVertexDrag) {
+			this.activeVertexDrag = null;
+			return;
 		}
-		if (this.isRectDrawing) {
-			const shape = this.previewRect;
-			// Minimum size check to prevent accidental zero-size clicks
-			if (shape && shape.width > 5 && shape.height > 5) {
-				const newRect: EnvObject = {
-					id: `env_${this.envObjects.length + 1}`,
-					type: 'rect',
-					x: shape.x,
-					y: shape.y,
-					width: shape.width,
-					height: shape.height
-				};
-				this.envObjects = [...this.envObjects, newRect];
-			}
-			this.isRectDrawing = false;
-		}
-		if (this.isLineDrawing) {
-			const lineSeats = this.calculateLineSeats(this.lineStart, this.lineEnd);
-			if (lineSeats.length > 0) {
-				const nextBatch: Square[] = [];
-				const nextSelected = new Set<string>();
+		const rect = this.canvasElement?.getBoundingClientRect();
+		const screenPoint = rect
+			? { x: event.clientX - rect.left, y: event.clientY - rect.top }
+			: { x: 0, y: 0 };
+		const canvasPoint = {
+			x: (screenPoint.x - this.panX) / this.scale,
+			y: (screenPoint.y - this.panY) / this.scale
+		};
 
-				lineSeats.forEach((pt, idx) => {
-					const newId = `s_${this.squares.length + idx + 1}`;
-					nextBatch.push({ id: newId, x: pt.x, y: pt.y });
-					nextSelected.add(newId);
-				});
+		const ctx = { state: this, event, screenPoint, canvasPoint };
+		toolRegistry[this.activeTool]?.onMouseUp?.(ctx);
 
-				this.squares = [...this.squares, ...nextBatch];
-				this.selectedIds = nextSelected;
-			}
-			this.isLineDrawing = false;
-		}
-		if (this.isArrayDrawing) {
-			const arraySeats = this.calculateArraySeats(this.arrayStart, this.arrayEnd);
-			if (arraySeats.length > 0) {
-				const nextBatch: Square[] = [];
-				const nextSelected = new Set<string>();
-
-				arraySeats.forEach((pt, idx) => {
-					const newId = `s_${this.squares.length + idx + 1}`;
-					nextBatch.push({ id: newId, x: pt.x, y: pt.y });
-					nextSelected.add(newId);
-				});
-
-				this.squares = [...this.squares, ...nextBatch];
-				this.selectedIds = nextSelected;
-			}
-			this.isArrayDrawing = false;
-		}
-
-		this.isDragging = false;
-		this.isBoxSelecting = false;
-		this.isLassoSelecting = false;
-		this.lassoPoints = [];
+		// Reset global transform states
 		this.isPanning = false;
+		this.isRotating = false;
+		this.isDragging = false;
 	};
 
 	handleWheel = (event: WheelEvent) => {
@@ -751,6 +946,18 @@ export class SeatEditorState {
 			this.removeSelected();
 			return;
 		}
+		if (event.key === 'Shift') {
+			this.isShiftPressed = true;
+		}
+		// Polygon keyboard controls
+		if (this.isPolygonDrawing) {
+			const polyTool = toolRegistry['add-polygon'] as PolygonToolStrategy;
+			if (event.key === 'Enter') {
+				polyTool.finishPolygon(this);
+			} else if (event.key === 'Escape') {
+				polyTool.cancelPolygon(this);
+			}
+		}
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
 
@@ -761,6 +968,17 @@ export class SeatEditorState {
 			event.preventDefault();
 			this.pasteSquares();
 		}
+	};
+
+	handleKeyUp = (event: KeyboardEvent) => {
+		if (event.key === 'Shift') {
+			this.isShiftPressed = false;
+		}
+	};
+
+	// Optional: Reset on window blur to avoid stuck state
+	handleWindowBlur = () => {
+		this.isShiftPressed = false;
 	};
 
 	handleContextMenu = (event: MouseEvent) => {

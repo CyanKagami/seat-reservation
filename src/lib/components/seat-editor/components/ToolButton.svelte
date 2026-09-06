@@ -23,10 +23,6 @@
 		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M3 3l7 18 3-7 7-3L3 3z"/>
 		</svg>
-	{:else if tool.icon === 'box-select'}
-		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3">
-			<rect x="3" y="3" width="18" height="18" rx="2"/>
-		</svg>
 	{:else if tool.icon === 'lasso'}
 		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M6 3c-2 0-3 2-3 4 0 5 8 9 8 14 0 0 3-1 3-3s-2-3-4-3-3 2-3 2"/>
@@ -48,8 +44,13 @@
 		</div>
 	{:else if tool.icon === 'add-rect'}
 		<div class="w-4 h-3 border-2 border-slate-800 rounded-xs"></div>
+	{:else if tool.icon === 'add-circle'}
+		<div class="w-4 h-4 border-2 border-slate-800 rounded-full"></div>
+	{:else if tool.icon === 'add-polygon'}
+		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" viewBox="0 0 17 14" fill="none">
+		<path d="M12.2715 1.47852L15.9385 5.14551L14.0996 11.5801L6.11328 13.46L0.568359 9.30078L2.87402 0.539062L12.2715 1.47852Z" stroke="black" stroke-width="1.5"/>
+		</svg>
 	{/if}
-
 	{#if tool.category === 'create'}
 		<span class="absolute top-0 right-0.5 text-[8px] font-bold text-slate-600">+</span>
 	{/if}
