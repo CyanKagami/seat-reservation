@@ -44,7 +44,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
 export const POST: RequestHandler = async ({request, cookies}) => {
     // Doing some verify
-
-    addDataUniqueId("places", Object.entries(request.formData()), 'placeId')
+    let formData = await request.formData();
+    await addDataUniqueId("places", {name:formData.get('name'), location:formData.get('location')}, 'placeId');
     return json({status:200, body: {message:"ok"}})
 }

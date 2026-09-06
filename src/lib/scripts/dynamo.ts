@@ -106,7 +106,7 @@ export async function addDataUniqueId(tableName:string, item:Object, primaryKey:
   const params = {
     TableName: tableName,
     Item: newItem,
-    ConditionExpression: `attribute_not_exists(${primaryKey}})`,
+    ConditionExpression: `attribute_not_exists(${primaryKey})`,
   };
 
   try {
