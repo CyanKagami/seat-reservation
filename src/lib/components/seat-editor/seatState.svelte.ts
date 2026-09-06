@@ -12,6 +12,7 @@ export class SeatEditorState {
 	locationId = $state("v_123");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
+	isSaving = $state(false);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
@@ -236,8 +237,30 @@ export class SeatEditorState {
 		this.centerGrid();
 	};
 
-	handleSaveButtonClick = (event:MouseEvent) => {
-		this.saveToFile(`${this.locationId}_seating-layout.json`)
+	handleSaveButtonClick = async (event:MouseEvent) => {
+		this.isSaving = true;
+		this.selectedIds.clear();
+		let file = this.saveToFile(`${this.locationId}_seating-layout.json`)
+    	let formData = new FormData();
+      	formData.append("layoutFile", file, file.name);
+		formData.append("placeId", this.locationId);
+		try {
+			const res = await fetch("/api/place/layout", {
+				method: "PUT",
+				body: formData,
+			});
+
+			if (res.ok) {
+				alert("บันทึกลง S3 เรียบร้อย!");
+		} else {
+			const err = await res.json();
+			alert(`เกิดข้อผิดพลาด: ${err.error}`);
+		}
+		} catch (err) {
+			alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+		} finally {
+			this.isSaving = false;
+		}
 	}
 
 	exportToJSON(): string {
@@ -258,14 +281,11 @@ export class SeatEditorState {
 	saveToFile(filename = "seating-layout.json") {
 		const jsonString = this.exportToJSON();
 		const blob = new Blob([jsonString], { type: "application/json" });
-		const url = URL.createObjectURL(blob);
-		
-		const anchor = document.createElement("a");
-		anchor.href = url;
-		anchor.download = filename;
-		anchor.click();
-		
-		URL.revokeObjectURL(url);
+		const layoutFile = new File([blob], filename, {
+			type: blob.type,
+			lastModified: Date.now()
+		});
+		return layoutFile;
 	}
 
 	// Optional: Load saved layout JSON back into canvas
@@ -306,6 +326,7 @@ export class SeatEditorState {
 	// --- Drop Handler ---
 	handleDrop = (event: DragEvent) => {
 		event.preventDefault();
+		if (this.isSaving) return;
 		const iconType = event.dataTransfer?.getData('iconType') as 'toilet' | 'entrance' | 'stage';
 		const label = event.dataTransfer?.getData('label') || '';
 		if (!iconType || !this.canvasElement) return;
@@ -349,6 +370,7 @@ export class SeatEditorState {
 
 	handleDragOver = (event: DragEvent) => {
 		event.preventDefault();
+		if (this.isSaving) return;
 		if (event.dataTransfer) {
 			event.dataTransfer.dropEffect = 'copy';
 		}
@@ -364,6 +386,7 @@ export class SeatEditorState {
 	// --- Vertex Interaction Handlers ---
 	handleVertexMouseDown = (objId: string, index: number, event: MouseEvent) => {
 		event.stopPropagation();
+		if (this.isSaving) return;
 		this.activeVertexDrag = { objId, index };
 	};
 
@@ -582,6 +605,7 @@ export class SeatEditorState {
 
 	// Start rotation interaction when user clicks rotation handle
 	handleRotateStart = (event: MouseEvent) => {
+		if (this.isSaving) return;
 		if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
 			event.stopPropagation();
 
@@ -665,6 +689,7 @@ export class SeatEditorState {
 
 	// Generic MouseDown handler for seats AND environment rectangles
 	handleObjectMouseDown = (obj: CanvasObject, event: MouseEvent) => {
+		if (this.isSaving) return;
 		if (event.button !== 0) return;
 		event.stopPropagation();
 
@@ -696,6 +721,7 @@ export class SeatEditorState {
 	};
 
 	handleSelectionBoundsMouseDown = (event: MouseEvent) => {
+		if (this.isSaving) return;
 		// Only trigger on primary left click
 		if (event.button !== 0) return;
 		
@@ -715,6 +741,7 @@ export class SeatEditorState {
 	};
 
 	handleCanvasMouseDown = (event: MouseEvent) => {
+		if (this.isSaving) return;
 		if (!this.canvasElement) return;
 
 		if (event.button === 2 || event.button === 1) {
@@ -764,6 +791,7 @@ export class SeatEditorState {
 
 			// 2. Group Rotation (Rotation Handle Drag)
 			if (this.isRotating) {
+
 				const rect = this.canvasElement.getBoundingClientRect();
 				const mouseX = event.clientX - rect.left;
 				const mouseY = event.clientY - rect.top;
@@ -909,6 +937,7 @@ export class SeatEditorState {
 	};
 
 	handleMouseUp = (event: MouseEvent) => {
+		if (this.isSaving) return;
 		if (this.activeVertexDrag) {
 			this.activeVertexDrag = null;
 			return;
@@ -941,6 +970,7 @@ export class SeatEditorState {
 	};
 
 	handleKeyDown = (event: KeyboardEvent) => {
+				if (this.isSaving) return;
 		if (event.key === 'Delete' || event.key === 'Backspace') {
 			event.preventDefault();
 			this.removeSelected();

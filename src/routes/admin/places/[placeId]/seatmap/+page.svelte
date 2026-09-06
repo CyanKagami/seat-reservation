@@ -1,6 +1,27 @@
-<script>
-import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
+<script lang="ts">
+	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
+	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
+	import { onMount } from "svelte";
 	let { params } = $props();
+	let state: SeatEditorState | undefined = $state();
+	onMount(async () => {
+		fetch(`/api/place/layout?placeId=${params.placeId}`, {
+			method: 'GET',
+			credentials:'include'
+		})
+		.then((response) => {
+			return response.json()
+		})
+		.then((data) => {
+			console.log(data);
+			if (data.statusCode === 200){
+				state?.loadFromJSON(data.body.layout);
+			}
+		})
+		.catch((err) => {
+			alert(err);
+		})
+	})
 </script>
 
-<SeatEditor placeId={params.placeId}></SeatEditor>
+<SeatEditor placeId={params.placeId} bind:state={state}></SeatEditor>

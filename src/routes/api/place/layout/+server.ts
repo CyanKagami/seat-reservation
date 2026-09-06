@@ -3,12 +3,52 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
-import { addFile } from "$lib/scripts/s3";
+import { addFile, readFileAsString } from "$lib/scripts/s3";
 import { updateAllAttributes } from "$lib/scripts/dynamo";
 
 interface UpdataLayoutFormData {
     layoutFile: File,
     placeId: string
+}
+
+export const GET: RequestHandler = async ({request, cookies, url}) => {
+    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
+    
+    // Verify the token signature
+    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
+    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
+        return json(
+            {
+                statusCode: 403,
+                body: { error: "Access denied" }
+            }
+        );
+    }
+    let placeId = url.searchParams.get('placeId');
+    try {
+        const fileContent = await readFileAsString('k-seat-place-layout', `${placeId}-layout.json`)
+        return json(
+            {
+                statusCode: 200,
+                body: {
+                    "message": "OK",
+                    "layout": fileContent
+                }
+            }
+        )
+    }
+    catch(err) {
+        console.log(err);
+        return json(
+            {
+                statusCode: 500,
+                body: {
+                    "message": "Internal Server Error"
+                }
+            }
+        )
+    }
+    
 }
 
 export const PUT: RequestHandler = async ({request, cookies}) => {
@@ -28,7 +68,7 @@ export const PUT: RequestHandler = async ({request, cookies}) => {
     let data:UpdataLayoutFormData = Object.fromEntries(await request.formData()) as unknown as UpdataLayoutFormData
     let fileBuffer = Buffer.from(await data.layoutFile.arrayBuffer())
     try {
-        let layoutURL = await addFile("k-seat-place-layout", data.layoutFile.name, fileBuffer);
+        let layoutURL = await addFile("k-seat-place-layout", `${data.placeId}-layout.json`, fileBuffer);
         await updateAllAttributes("places", {placeId:data.placeId}, {layoutURL: layoutURL});
     }
     catch(err) {

@@ -6,16 +6,14 @@
 	import RightSidebar from "./RightSidebar.svelte";
 	import Canvas from "./Canvas.svelte";
 
-	let {placeId} = $props();
-	const state = new SeatEditorState(placeId);
+	let {state = $bindable(), placeId} = $props();
+
+	state = new SeatEditorState(placeId);
 	// Reactive side-effect triggered when grid dimensions change
 	$effect(() => {
 		state.moveSquareOnOutOfBound(state.gridWidth, state.gridHeight);
 	});
 
-	// $effect(() => {
-	// 	console.log(state.isShiftPressed)
-	// })
 </script>
 
 <svelte:body onkeydown={state.handleKeyDown} onkeyup={state.handleKeyUp} onblur={state.handleWindowBlur} />
