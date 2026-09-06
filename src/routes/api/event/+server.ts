@@ -1,11 +1,10 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addFile, createBucket } from "$lib/scripts/s3";
-import { addData, fetchEventFromHost, updateAllAttributes, fetchAllData } from "$lib/scripts/dynamo";
+import { addFile } from "$lib/scripts/s3";
+import { updateAllAttributes, fetchAllData, addDataUniqueId } from "$lib/scripts/dynamo";
 import type { Event } from "$lib/type/event";
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, NODE_ENV, GOOGLE_CLIENT_ID } from '$env/static/private';
+import { JWT_SECRET } from '$env/static/private';
 import type { GoogleUser } from "$lib/type/googleUser";
-import { request } from "node:http";
 
 
 interface EventFormData {
@@ -63,7 +62,7 @@ export const POST: RequestHandler = async ({request }) => {
         ...formatData(data)
     }
     console.log(processData)
-    await addData("events", processData)
+    await addDataUniqueId("events", processData,'eventId')
     return json(
         {
             statusCode: 200,

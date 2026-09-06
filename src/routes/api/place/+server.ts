@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { addFile, createBucket } from "$lib/scripts/s3";
-import { addData, fetchAllData, fetchEventFromHost, fetchUser, paginateReadData, updateAllAttributes } from "$lib/scripts/dynamo";
+import { addDataUniqueId, fetchAllData } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import { verifyAccess } from "$lib/scripts/authorization";
@@ -45,6 +45,6 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 export const POST: RequestHandler = async ({request, cookies}) => {
     // Doing some verify
 
-    addData("places", Object.entries(request.formData()))
+    addDataUniqueId("places", Object.entries(request.formData()), 'placeId')
     return json({status:200, body: {message:"ok"}})
 }

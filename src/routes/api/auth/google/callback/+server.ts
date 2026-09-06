@@ -2,11 +2,10 @@
 import { redirect, type RequestHandler } from '@sveltejs/kit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from "uuid";
 
 // Add CLIENT_SECRET to your environment variables (.env)
 import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET, NODE_ENV } from '$env/static/private';
-import { addData, addDataIfNotExists, addUser, fetchUser } from '$lib/scripts/dynamo';
+import {  addUser, fetchUser } from '$lib/scripts/dynamo';
 import type { User } from '$lib/type/user';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {

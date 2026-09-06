@@ -1,6 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addFile, createBucket } from "$lib/scripts/s3";
-import { addData, fetchEventFromHost, fetchUser, paginateReadData, updateAllAttributes } from "$lib/scripts/dynamo";
+import { paginateReadData } from "$lib/scripts/dynamo";
 import type { Event } from "$lib/type/event";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';

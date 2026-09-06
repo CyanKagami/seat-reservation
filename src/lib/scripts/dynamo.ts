@@ -88,6 +88,40 @@ export async function addData(tableName:string, item:Object) {
     }
   // Inspect the full HTTP response object
     if (error.$response) {
+      console.error("Dynamo HTTP Status Code:", error.$response);
+    }
+  }
+}
+
+export async function addDataUniqueId(tableName:string, item:Object, primaryKey:string) {
+  const uniqueId = uuidv4();
+  const updatedObj = Object.fromEntries(
+    Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
+  );
+  let newItem = {
+      ...updatedObj
+    }
+  newItem[primaryKey] = uniqueId;
+
+  const params = {
+    TableName: tableName,
+    Item: newItem,
+    ConditionExpression: `attribute_not_exists(${primaryKey}})`,
+  };
+
+  try {
+    const data = await docClient.send(new PutCommand(params));
+    console.log('result : ' + JSON.stringify(data));
+  } catch (error:any) {
+    if (error.name === "ConditionalCheckFailedException") {
+      console.warn("Collision detected! Retrying with a new ID...");
+      addDataUniqueId(tableName, item, primaryKey); // Recursive retry strategy
+    }
+    if (error.$responseBodyText) {
+      console.error("Dynamo Raw response text:", error.$responseBodyText);
+    }
+  // Inspect the full HTTP response object
+    if (error.$response) {
       console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
     }
   }

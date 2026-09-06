@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addData, fetchEventFromHost } from "$lib/scripts/dynamo";
+import { fetchEventFromHost } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, NODE_ENV, GOOGLE_CLIENT_ID } from '$env/static/private';
+import { JWT_SECRET } from '$env/static/private';
 import type { GoogleUser } from "$lib/type/googleUser";
 
 
