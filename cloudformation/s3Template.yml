@@ -22,3 +22,13 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  PlacePictureBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-place-picture
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
