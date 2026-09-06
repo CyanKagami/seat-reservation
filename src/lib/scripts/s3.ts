@@ -1,5 +1,5 @@
 import { AWS_LOCALSTACK_URL, AWS_REGION } from "$env/static/private";
-import { S3Client, PutObjectCommand, CreateBucketCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
 const localstackUrl = AWS_LOCALSTACK_URL;
@@ -62,3 +62,45 @@ export async function addFile(bucket:string, filename:string, fileBuffer:Buffer)
   }
   }
 }
+
+export async function readFileAsString(bucketName:string, fileKey:string) {
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: fileKey,
+  });
+
+  try {
+    const response = await s3Client.send(command);
+    // 2. Convert the stream to a string directly
+    if (response.Body){
+       const fileContent = await response.Body.transformToString();
+       console.log("File content:", fileContent);
+       return fileContent
+    }
+    return '';
+  } catch (error) {
+    console.error("Error reading file from S3:", error);
+    return ''
+  }
+}
+
+export async function readFileAsByteArray(bucketName:string, fileKey:string) {
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: fileKey,
+  });
+
+  try {
+    const response = await s3Client.send(command);
+    // 2. Convert the stream to a string directly
+    if (response.Body){
+       const fileContent = await response.Body.transformToByteArray();
+       return fileContent
+    }
+    return new Uint8Array();
+  } catch (error) {
+    console.error("Error reading file from S3:", error);
+    return new Uint8Array();
+  }
+}
+
