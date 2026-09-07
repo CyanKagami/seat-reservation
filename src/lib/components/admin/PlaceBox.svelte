@@ -9,7 +9,7 @@
     </div>
     <div class="p-5">
         <h1 class="text-2xl font-semibold">{place.name}</h1>
-        <p class="text-sm font-semibold">{place.location}</p>
+        <p class="text-sm font-semibold">{place.location.name}</p>
         <p class="text-sm text-gray-400">{place.creatorName}</p>
         <a href={`/admin/places/${place.placeId}`}>
             <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200">

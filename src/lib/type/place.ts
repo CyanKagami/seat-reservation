@@ -1,9 +1,8 @@
-import type { User } from "./user";
-
+import type { CampusLocation } from "./location";
 export interface Place {
     placeId: string;
     name: string;
-    location: string;
+    location: CampusLocation;
     description: string;
     creatorId: string;
     creatorName: string;

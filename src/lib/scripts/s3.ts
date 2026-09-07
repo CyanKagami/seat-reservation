@@ -54,12 +54,13 @@ export async function addFile(bucket:string, filename:string, fileBuffer:Buffer)
   }
   catch (error:any) {
     if (error.$responseBodyText) {
-    console.error("S3 Raw response text:", error.$responseBodyText);
-  }
-  // Inspect the full HTTP response object
-  if (error.$response) {
-    console.error("S3 HTTP Status Code:", error.$response.statusCode);
-  }
+      console.error("S3 Raw response text:", error.$responseBodyText);
+    }
+    // Inspect the full HTTP response object
+    if (error.$response) {
+      console.error("S3 HTTP Status Code:", error.$response.statusCode);
+    }
+    throw error;
   }
 }
 

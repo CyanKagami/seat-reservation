@@ -112,6 +112,7 @@ export async function addDataUniqueId(tableName:string, item:Object, primaryKey:
   try {
     const data = await docClient.send(new PutCommand(params));
     console.log('result : ' + JSON.stringify(data));
+    return uniqueId;
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
       console.warn("Collision detected! Retrying with a new ID...");
@@ -124,6 +125,7 @@ export async function addDataUniqueId(tableName:string, item:Object, primaryKey:
     if (error.$response) {
       console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
     }
+    throw error
   }
 }
 
@@ -315,6 +317,30 @@ export async function fetchUser(googleId:string) {
     },
   };
   console.log("Fetching user with params:", params);
+  try {
+    const command = new GetCommand(params);
+    const response = await docClient.send(command);
+
+    if (response.Item) {
+      console.log('Item found:', response.Item);
+      return response.Item;
+    } else {
+      console.log('No item found with the specified key.');
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting item:', error);
+    throw error;
+  }
+}
+
+export async function fetchData(tablename:string, key:Key) {
+  const params = {
+    TableName: tablename,
+    // Define the exact primary key match
+    Key: key,
+  };
+  console.log(`Fetching table ${tablename} with params:`, params);
   try {
     const command = new GetCommand(params);
     const response = await docClient.send(command);

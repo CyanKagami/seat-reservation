@@ -1,19 +1,19 @@
 <script lang="ts">
     import PlaceBox from "$lib/components/admin/PlaceBox.svelte"
-  import { userStore } from "$lib/store/auth.svelte";
-  import type { CampusLocation } from "$lib/type/location";
+    import type { CampusLocation } from "$lib/type/location";
     import type { Place } from "$lib/type/place";
     import { onMount } from "svelte";
-    let places: Place[] = $state([])
+    const {params} = $props();
+    let data: Place;
     let locations: CampusLocation[] = $state([])
     onMount(() => {
         fetchPageData()
     })
     function fetchPageData(){
-        fetch("/api/place", {method: 'GET' , credentials: 'include'})
+        fetch(`/api/place/${params.placeId}`, {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
         .then((data) => {
-            places = data.body.data;
+            data = data.body.data;
         })
         fetch("/api/location", {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
@@ -27,63 +27,61 @@
     let isSubmitting = $state<boolean>(false);
     let errorMessage = $state<string | null>(null);
 
-  // จำกัดขนาดไฟล์ที่ 5MB
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    // จำกัดขนาดไฟล์ที่ 5MB
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-  function handleFileSelect(e: Event): void {
-    const target = e.target as HTMLInputElement;
-    const file = target.files?.[0];
-    errorMessage = null;
+    function handleFileSelect(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        errorMessage = null;
 
-    if (!file) return;
+        if (!file) return;
 
-    // 1. Client-side Validation
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      errorMessage = "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP เท่านั้น";
-      return;
+        // 1. Client-side Validation
+        if (!ALLOWED_TYPES.includes(file.type)) {
+        errorMessage = "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP เท่านั้น";
+        return;
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+        errorMessage = "ขนาดไฟล์ต้องไม่เกิน 5MB";
+        return;
+        }
+
+        imageFile = file;
+        previewUrl = URL.createObjectURL(file);
     }
+    async function handleSubmit(e: SubmitEvent) {
+        e.preventDefault();
 
-    if (file.size > MAX_FILE_SIZE) {
-      errorMessage = "ขนาดไฟล์ต้องไม่เกิน 5MB";
-      return;
+        isSubmitting = true;
+        let data = new FormData();
+        if (e.target) {
+            let formData = new FormData(e.target as HTMLFormElement);
+            if (imageFile) formData.append("picture", imageFile, imageFile?.name);
+            data = formData;
+        }
+
+        try {
+            const res = await fetch("/api/place", {
+                method: "POST",
+                body: data,
+            });
+
+            if (res.ok) {
+                alert("บันทึกลง DynamoDB เรียบร้อย!");
+                fetchPageData();
+            } else {
+                const err = await res.json();
+                alert(`เกิดข้อผิดพลาด: ${err.error}`);
+            }
+        } catch (err) {
+            alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+        } finally {
+            isSubmitting = false;
+        }
     }
-
-    imageFile = file;
-    previewUrl = URL.createObjectURL(file);
-  }
-  async function handleSubmit(e: SubmitEvent) {
-    e.preventDefault();
-
-
-    isSubmitting = true;
-    let data = new FormData();
-    if (e.target) {
-      let formData = new FormData(e.target as HTMLFormElement);
-      if (imageFile) formData.append("picture", imageFile, imageFile?.name);
-      data = formData;
-    }
-
-    try {
-      const res = await fetch("/api/place", {
-        method: "POST",
-        body: data,
-      });
-
-      if (res.ok) {
-        alert("บันทึกลง DynamoDB เรียบร้อย!");
-        fetchPageData();
-      } else {
-        const err = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${err.error}`);
-      }
-    } catch (err) {
-      alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
-    } finally {
-      isSubmitting = false;
-      isCreatePopupOpen = false;
-    }
-  }
 </script>
 <div class="w-full max-w-6xl mx-auto mt-10 px-5">
     <h1 class="text-3xl font-semibold mb-5 text-center">สถานที่จัดงาน</h1>
