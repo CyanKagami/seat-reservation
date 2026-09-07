@@ -13,11 +13,6 @@ import { PolygonToolStrategy } from './PolygonTool';
 export const toolRegistry: Record<ToolType, BaseToolStrategy> = {
 	'pointer': new PointerToolStrategy(),
 	'lasso': new LassoToolStrategy(),
-	'add-square': new SingleSeatToolStrategy(),
-	'add-line': new LineToolStrategy(),
-	'add-array': new ArrayToolStrategy(),
-	'add-rect': new RectToolStrategy(),
-	'add-circle': new CircleToolStrategy(),
 	'add-polygon': new PolygonToolStrategy()
 };
 

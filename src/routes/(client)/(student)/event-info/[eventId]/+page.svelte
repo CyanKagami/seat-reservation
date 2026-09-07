@@ -32,7 +32,7 @@
     <img src={event.picture ? event.picture : ""} alt='event' class="object-cover h-96 w-full">
     <div class="w-full p-10 flex flex-col justify-between">
         <div>
-            <p class="font-semibold text-xl">{formatThaiDateTimeShort(start_date, end_date)} : {event.place ? event.place : ""}</p>
+            <p class="font-semibold text-xl">{formatThaiDateTimeShort(start_date, end_date)} : {event.place ? `${event.place.name} (${event.place.location.name})` : ''}</p>
             <p class="text-4xl font-semibold my-6">{event.name || ""}</p>
             <p class="text-xl text-gray-400">By {event.host || ""}</p>
         </div>
@@ -72,7 +72,7 @@
         </div>
         <div class="flex flex-col gap-2">
             <h1 class="font-semibold text-2xl">สถานที่</h1>
-            <p lang="th">{event.place}</p>
+            <p lang="th">{event.place ? `${event.place.name} (${event.place.location.name})` : ''}</p>
         </div>
         <div class="flex flex-col gap-2">
             <h1 class="font-semibold text-2xl">เงื่อนไขการเข้าร่วมกิจกรรม</h1>

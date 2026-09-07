@@ -1,12 +1,23 @@
 <script lang="ts">
-	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
-	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
+	import SeatEditor from "$lib/components/zone-editor/components/ZoneEditor.svelte";
+	import { ZoneEditorState } from "$lib/components/zone-editor/zoneState.svelte.js";
+  import ZoneEditor from "$lib/components/zone-editor/components/ZoneEditor.svelte";
 	import { onMount, tick } from "svelte";
+  import type { Place } from "$lib/type/place.js";
 	let { params } = $props();
-	let seatState: SeatEditorState | undefined = $state();
-	let isLoading = $state(true);
+	let seatState: ZoneEditorState | undefined = $state();
+	let isLoading = $state(false);
+	let place = $state({} as Place)
 	onMount(async () => {
-		fetch(`/api/place/layout?placeId=${params.placeId}`, {
+		const event = await fetch(`/api/event/getFromId/${params.eventId}`, {
+            method: "GET",
+            credentials: 'include'
+        })
+        .then(async (response) => {
+            return (await response.json()).body[0]
+        })
+		place = event.place
+		await fetch(`/api/place/layout?placeId=${place.placeId}`, {
 			method: 'GET',
 			credentials:'include'
 		})
@@ -28,4 +39,4 @@
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {/if}
-<SeatEditor placeId={params.placeId} bind:state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
+<ZoneEditor place={place} bind:state={seatState} backLink={`/admin/events/${params.eventId}`}></ZoneEditor>

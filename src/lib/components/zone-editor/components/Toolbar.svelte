@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { SeatEditorState } from "../seatState.svelte";
+	import type { ZoneEditorState } from "../zoneState.svelte";
 	import { BOX_SIZE } from "../constants";
-	import { TOOLS } from '$lib/components/seat-editor/config/tools';
+	import { TOOLS } from '$lib/components/zone-editor/config/tools';
 	import ToolButton from './ToolButton.svelte';
 
-	let { state }: { state: SeatEditorState } = $props();
+	let { state }: { state: ZoneEditorState } = $props();
 
 	const selectTools = $derived(TOOLS.filter(t => t.category === 'select'));
 	const createTools = $derived(TOOLS.filter(t => t.category === 'create'));
