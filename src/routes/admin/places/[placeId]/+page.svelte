@@ -4,7 +4,7 @@
     import type { Place } from "$lib/type/place";
     import { onMount } from "svelte";
     const {params} = $props();
-    let data: Place;
+    let data: Place = $state({} as Place);
     let locations: CampusLocation[] = $state([])
     onMount(() => {
         fetchPageData()
@@ -12,8 +12,8 @@
     function fetchPageData(){
         fetch(`/api/place/${params.placeId}`, {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
-        .then((data) => {
-            data = data.body.data;
+        .then((result) => {
+            data = result.body.data;
         })
         fetch("/api/location", {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
@@ -61,11 +61,12 @@
             let formData = new FormData(e.target as HTMLFormElement);
             if (imageFile) formData.append("picture", imageFile, imageFile?.name);
             data = formData;
+            data.append("placeId", params.placeId)
         }
 
         try {
             const res = await fetch("/api/place", {
-                method: "POST",
+                method: "PATCH",
                 body: data,
             });
 
@@ -84,79 +85,38 @@
     }
 </script>
 <div class="w-full max-w-6xl mx-auto mt-10 px-5">
-    <h1 class="text-3xl font-semibold mb-5 text-center">สถานที่จัดงาน</h1>
-    <div class="flex justify-between items-center">
-        <!--Search bar-->
-        <div>
-            <p class="text-sm font-semibold">Search</p>
-            <input class="rounded-lg w-96">
-        </div>
-        <button onclick={() => {isCreatePopupOpen = true}} class = "px-5 h-12 bg-secondary rounded-lg text-white hover:bg-secondary-hover hover:cursor-pointer">+ เพิ่มสถานที่</button>
-    </div>
-
-    <hr class="my-5 border-dim-gray">
-        <!--content-->
-    <!--Event Registration-->
-        <div class="w-full flex flex-wrap gap-15 gap-y-10">
-        {#each places as place }
-            <PlaceBox place={place}></PlaceBox>
-        {/each}
-        </div>
-
-    <!--Create Place Popup-->
-    {#if isCreatePopupOpen}
-    <form method="POST" onsubmit={handleSubmit} enctype="multipart/form-data" class="w-full h-full bg-black/50 fixed top-0 left-0 z-50 flex items-center justify-center">
-        <div class="bg-white w-120 rounded-lg flex flex-col items-center p-7 gap-4">
-            <p class="text-2xl font-semibold">เพิ่มสถานที่</p>
-            <div class="w-full">
-                <label for="picture" class="mb-4 block">รูปภาพหน้าปก</label>
-                <div class="flex flex-col items-center gap-4 border-b pb-5 border-dashed">
-                <!-- Preview Box -->
-                {#if previewUrl}
-                    <div
-                    class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
-                    >
-                    <img
-                        src={previewUrl}
-                        alt="Preview"
-                        class="w-full h-full object-cover"
-                    />
-                    </div>
-                {:else}
-                    <div
-                    class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
-                    ></div>
-                {/if}
-
-                <!-- Input Field -->
-                <input
+    <h1 class="text-3xl font-semibold mb-5 text-center">จัดการสถานที่</h1>
+    <h2 class="text-center text-xl">ข้อมูลเบื้องต้น</h2>
+    <form onsubmit={handleSubmit} class="flex gap-10">
+        <div class="w-fit flex flex-col items-center gap-7">
+            <div class="rounded-lg">
+                <img src="{data.picture || ""}" alt="cover pic" class="rounded-lg block object-cover w-96 h-40">
+            </div>
+            <input
                     type="file"
                     name="picture"
                     accept="image/png, image/jpeg, image/webp"
                     onchange={handleFileSelect}
                     class="block w-fit text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer self-start"
                 />
-                </div>
-            </div>
-            
-            <div class="w-full">
-                <p>ชื่อสถานที่</p>
-                <input name="name" class="w-full rounded-lg" required>
-            </div>
-            <div class="w-full">
-                <p>สถานที่ตั้ง</p>
-                <select name="location" class="w-full rounded-lg">
-                    {#each locations as location}
-                        <option value={location.locationId}>{location.name}</option>
-                    {/each}
-                    
-                </select>
-            </div>
-            <div class="w-full flex justify-between gap-3">
-                <button class="w-1/2 border-2 border-black h-10 hover:bg-accent-hover hover:cursor-pointer rounded-lg" onclick={() => {isCreatePopupOpen = false}}>ยกเลิก</button>
-                <button class="w-1/2 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg">สร้าง</button>
+        </div>
+        <div class="w-3/5 flex flex-col gap-2">
+            <p>ชื่อสถานที่</p>
+            <input name="name" class="w-full rounded-lg" value="{data.name || ""}">
+            <p>ที่ตั้ง</p>
+            <select name="location" class="w-full rounded-lg">
+                {#each locations as location}
+                        <option value={location.locationId} selected={(data.location.locationId === location.locationId)}>{location.name}</option>
+                {/each}
+            </select>
+            <p>รายละเอียด</p>
+            <textarea name="description" class="w-full resize-none h-40 rounded-lg">{data.description}</textarea>
+            <div class="flex self-end w-90 gap-3 mt-10">
+                <a href="/admin/places" class="w-1/2">
+                    <button type="button" class="w-full border-2 border-black h-10 hover:bg-accent-hover hover:cursor-pointer rounded-lg">ยกเลิก</button>
+                </a>
+                <button class="w-1/2 px-3 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg">บันทึกการเปลี่ยนแปลง</button>
             </div>
         </div>
     </form>
-    {/if}
 </div>
