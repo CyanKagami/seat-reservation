@@ -1,3 +1,5 @@
+import type { Place } from "./place"
+
 export interface Event {
     picture:string,
     name:string,
@@ -5,7 +7,7 @@ export interface Event {
         start:string,
         end:string
     },
-    place:string,
+    place:Place,
     host:string,
     creatorId:string,
     detail:string,

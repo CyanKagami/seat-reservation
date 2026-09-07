@@ -1,11 +1,26 @@
 <script lang="ts">
   import { userStore } from "$lib/store/auth.svelte";
   import type { Daytable } from "$lib/type/event";
+  import type { Place } from "$lib/type/place";
+  import { onMount } from "svelte";
 
   interface ValidationResult {
     isValid: boolean;
     errors: string[];
   }
+
+  let places:Place[] = $state([])
+
+  onMount(()=> {
+    fetch('/api/place', {
+      method:"GET",
+      credentials:'include'
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      places = data.body.data;
+    })
+  })
 
   let timetable: Daytable[] = $state([
     {
@@ -243,7 +258,11 @@ function addDate() {
     </div>
     <div class="flex w-full gap-3 justify-between">
       <label for="place">สถานที่จัด</label>
-      <input name="place" class="w-100 rounded-sm" />
+      <select name="place" class="w-100 rounded-lg">
+          {#each places as place}
+              <option value={place.placeId}>{place.name} ({place.location.name})</option>
+          {/each} 
+      </select>
     </div>
     <div class="flex w-full gap-3 justify-between">
       <label for="detail">รายละเอียด</label>

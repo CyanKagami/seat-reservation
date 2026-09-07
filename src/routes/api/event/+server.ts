@@ -1,10 +1,11 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { addFile } from "$lib/scripts/s3";
-import { updateAllAttributes, fetchAllData, addDataUniqueId } from "$lib/scripts/dynamo";
+import { updateAllAttributes, fetchAllData, addDataUniqueId, fetchData } from "$lib/scripts/dynamo";
 import type { Event } from "$lib/type/event";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import type { GoogleUser } from "$lib/type/googleUser";
+import type { Place } from "$lib/type/place"
 
 
 interface EventFormData {
@@ -23,7 +24,7 @@ interface EventFormData {
     eventId?: string
 }
 
-function formatData(data:EventFormData): Event {
+async function formatData(data:EventFormData){
     let event:Event = {
         date: {},
         "register-date": {}
@@ -37,7 +38,7 @@ function formatData(data:EventFormData): Event {
 
     event.name = data.name
     event.creatorId = data.creatorId
-    event.place = data.place
+    event.place = await fetchData('places', {placeId: data.place}) as Place
     event.detail = data.detail
     if (data.timetable) event.timetable = JSON.parse(data.timetable)
     event.condition = data.condition
@@ -49,7 +50,7 @@ function formatData(data:EventFormData): Event {
 export const POST: RequestHandler = async ({request }) => {
     let data:EventFormData = Object.fromEntries(await request.formData()) as unknown as EventFormData
     let processData:Event = {} as Event
-    console.log(data)
+
     let picture = data.img as File
     if (picture)
     {
@@ -59,9 +60,8 @@ export const POST: RequestHandler = async ({request }) => {
     delete data.img
     processData = {
         ...processData,
-        ...formatData(data)
+        ...(await formatData(data))
     }
-    console.log(processData)
     await addDataUniqueId("events", processData,'eventId')
     return json(
         {
@@ -90,7 +90,6 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 export const PATCH: RequestHandler = async ({request}) => {
     let data:EventFormData = Object.fromEntries(await request.formData()) as unknown as EventFormData
     let processData:Event = {} as Event
-    console.log(data)
     let picture = data.img as File
     if (picture)
     {
@@ -100,9 +99,8 @@ export const PATCH: RequestHandler = async ({request}) => {
     delete data.img
     processData = {
         ...processData,
-        ...formatData(data)
+        ...(await formatData(data))
     }
-    console.log(processData)
     await updateAllAttributes("events", {eventId: processData.eventId}, processData)
     return json(
         {

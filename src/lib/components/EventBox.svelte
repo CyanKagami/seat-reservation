@@ -1,8 +1,9 @@
 <script lang='ts'>
-  import { setContext, untrack } from "svelte";
-  import {formatThaiDateTimeShort} from "$lib/scripts/formatTime"
+    import { setContext, untrack } from "svelte";
+    import {formatThaiDateTimeShort} from "$lib/scripts/formatTime"
+    import type {Event} from '$lib/type/event'
 
-    const {event} = $props()
+    const {event}: {event:Event} = $props()
 
     const date = untrack(()=>event.date)
     const start_date = new Date(date.start)
@@ -17,7 +18,7 @@
     </div>
     <div class="p-5">
         <h1 class="text-2xl font-semibold truncate">{event.name}</h1>
-        <p class="text-sm font-semibold">{formatThaiDateTimeShort(start_date, end_date)}:{event.place}</p>
+        <p class="text-sm font-semibold">{formatThaiDateTimeShort(start_date, end_date)}:{event.place.name} ({event.place.location.name})</p>
         <p class="text-sm text-gray-400">{event.host}</p>
         <a href="/event-info/{event.eventId}">
             <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200">Event Information</button>
