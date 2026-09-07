@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import type { SeatEditorState } from "../seatState.svelte";
+	import type { ZoneEditorState } from "../zoneState.svelte";
 	import { BOX_SIZE, GRID_SIZE } from "../constants";
 
-	let { state }: { state: SeatEditorState } = $props();
+	let { state }: { state: ZoneEditorState } = $props();
 
 	onMount(() => {
 		if (state.canvasElement) {
@@ -329,71 +329,7 @@
 				style="stroke-dasharray: 4;"
 			/>
 		{/if}
-
-		<!-- Live Line Seat Preview Layer -->
-		{#if state.isLineDrawing}
-			{#each state.previewLineSeats as pt}
-				<rect 
-					x={pt.x * state.scale + state.panX} 
-					y={pt.y * state.scale + state.panY} 
-					width={BOX_SIZE * state.scale} 
-					height={BOX_SIZE * state.scale} 
-					rx={1 * state.scale}
-					class="fill-indigo-400/50 stroke-indigo-600 stroke-1 pointer-events-none"
-					style="stroke-dasharray: 2;"
-				/>
-			{/each}
-		{/if}
-
-		{#if state.isArrayDrawing}
-			{#each state.previewArraySeats as pt}
-				<rect 
-					x={pt.x * state.scale + state.panX} 
-					y={pt.y * state.scale + state.panY} 
-					width={BOX_SIZE * state.scale} 
-					height={BOX_SIZE * state.scale} 
-					rx={1 * state.scale}
-					class="fill-emerald-400/50 stroke-emerald-600 stroke-1 pointer-events-none"
-					style="stroke-dasharray: 2;"
-				/>
-			{/each}
-		{/if}
-
-		<!-- Live Drag Preview for Environment Rectangle -->
-		{#if state.isRectDrawing && state.previewRect}
-			{@const p = state.previewRect}
-			<rect 
-				x={p.x * state.scale + state.panX} 
-				y={p.y * state.scale + state.panY} 
-				width={p.width * state.scale} 
-				height={p.height * state.scale} 
-				rx={2 * state.scale}
-				class="fill-slate-300/40 stroke-slate-600 stroke-2 pointer-events-none"
-				style="stroke-dasharray: 4;"
-			/>
-		{/if}
-
-		<!-- Live Drag Preview for Environment Circle -->
-		{#if state.isCircleDrawing && state.previewCircle}
-			{@const p = state.previewCircle}
-			{@const screenX = p.x * state.scale + state.panX}
-			{@const screenY = p.y * state.scale + state.panY}
-			{@const screenWidth = p.width * state.scale}
-			{@const screenHeight = p.height * state.scale}
-			{@const cx = screenX + screenWidth / 2}
-			{@const cy = screenY + screenHeight / 2}
-			{@const rx = screenWidth / 2}
-			{@const ry = screenHeight / 2}
-			<ellipse 
-				cx={cx} 
-				cy={cy} 
-				rx={rx} 
-				ry={ry} 
-				class="fill-slate-300/40 stroke-slate-600 stroke-2 pointer-events-none"
-				style="stroke-dasharray: 4;"
-			/>
-		{/if}
-
+		
 		<!-- Live Drag Preview for Polygon -->
 		{#if state.isPolygonDrawing && state.previewPolygonSvgPoints}
 			<polyline 

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ToolConfig } from '$lib/components/seat-editor/config/tools';
-	import type { ToolType } from '$lib/components/seat-editor/types';
+	import type { ToolConfig } from '$lib/components/zone-editor/config/tools';
+	import type { ToolType } from '$lib/components/zone-editor/types';
 
 	let { tool, activeTool, onSelect }: {
 		tool: ToolConfig;
@@ -27,25 +27,6 @@
 		<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M6 3c-2 0-3 2-3 4 0 5 8 9 8 14 0 0 3-1 3-3s-2-3-4-3-3 2-3 2"/>
 		</svg>
-	{:else if tool.icon === 'add-square'}
-		<div class="w-3.5 h-3.5 bg-slate-800 rounded-xs"></div>
-	{:else if tool.icon === 'add-line'}
-		<div class="flex gap-0.5 items-center">
-			<div class="w-1 h-3 bg-slate-800"></div>
-			<div class="w-1 h-3 bg-slate-800"></div>
-			<div class="w-1 h-3 bg-slate-800"></div>
-		</div>
-	{:else if tool.icon === 'add-array'}
-		<div class="grid grid-cols-2 gap-0.5">
-			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
-			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
-			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
-			<div class="w-1.5 h-1.5 bg-slate-800 rounded-xs"></div>
-		</div>
-	{:else if tool.icon === 'add-rect'}
-		<div class="w-4 h-3 border-2 border-slate-800 rounded-xs"></div>
-	{:else if tool.icon === 'add-circle'}
-		<div class="w-4 h-4 border-2 border-slate-800 rounded-full"></div>
 	{:else if tool.icon === 'add-polygon'}
 		<svg xmlns="http://www.w3.org/2000/svg" width="20" height="16" viewBox="0 0 17 14" fill="none">
 		<path d="M12.2715 1.47852L15.9385 5.14551L14.0996 11.5801L6.11328 13.46L0.568359 9.30078L2.87402 0.539062L12.2715 1.47852Z" stroke="black" stroke-width="1.5"/>

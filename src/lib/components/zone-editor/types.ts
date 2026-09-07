@@ -1,4 +1,4 @@
-export type ToolType = 'pointer' | 'lasso' | 'add-square' | 'add-line' | 'add-array'| 'add-rect' | 'add-circle' | 'add-polygon';
+export type ToolType = 'pointer' | 'lasso' | 'add-polygon';
 export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
 
 export interface CanvasObject {

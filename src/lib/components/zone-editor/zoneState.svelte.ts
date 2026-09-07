@@ -2,14 +2,10 @@ import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
 import type { Point, Rect, ToolType, CanvasObject } from "./types";
 import { toolRegistry } from "./tools";
-import type { LineToolStrategy } from "./tools/LineTool";
-import type { ArrayToolStrategy } from "./tools/ArrayTool";
-import type { CircleToolStrategy } from "./tools/CircleTool";
-import type { RectToolStrategy } from "./tools/RectTool";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
 import { decode, encode } from "@msgpack/msgpack";
 
-export class SeatEditorState {
+export class ZoneEditorState {
 	locationId = $state("v_123");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
@@ -69,43 +65,6 @@ export class SeatEditorState {
 	}
 
 	private rafPending = false;
-
-	// Call strategy calculation directly inside reactivity derivations
-	previewLineSeats = $derived.by<Point[]>(() => {
-		if (!this.isLineDrawing) return [];
-		const lineTool = toolRegistry['add-line'] as LineToolStrategy;
-		return lineTool.calculateLineSeats(this.lineStart, this.lineEnd, this);
-	});
-
-	previewArraySeats = $derived.by<Point[]>(() => {
-		if (!this.isArrayDrawing) return [];
-		const arrayTool = toolRegistry['add-array'] as ArrayToolStrategy;
-		return arrayTool.calculateArraySeats(this.arrayStart, this.arrayEnd, this);
-	});
-
-	// Live unscaled rectangle bounds derived during mouse drag
-	previewRect = $derived.by<Rect | null>(() => {
-		if (!this.isRectDrawing) return null;
-		const rectTool = toolRegistry['add-rect'] as RectToolStrategy;
-		return rectTool.calculateRectBounds(
-			this.rectStart,
-			this.rectEnd,
-			this.isShiftPressed,
-			this
-		);
-	});
-
-	// --- Add to Derived Properties ---
-	previewCircle = $derived.by<Rect | null>(() => {
-		if (!this.isCircleDrawing) return null;
-		const circleTool = toolRegistry['add-circle'] as CircleToolStrategy;
-		return circleTool.calculateCircleBounds(
-			this.circleStart,
-			this.circleEnd,
-			this.isShiftPressed,
-			this
-		);
-	});
 
 	// --- Add State Fields ---
 	isPolygonDrawing = $state(false);

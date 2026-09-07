@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { SeatEditorState } from "../seatState.svelte";
+	import type { ZoneEditorState } from "../zoneState.svelte";
 
-	let { state }: { state: SeatEditorState } = $props();
+	let { state }: { state: ZoneEditorState } = $props();
 
 	let selectedObjects = $derived(
 		state.objects.filter((o) => state.selectedIds.has(o.id))

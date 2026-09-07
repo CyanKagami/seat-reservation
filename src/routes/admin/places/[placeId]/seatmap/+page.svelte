@@ -1,12 +1,14 @@
 <script lang="ts">
 	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
 	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
+  import type { Place } from "$lib/type/place.js";
 	import { onMount, tick } from "svelte";
 	let { params } = $props();
 	let seatState: SeatEditorState | undefined = $state();
 	let isLoading = $state(true);
+	let place:Place = $state({} as Place)
 	onMount(async () => {
-		fetch(`/api/place/layout?placeId=${params.placeId}`, {
+		await fetch(`/api/place/layout?placeId=${params.placeId}`, {
 			method: 'GET',
 			credentials:'include'
 		})
@@ -21,6 +23,16 @@
 		.catch((err) => {
 			alert(err);
 		})
+		place = await fetch(`/api/place/${params.placeId}`, {
+			method: 'GET',
+			credentials:'include'
+		})
+		.then((response) => {
+			return response.json()
+		})
+		.then(async (data) => {
+			return data.body.data
+		})
 	})
 </script>
 {#if isLoading}
@@ -28,4 +40,4 @@
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {/if}
-<SeatEditor placeId={params.placeId} bind:state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
+<SeatEditor place={place} bind:state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
