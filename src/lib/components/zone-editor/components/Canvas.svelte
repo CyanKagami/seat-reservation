@@ -76,7 +76,6 @@
 							{isOverlapping 
 								? (isSelected ? 'fill-red-400 stroke-red-700 ring-2 ring-red-500' : 'fill-red-200 stroke-red-500') 
 								: statusClasses}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 					/>
 				<!-- 1. env-rect -->
 				{:else if obj.type === 'env-rect'}
@@ -92,7 +91,6 @@
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 					/>
 
 				<!-- 2. env-circle -->
@@ -108,7 +106,6 @@
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 					/>
 
 				<!-- 3. env-polygon -->
@@ -121,7 +118,6 @@
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 					/>
 
 				<!-- 4. env-icon-polygon -->
@@ -140,7 +136,6 @@
 							style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 							class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 								{isSelected ? 'stroke-indigo-600' : 'stroke-slate-500 hover:opacity-90'}"
-							onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 						/>
 
 					<!-- Centered Icon & Label Render -->

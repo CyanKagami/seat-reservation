@@ -6,20 +6,22 @@
     const {params} = $props();
     let data: Place = $state({} as Place);
     let locations: CampusLocation[] = $state([])
-    onMount(() => {
-        fetchPageData()
+    onMount(async () => {
+        await fetchPageData()
     })
-    function fetchPageData(){
-        fetch(`/api/place/${params.placeId}`, {method: 'GET' , credentials: 'include'})
+    async function fetchPageData(){
+        let place = await fetch(`/api/place/${params.placeId}`, {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
         .then((result) => {
-            data = result.body.data;
+            return result.body.data;
         })
-        fetch("/api/location", {method: 'GET' , credentials: 'include'})
+        let location = await fetch("/api/location", {method: 'GET' , credentials: 'include'})
         .then((res) => res.json())
         .then((data) => {
-            locations = data.body.data;
+            return data.body.data;
         })
+        data = place;
+        locations = location;
     }
     let isCreatePopupOpen = $state(false)
     let imageFile = $state<File | null>(null);
