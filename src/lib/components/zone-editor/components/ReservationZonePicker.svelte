@@ -11,14 +11,65 @@
 		zone = {},
 		selectedZoneId = $bindable(""),
 		padding = 40,
+		width = "100%",
+		height = "100%",
+		className = "",
 		onZoneSelect
 	}: {
 		objects: CanvasObject[];
 		zone: { [key: string]: Zone };
 		selectedZoneId?: string;
 		padding?: number;
+		width?: string;
+		height?: string;
+		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
 	} = $props();
+
+	// Robustly extracts vertices for all object shapes (polygons, flat point arrays, rects, circles)
+	function getObjectPoints(obj: CanvasObject): Point[] {
+		if (obj.points && Array.isArray(obj.points) && obj.points.length > 0) {
+			const raw = obj.points;
+			let pts: Point[] = [];
+
+			if (typeof raw[0] === "number") {
+				for (let i = 0; i < raw.length; i += 2) {
+					if (raw[i] !== undefined && raw[i + 1] !== undefined) {
+						pts.push({ x: Number(raw[i]), y: Number(raw[i + 1]) });
+					}
+				}
+			} else if (typeof raw[0] === "object" && raw[0] !== null) {
+				pts = (raw as any[]).map((p) => ({
+					x: Number(p.x ?? 0),
+					y: Number(p.y ?? 0)
+				}));
+			}
+
+			if (pts.length > 0) {
+				const minX = Math.min(...pts.map((p) => p.x));
+				const minY = Math.min(...pts.map((p) => p.y));
+				const objX = obj.x ?? 0;
+				const objY = obj.y ?? 0;
+
+				if (objX > 0 && minX < objX / 2) {
+					return pts.map((p) => ({ x: p.x + objX, y: p.y + objY }));
+				}
+				return pts;
+			}
+		}
+
+		const x = obj.x ?? 0;
+		const y = obj.y ?? 0;
+		const w = obj.width ?? 100;
+		const h = obj.height ?? 100;
+
+		return [
+			{ x, y },
+			{ x: x + w, y },
+			{ x: x + w, y: y + h },
+			{ x, y: y + h }
+		];
+	}
 
 	// --- 1. Contour Union Helper (Exact 2D Rect Boundary Merging) ---
 	function getMergedSeatBoundary(seats: CanvasObject[], seatPadding: number = 3): Point[][] {
@@ -96,7 +147,7 @@
 			.join(" ");
 	}
 
-	// --- 2. Largest Space / Pole of Inaccessibility Algorithm ---
+	// --- 2. Pole of Inaccessibility / Visual Center Algorithm ---
 	function isPointInPolygon(px: number, py: number, poly: Point[]): boolean {
 		let inside = false;
 		for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -180,9 +231,9 @@
 		return bestPoint;
 	}
 
-	// --- 3. Environment Shapes (Background / Decor Context) ---
+	// --- 3. Environment Shapes (Includes Polygons) ---
 	let envObjects = $derived(
-		objects.filter((o) => o.type.startsWith("env-") && o.type !== "env-polygon")
+		objects.filter((o) => o.type.startsWith("env-"))
 	);
 
 	// --- 4. Group Seats into Active Zones & Standalone Unavailable Zone ---
@@ -203,12 +254,11 @@
 				const isAvailable = (obj.metadata?.status ?? "available") === "available";
 
 				if (!isAvailable) {
-					// 1. All unavailable seats form their own global zone
 					const uId = "zone-unavailable";
 					if (!groups[uId]) {
 						groups[uId] = {
 							id: uId,
-							name: "ไม่ว่าง / Unavailable",
+							name: "ไม่ว่าง / Reserved",
 							color: "#090d16",
 							isUnavailableZone: true,
 							seats: []
@@ -216,7 +266,6 @@
 					}
 					groups[uId].seats.push(obj);
 				} else if (obj.metadata?.zone) {
-					// 2. Available seats stay in their respective zones
 					const zId = obj.metadata.zone;
 					if (!groups[zId]) {
 						groups[zId] = {
@@ -271,7 +320,7 @@
 		});
 	});
 
-	// --- 5. Dynamic Responsive ViewBox Calculation ---
+	// --- 5. Dynamic ViewBox (Calculated across all object points) ---
 	let viewBox = $derived.by(() => {
 		let minX = Infinity,
 			minY = Infinity,
@@ -280,7 +329,7 @@
 
 		const allVisualPoints: Point[] = [];
 		envObjects.forEach((e) => {
-			allVisualPoints.push({ x: e.x, y: e.y }, { x: e.x + e.width, y: e.y + e.height });
+			allVisualPoints.push(...getObjectPoints(e));
 		});
 		zones.forEach((z) => {
 			allVisualPoints.push(...z.allPoints);
@@ -306,61 +355,83 @@
 	}
 </script>
 
-<div class="relative w-full h-full min-h-[400px] bg-white rounded-xl overflow-hidden shadow-lg p-2 select-none flex flex-col">
-	<svg viewBox={viewBox} class="w-full h-full flex-1">
-		<!-- LAYER 1: Environment Objects (Matched Canvas Style) -->
+<!-- Arbitrary Dimensions Responsive Container -->
+<div
+	class="relative bg-white rounded-xl overflow-hidden shadow-lg p-2 select-none flex items-center justify-center touch-manipulation {className}"
+	style="width: {width}; height: {height};"
+>
+	<svg
+		viewBox={viewBox}
+		preserveAspectRatio="xMidYMid meet"
+		class="w-full h-full block max-w-full max-h-full"
+	>
+		<!-- LAYER 1: Environment Objects -->
 		<g class="environment-layer">
 			{#each envObjects as obj (obj.id)}
-				{@const cx = obj.x + obj.width / 2}
-				{@const cy = obj.y + obj.height / 2}
+				{@const pts = getObjectPoints(obj)}
+				{@const ptsString = pts.map((p) => `${p.x},${p.y}`).join(" ")}
+				{@const minX = Math.min(...pts.map((p) => p.x))}
+				{@const maxX = Math.max(...pts.map((p) => p.x))}
+				{@const minY = Math.min(...pts.map((p) => p.y))}
+				{@const maxY = Math.max(...pts.map((p) => p.y))}
+				{@const w = maxX - minX}
+				{@const h = maxY - minY}
+				{@const cx = minX + w / 2}
+				{@const cy = minY + h / 2}
+				{@const fillColor = obj.metadata?.color ?? '#dcdcd6'}
 
-				{#if obj.type === 'env-circle'}
+				{#if obj.type === 'env-polygon' || obj.type === 'env-icon-polygon' || (obj.points && obj.points.length > 0)}
+					<polygon
+						points={ptsString}
+						style="fill: {fillColor};"
+						class="stroke-slate-600 stroke-[1.5px]"
+					/>
+				{:else if obj.type === 'env-circle'}
 					<ellipse
 						cx={cx}
 						cy={cy}
-						rx={obj.width / 2}
-						ry={obj.height / 2}
-						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+						rx={w / 2}
+						ry={h / 2}
+						style="fill: {fillColor};"
 						class="stroke-slate-600 stroke-[1.5px]"
 					/>
 				{:else}
-					<!-- Rect and Icon-Polygon Shapes -->
 					<rect
-						x={obj.x}
-						y={obj.y}
-						width={obj.width}
-						height={obj.height}
+						x={minX}
+						y={minY}
+						width={w}
+						height={h}
 						rx={2}
-						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+						style="fill: {fillColor};"
 						class="stroke-slate-600 stroke-[1.5px]"
 					/>
 				{/if}
 
-				<!-- Canvas-Style Target/Stage Icon and Centered Label -->
+				<!-- Canvas Target/Stage Icon & Centered Label Overlay -->
 				<foreignObject
-					x={obj.x}
-					y={obj.y}
-					width={obj.width}
-					height={obj.height}
-					class="pointer-events-none"
+					x={cx - 75}
+					y={cy - 30}
+					width={150}
+					height={60}
+					class="pointer-events-none overflow-visible"
 				>
 					<div class="w-full h-full flex flex-col items-center justify-center p-1 text-slate-800">
-							{#if obj.iconType === 'toilet'}
-								<svg class="w-5 h-5 stroke-slate-800 fill-none" viewBox="0 0 24 24" stroke-width="1.8">
-									<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
-								</svg>
-							{:else if obj.iconType === 'entrance'}
-								<svg class="w-5 h-5 fill-slate-800" viewBox="0 0 24 24">
-									<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
-								</svg>
-							{:else if obj.iconType === 'stage'}
-								<svg class="w-5 h-5 stroke-slate-800 fill-none" viewBox="0 0 24 24" stroke-width="1.8">
-									<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-								</svg>
-							{/if}
+						{#if obj.iconType === 'toilet'}
+							<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
+								<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
+							</svg>
+						{:else if obj.iconType === 'entrance'}
+							<svg class="w-5 h-5 fill-slate-800 mb-0.5" viewBox="0 0 24 24">
+								<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
+							</svg>
+						{:else if obj.iconType === 'stage' || obj.type === 'env-icon-polygon' || obj.type === 'env-polygon'}
+							<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
+								<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+							</svg>
+						{/if}
 
 						{#if obj.label}
-							<span class="text-[11px] font-semibold text-slate-800 leading-tight">
+							<span class="text-[11px] font-semibold text-slate-800 leading-tight text-center">
 								{obj.label}
 							</span>
 						{/if}
@@ -369,7 +440,7 @@
 			{/each}
 		</g>
 
-		<!-- LAYER 2: Interactive Zones (Includes Standalone Unavailable Zone) -->
+		<!-- LAYER 2: Interactive Zones -->
 		<g class="zones-layer">
 			{#each zones as zone (zone.id)}
 				{@const isSelected = selectedZoneId === zone.id}
@@ -390,7 +461,7 @@
 			{/each}
 		</g>
 
-		<!-- LAYER 3: Zone Badges (Rendered in Largest Open Space per Zone) -->
+		<!-- LAYER 3: Zone Badges -->
 		<g class="zone-labels-layer pointer-events-none">
 			{#each zones as zone (zone.id)}
 				{@const isSelected = selectedZoneId === zone.id}

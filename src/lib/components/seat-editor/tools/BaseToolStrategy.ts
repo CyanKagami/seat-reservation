@@ -44,7 +44,9 @@ export abstract class BaseToolStrategy {
 			y,
 			width: BOX_SIZE,
 			height: BOX_SIZE,
-			metadata: {}
+			metadata: {
+				status:'available'
+			}
 		};
 	}
 }

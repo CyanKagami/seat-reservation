@@ -181,7 +181,10 @@ export class ZoneEditorState {
 	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
-		if (!this.objects.every((o)=> {o.metadata && o.metadata.zone})){
+		if (!this.objects.filter((o) => o.type === 'seat').every((o)=> {
+			console.log(o.metadata)
+			return o.metadata && o.metadata.zone || o.metadata && o.metadata.status === 'unavailable'
+		})){
 			alert('กรุณากำหนดโซนให้ที่นั่งทุกที่')
 		}
 		else{

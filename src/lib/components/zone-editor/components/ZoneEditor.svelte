@@ -7,11 +7,13 @@
 	import type { Place } from "$lib/type/place";
 	import ReservationZonePicker from "./ReservationZonePicker.svelte";
 	import type { CanvasObject } from "../types";
+  import LeftSidebar from "./LeftSidebar.svelte";
+  import { GRID_SIZE } from "../constants";
 
 	let isCreateZonePopupOpen = $state(false)
 	let isPreview = $state(false);
 	let zoneName = $state('');
-	let zoneColor = $state('');
+	let zoneColor = $state('#ffffff');
 	let {zoneState, place, backLink} :  {zoneState:ZoneEditorState, place:Place, backLink:string} = $props();
 	let selectedZoneId = $state("");
 	let selectedSeatsInZone: CanvasObject[] = $state([]);
@@ -19,9 +21,6 @@
 	function handleZoneSelect(zoneId: string, seats: CanvasObject[]) {
 		selectedSeatsInZone = seats;
 		console.log(`Selected Zone ${zoneId} with ${seats.length} seats.`);
-	}
-	const onTogglePreview = () => {
-		isPreview = !isPreview;
 	}
 
 	function onZonePopupToggle(){
@@ -34,7 +33,7 @@
 			alert('ชื่อโซนซ้ำ')
 		}
 		zoneName = '';
-		zoneColor = '';
+		zoneColor = '#ffffff';
 		isCreateZonePopupOpen = false;
 	}
 </script>
@@ -42,23 +41,29 @@
 <svelte:body onkeydown={zoneState.handleKeyDown} onkeyup={zoneState.handleKeyUp} onblur={zoneState.handleWindowBlur} />
 
 <div class="fixed inset-0 top-20 flex flex-col bg-[#e8ecef] select-none text-slate-800 font-sans overflow-hidden">
-	<SubHeader state={zoneState} {backLink} {place} togglePreview={onTogglePreview}/>
+	<SubHeader state={zoneState} {backLink} {place} bind:isPreview={isPreview}/>
 	<Toolbar state={zoneState} />
 
 	<div class="flex-1 flex overflow-hidden">
-		<!-- <LeftSidebar /> -->
+		<LeftSidebar zoneState={zoneState} onOpenPopup={onZonePopupToggle}/>
 		
 		{#if isPreview}
-			<div class="w-full h-[450px]">
-				<ReservationZonePicker
+		<div class="w-full h-full flex-1 flex items-center justify-center">
+			<ReservationZonePicker
 					objects={zoneState.objects}
 					zone={zoneState.zones}
 					bind:selectedZoneId
 					onZoneSelect={handleZoneSelect}
+					width={zoneState.gridWidth * GRID_SIZE + 'px'}
+					height={zoneState.gridHeight * GRID_SIZE + 'px'}
 				/>
-			</div>
+		</div>
+				
 		{:else}
+
 			<Canvas state={zoneState} />
+
+		
 		{/if}
 		<RightSidebar zoneState={zoneState} onOpenPopup={onZonePopupToggle}/>
 	</div>
