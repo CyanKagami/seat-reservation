@@ -1,5 +1,5 @@
-export type ToolType = 'pointer' | 'lasso' | 'add-polygon';
-export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon' | 'env-organizer-polygon';
+export type ToolType = 'pointer' | 'lasso';
+export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
 
 export interface CanvasObject {
 	id: string;

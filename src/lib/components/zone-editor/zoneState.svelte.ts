@@ -181,7 +181,12 @@ export class ZoneEditorState {
 	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
-		await this.uploadToAPI()
+		if (!this.objects.every((o)=> {o.metadata && o.metadata.zone})){
+			alert('กรุณากำหนดโซนให้ที่นั่งทุกที่')
+		}
+		else{
+			await this.uploadToAPI()
+		}
 	}
 
 	async uploadToAPI(apiEndpoint = '/api/place/layout') {
@@ -196,7 +201,6 @@ export class ZoneEditorState {
 		});
 		const formData = new FormData();
 		formData.append('layoutFile', file);
-		formData.append('placeId', this.locationId);
 		formData.append('eventId', this.eventId);
 
 		try {
