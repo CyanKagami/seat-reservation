@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import type { ZoneEditorState } from "../zoneState.svelte";
-	import { BOX_SIZE, GRID_SIZE } from "../constants";
-
+	import { GRID_SIZE } from "../constants";
 	let { state }: { state: ZoneEditorState } = $props();
 
 	onMount(() => {
@@ -59,8 +58,6 @@
 					{@const statusClasses = 
 						status === 'unavailable'
 							? (isSelected ? 'fill-stone-900 stroke-stone-900 ring-2 ring-indigo-400' : 'fill-stone-700 stroke-stone-600')
-							: status === 'held'
-								? (isSelected ? 'fill-amber-300 stroke-amber-600 ring-2 ring-indigo-400' : 'fill-amber-200 stroke-amber-500 hover:fill-amber-300')
 								: (isSelected ? 'fill-indigo-300 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
 
 					<rect 
@@ -69,6 +66,7 @@
 						width={screenWidth} 
 						height={screenHeight} 
 						role="button"
+						onmousedown={(e) => state.handleSeatMouseDown(obj, e)}
 						tabindex="0"
 						rx={1 * state.scale}
 						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
@@ -76,6 +74,7 @@
 							{isOverlapping 
 								? (isSelected ? 'fill-red-400 stroke-red-700 ring-2 ring-red-500' : 'fill-red-200 stroke-red-500') 
 								: statusClasses}"
+						style={obj.metadata && obj.metadata.zone && state.zones[obj.metadata.zone] ? `fill: ${state.zones[obj.metadata.zone].color}; stroke:unset;` : ''}
 					/>
 				<!-- 1. env-rect -->
 				{:else if obj.type === 'env-rect'}
@@ -208,21 +207,6 @@
 						onmousedown={state.handleSelectionBoundsMouseDown}
 					/>
 
-					<line 
-						x1={handleCenterX} 
-						y1={screenY - 4} 
-						x2={handleCenterX} 
-						y2={handleCenterY} 
-						class="stroke-indigo-500 stroke-1 pointer-events-none"
-					/>
-
-					<circle 
-						cx={handleCenterX} 
-						cy={handleCenterY} 
-						r={6} 
-						class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing transition-transform pointer-events-auto"
-						onmousedown={state.handleRotateStart}
-					/>
 				</g>
 			{:else}
 				<!-- Multi-Object Selection: Axis-Aligned Bounding Box (AABB) -->
@@ -244,64 +228,9 @@
 					onmousedown={state.handleSelectionBoundsMouseDown}
 				/>
 
-				<line 
-					x1={handleCenterX} 
-					y1={screenMinY - 4} 
-					x2={handleCenterX} 
-					y2={handleCenterY} 
-					class="stroke-indigo-500 stroke-1 pointer-events-none"
-				/>
 
-				<circle 
-					cx={handleCenterX} 
-					cy={handleCenterY} 
-					r={6} 
-					class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing transition-transform pointer-events-auto"
-					onmousedown={state.handleRotateStart}
-				/>
 			{/if}
 		{/if}
-
-		<!-- 3. Top-level Handles Layer (Rendered OVER Selection Bounds) -->
-		{#each state.objects as obj (obj.id)}
-			{#if state.selectedIds.has(obj.id) && obj.type === 'env-icon-polygon' && obj.points}
-				{@const screenX = obj.x * state.scale + state.panX}
-				{@const screenY = obj.y * state.scale + state.panY}
-				{@const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length}
-				{@const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length}
-				{@const centerScreenX = screenX + centerRelX * state.scale}
-				{@const centerScreenY = screenY + centerRelY * state.scale}
-
-				<g transform="rotate({obj.rotation ?? 0}, {centerScreenX}, {centerScreenY})">
-					{#each obj.points as pt, idx}
-						{@const nextIdx = (idx + 1) % obj.points.length}
-						{@const nextPt = obj.points[nextIdx]}
-						{@const vx = screenX + pt.x * state.scale}
-						{@const vy = screenY + pt.y * state.scale}
-						{@const mx = screenX + ((pt.x + nextPt.x) / 2) * state.scale}
-						{@const my = screenY + ((pt.y + nextPt.y) / 2) * state.scale}
-
-						<!-- Midpoint Handle (Add Point) -->
-						<circle 
-							cx={mx} 
-							cy={my} 
-							r={4 * state.scale} 
-							class="fill-indigo-300 stroke-indigo-600 stroke-1 cursor-pointer opacity-70 hover:opacity-100 pointer-events-auto"
-							onmousedown={(e) => state.addVertexAtMidpoint(obj.id, idx, e)}
-						/>
-
-						<!-- Vertex Corner Handle (Move Point) -->
-						<circle 
-							cx={vx} 
-							cy={vy} 
-							r={6 * state.scale} 
-							class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing pointer-events-auto"
-							onmousedown={(e) => state.handleVertexMouseDown(obj.id, idx, e)}
-						/>
-					{/each}
-				</g>
-			{/if}
-		{/each}
 
 		<!-- Marquee Box Selection Preview -->
 		{#if state.isBoxSelecting && state.marqueeRect}

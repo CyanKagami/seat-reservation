@@ -1,18 +1,20 @@
 import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
-import type { Point, Rect, ToolType, CanvasObject } from "./types";
+import type { Point, Rect, ToolType, CanvasObject, Zone } from "./types";
 import { toolRegistry } from "./tools";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
 import { decode, encode } from "@msgpack/msgpack";
 
 export class ZoneEditorState {
-	locationId = $state("v_123");
+	locationId = $state("");
+	eventId = $state("");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
 	isSaving = $state(false);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
+	zones = $state<{[key: string]: Zone;}>({})
 	copiedObjects = $state<CanvasObject[]>([]);
 	selectedIds = $state<Set<string>>(new Set());
 	activeTool = $state<ToolType>('pointer');
@@ -60,8 +62,9 @@ export class ZoneEditorState {
 	circleEnd = $state<Point>({ x: 0, y: 0 });
 	isShiftPressed = $state(false);
 
-	constructor(locationId:string) {
+	constructor(locationId:string, eventId:string) {
 		this.locationId = locationId;
+		this.eventId = eventId;
 	}
 
 	private rafPending = false;
@@ -146,26 +149,6 @@ export class ZoneEditorState {
 		return overlaps;
 	});
 
-	moveSquareOnOutOfBound(gridWidth: number, gridHeight: number) {
-		const maxX = gridWidth * GRID_SIZE - BOX_SIZE;
-		const maxY = gridHeight * GRID_SIZE - BOX_SIZE;
-		this.objects = untrack(() =>
-			this.objects.map(o => {
-				if (o.type === 'seat') {
-					const s = o;
-					if (s.x > maxX || s.y > maxY) {
-						return {
-							...s,
-							x: Math.max(0, Math.min(maxX, s.x)),
-							y: Math.max(0, Math.min(maxY, s.y))
-						} as CanvasObject;
-					}
-				}
-				return o;
-			})
-		);
-	}
-
 	isPointInPolygon(point: Point, polygon: Point[]): boolean {
 		let inside = false;
 		for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -214,9 +197,10 @@ export class ZoneEditorState {
 		const formData = new FormData();
 		formData.append('layoutFile', file);
 		formData.append('placeId', this.locationId);
+		formData.append('eventId', this.eventId);
 
 		try {
-			const res = await fetch("/api/place/layout", {
+			const res = await fetch("/api/event/layout", {
 				method: "PUT",
 				body: formData
 			});
@@ -242,6 +226,7 @@ export class ZoneEditorState {
 				gridWidth: this.gridWidth,
 				gridHeight: this.gridHeight,
 			},
+			zones:$state.snapshot(this.zones),
 			// Strip Svelte 5 reactive proxy wrappers before binary encoding
 			objects: $state.snapshot(this.objects)
 		};
@@ -286,6 +271,21 @@ export class ZoneEditorState {
 		} catch (err) {
 			console.error("Failed to parse MessagePack layout file:", err);
 		}
+	}
+
+	createZone = ({name, color}:{name:string, color:string}) => {
+		if (this.zones[name]) return null;
+		this.zones[name] = {color};
+		return this.zones[name];
+	}
+
+	assignZone = (zoneId:number) => {
+		this.objects.forEach((obj) => {
+			if (this.selectedIds.has(obj.id)) {
+				zoneId
+			}
+			return obj;
+		});
 	}
 
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
@@ -364,34 +364,6 @@ export class ZoneEditorState {
 
 		return worldX >= 0 && worldX <= canvasWidth && worldY >= 0 && worldY <= canvasHeight;
 	}
-
-	// --- Vertex Interaction Handlers ---
-	handleVertexMouseDown = (objId: string, index: number, event: MouseEvent) => {
-		event.stopPropagation();
-		if (this.isSaving) return;
-		this.activeVertexDrag = { objId, index };
-	};
-
-	addVertexAtMidpoint = (objId: string, index: number, event: MouseEvent) => {
-		event.stopPropagation();
-		const obj = this.objects.find((o) => o.id === objId);
-		if (!obj || !obj.points) return;
-
-		const nextIdx = (index + 1) % obj.points.length;
-		const p1 = obj.points[index];
-		const p2 = obj.points[nextIdx];
-
-		const midpoint = {
-			x: (p1.x + p2.x) / 2,
-			y: (p1.y + p2.y) / 2
-		};
-
-		const newPoints = [...obj.points];
-		newPoints.splice(index + 1, 0, midpoint);
-
-		this.objects = this.objects.map((o) => (o.id === objId ? { ...o, points: newPoints } : o));
-		this.activeVertexDrag = { objId, index:index + 1};
-	};
 
 	// --- Add inside SeatEditorState class ---
 
@@ -585,89 +557,116 @@ export class ZoneEditorState {
 		);
 	}
 
-	// Start rotation interaction when user clicks rotation handle
-	handleRotateStart = (event: MouseEvent) => {
-		if (this.isSaving) return;
-		if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
+	// Generic MouseDown handler for seats AND environment rectangles
+		handleSeatMouseDown = (obj: CanvasObject, event: MouseEvent) => {
+
 			event.stopPropagation();
-
-			this.isRotating = true;
-
-			// Snapshot initial positions and rotations
-			this.initialPositions = new Map();
-			this.objects.forEach((obj) => {
-				if (this.selectedIds.has(obj.id)) {
-					this.initialStates.set(obj.id, {
-						x: obj.x,
-						y: obj.y,
-						rotation: obj.rotation ?? 0
-					});
+			if (this.isSaving) return;
+			if (event.button !== 0) return;
+			if (obj.metadata && obj.metadata.status === 'unavailable') return;
+			const hasModifier = event.shiftKey || event.metaKey || event.ctrlKey;
+	
+			if (hasModifier) {
+				const next = new Set(this.selectedIds);
+				if (next.has(obj.id)) {
+					next.delete(obj.id);
+				} else {
+					next.add(obj.id);
 				}
-			});
+				this.selectedIds = next;
+			} else {
+				if (!this.selectedIds.has(obj.id)) {
+					this.selectedIds = new Set([obj.id]);
+				}
+			}
+		};
+	
 
-			// Save group center pivot in WORLD coordinates
-			const bounds = this.selectionBounds;
-			const worldCenterX = (bounds.minX + bounds.maxX) / 2;
-			const worldCenterY = (bounds.minY + bounds.maxY) / 2;
-			this.rotateCenter = { x: worldCenterX, y: worldCenterY };
 
-			// Calculate initial mouse angle relative to group center screen position
-			const rect = this.canvasElement.getBoundingClientRect();
-			const mouseX = event.clientX - rect.left;
-			const mouseY = event.clientY - rect.top;
 
-			const screenCenterX = worldCenterX * this.scale + this.panX;
-			const screenCenterY = worldCenterY * this.scale + this.panY;
+	// Start rotation interaction when user clicks rotation handle
+	// handleRotateStart = (event: MouseEvent) => {
+	// 	if (this.isSaving) return;
+	// 	if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
+	// 		event.stopPropagation();
 
-			this.rotateStartAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
-	};
+	// 		this.isRotating = true;
 
-	removeSelected = () => {
-		if (this.selectedIds.size === 0) return;
-		this.objects = this.objects.filter(o => !this.selectedIds.has(o.id));
-		this.selectedIds = new Set();
-	};
+	// 		// Snapshot initial positions and rotations
+	// 		this.initialPositions = new Map();
+	// 		this.objects.forEach((obj) => {
+	// 			if (this.selectedIds.has(obj.id)) {
+	// 				this.initialStates.set(obj.id, {
+	// 					x: obj.x,
+	// 					y: obj.y,
+	// 					rotation: obj.rotation ?? 0
+	// 				});
+	// 			}
+	// 		});
 
-	copySelected = () => {
-		if (this.selectedIds.size === 0) return;
-		this.copiedObjects = this.objects
-			.filter(o => this.selectedIds.has(o.id))
-			.map(o => ({ ...o }));
+	// 		// Save group center pivot in WORLD coordinates
+	// 		const bounds = this.selectionBounds;
+	// 		const worldCenterX = (bounds.minX + bounds.maxX) / 2;
+	// 		const worldCenterY = (bounds.minY + bounds.maxY) / 2;
+	// 		this.rotateCenter = { x: worldCenterX, y: worldCenterY };
 
-		console.log(this.copiedObjects)
-	};
+	// 		// Calculate initial mouse angle relative to group center screen position
+	// 		const rect = this.canvasElement.getBoundingClientRect();
+	// 		const mouseX = event.clientX - rect.left;
+	// 		const mouseY = event.clientY - rect.top;
 
-	pasteSquares = () => {
-		if (this.copiedObjects.length === 0) return;
+	// 		const screenCenterX = worldCenterX * this.scale + this.panX;
+	// 		const screenCenterY = worldCenterY * this.scale + this.panY;
 
-		const nextBatch: CanvasObject[] = [];
-		const nextSelected = new Set<string>();
+	// 		this.rotateStartAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
+	// };
 
-		this.copiedObjects.forEach((src, idx) => {
-			const newId = `${src.type}_${this.objects.length + idx + 1}`;
-			const targetX = src.x + GRID_SIZE * 2;
-			const targetY = src.y + GRID_SIZE * 2;
+	// removeSelected = () => {
+	// 	if (this.selectedIds.size === 0) return;
+	// 	this.objects = this.objects.filter(o => !this.selectedIds.has(o.id));
+	// 	this.selectedIds = new Set();
+	// };
 
-			nextBatch.push({
-				id: newId,
-				x: Math.max(0, Math.min(this.gridWidth * GRID_SIZE - BOX_SIZE, targetX)),
-				y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, targetY)),
-				type: src.type,
-				width: src.width,
-				height: src.height,
-				iconType:src.iconType,
-				label:src.label,
-				points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
-				rotation: src.rotation
-			});
-			nextSelected.add(newId);
-		});
+	// copySelected = () => {
+	// 	if (this.selectedIds.size === 0) return;
+	// 	this.copiedObjects = this.objects
+	// 		.filter(o => this.selectedIds.has(o.id))
+	// 		.map(o => ({ ...o }));
 
-		this.objects = [...this.objects, ...nextBatch];
-		console.log(this.objects)
-		this.selectedIds = nextSelected;
-		this.copiedObjects = nextBatch.map(s => ({ ...s }));
-	};
+	// 	console.log(this.copiedObjects)
+	// };
+
+	// pasteSquares = () => {
+	// 	if (this.copiedObjects.length === 0) return;
+
+	// 	const nextBatch: CanvasObject[] = [];
+	// 	const nextSelected = new Set<string>();
+
+	// 	this.copiedObjects.forEach((src, idx) => {
+	// 		const newId = `${src.type}_${this.objects.length + idx + 1}`;
+	// 		const targetX = src.x + GRID_SIZE * 2;
+	// 		const targetY = src.y + GRID_SIZE * 2;
+
+	// 		nextBatch.push({
+	// 			id: newId,
+	// 			x: Math.max(0, Math.min(this.gridWidth * GRID_SIZE - BOX_SIZE, targetX)),
+	// 			y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, targetY)),
+	// 			type: src.type,
+	// 			width: src.width,
+	// 			height: src.height,
+	// 			iconType:src.iconType,
+	// 			label:src.label,
+	// 			points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
+	// 			rotation: src.rotation
+	// 		});
+	// 		nextSelected.add(newId);
+	// 	});
+
+	// 	this.objects = [...this.objects, ...nextBatch];
+	// 	console.log(this.objects)
+	// 	this.selectedIds = nextSelected;
+	// 	this.copiedObjects = nextBatch.map(s => ({ ...s }));
+	// };
 
 	// Generic MouseDown handler for seats AND environment rectangles
 	handleObjectMouseDown = (obj: CanvasObject, event: MouseEvent) => {
@@ -692,14 +691,14 @@ export class ZoneEditorState {
 		}
 
 		// Prepare unified drag
-		this.isDragging = true;
-		this.dragStart = { x: event.clientX, y: event.clientY };
-		this.initialPositions.clear();
-		this.objects.forEach(o => {
-			if (this.selectedIds.has(o.id)) {
-				this.initialPositions.set(o.id, { x: o.x, y: o.y });
-			}
-		});
+		// this.isDragging = true;
+		// this.dragStart = { x: event.clientX, y: event.clientY };
+		// this.initialPositions.clear();
+		// this.objects.forEach(o => {
+		// 	if (this.selectedIds.has(o.id)) {
+		// 		this.initialPositions.set(o.id, { x: o.x, y: o.y });
+		// 	}
+		// });
 	};
 
 	handleSelectionBoundsMouseDown = (event: MouseEvent) => {
@@ -710,16 +709,16 @@ export class ZoneEditorState {
 		// Prevent event from bubbling to the canvas background
 		event.stopPropagation();
 
-		this.isDragging = true;
-		this.dragStart = { x: event.clientX, y: event.clientY };
+		// this.isDragging = true;
+		// this.dragStart = { x: event.clientX, y: event.clientY };
 
-		// Store initial positions for all currently selected objects
-		this.initialPositions = new Map();
-		this.objects.forEach((obj) => {
-			if (this.selectedIds.has(obj.id)) {
-				this.initialPositions.set(obj.id, { x: obj.x, y: obj.y });
-			}
-		});
+		// // Store initial positions for all currently selected objects
+		// this.initialPositions = new Map();
+		// this.objects.forEach((obj) => {
+		// 	if (this.selectedIds.has(obj.id)) {
+		// 		this.initialPositions.set(obj.id, { x: obj.x, y: obj.y });
+		// 	}
+		// });
 	};
 
 	handleCanvasMouseDown = (event: MouseEvent) => {
@@ -952,12 +951,7 @@ export class ZoneEditorState {
 	};
 
 	handleKeyDown = (event: KeyboardEvent) => {
-				if (this.isSaving) return;
-		if (event.key === 'Delete' || event.key === 'Backspace') {
-			event.preventDefault();
-			this.removeSelected();
-			return;
-		}
+		if (this.isSaving) return;
 		if (event.key === 'Shift') {
 			this.isShiftPressed = true;
 		}
@@ -972,14 +966,6 @@ export class ZoneEditorState {
 		}
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
-
-		if (event.key.toLowerCase() === 'c') {
-			event.preventDefault();
-			this.copySelected();
-		} else if (event.key.toLowerCase() === 'v') {
-			event.preventDefault();
-			this.pasteSquares();
-		}
 	};
 
 	handleKeyUp = (event: KeyboardEvent) => {

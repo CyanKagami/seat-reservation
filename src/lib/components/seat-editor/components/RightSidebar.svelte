@@ -32,7 +32,7 @@
 	let currentColor = $derived(
 		isShapeSelection && selectedObjects.every((o) => o.metadata?.color === selectedObjects[0].metadata?.color)
 			? selectedObjects[0].metadata?.color ?? "#e2e8f0"
-			: "#e2e8f0"
+			: "มีหลายค่าเลือกอยู่"
 	);
 
 	function handleStatusChange(e: Event) {
@@ -83,7 +83,6 @@
 						{#if !currentStatus}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
 						<option value="available">ว่าง (Available)</option>
 						<option value="unavailable">ไม่พร้อมใช้งาน (Unavailable)</option>
-						<option value="held">จองชั่วคราว (Held)</option>
 					</select>
 				</div>
 
@@ -117,7 +116,7 @@
 						<input
 							type="color"
 							id="shape-color"
-							value={currentColor}
+							value={currentColor === 'มีหลายค่าเลือกอยู่' ? '#ffffff': currentColor}
 							oninput={handleColorChange}
 							class="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
 						/>

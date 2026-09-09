@@ -2,7 +2,7 @@
   	import type { Place } from "$lib/type/place";
 	import type { ZoneEditorState } from "../zoneState.svelte";
 
-	let { state, backLink, place  }: { state: ZoneEditorState, backLink:string, place:Place } = $props();
+	let { state, backLink, place, togglePreview }: { state: ZoneEditorState, backLink:string, place:Place, togglePreview: () => void } = $props();
 </script>
 
 <div class="bg-[#f0f0f0] px-6 py-2.5 border-b border-slate-300 flex items-center justify-between">
@@ -12,6 +12,7 @@
 		</a>
 		<h1 class="text-base font-bold text-slate-900">แผนผังของ {place.name ? `${place.name} (${place.location.name})` : ''}</h1>
 	</div>
+	<button onclick={togglePreview}>Preview</button>
 	<button 
         id="save-button"
 		onclick={state.handleSaveButtonClick}

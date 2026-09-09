@@ -25,7 +25,7 @@
 		})
 		.then(async (data) => {
 			if (place){
-				seatState = new ZoneEditorState(place.placeId);
+				seatState = new ZoneEditorState(place.placeId, params.eventId);
 				seatState.loadFromMessagePack(data);
 			}
 		})
@@ -40,6 +40,6 @@
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {:else}
-<ZoneEditor place={place} state={seatState} backLink={`/admin/events/${params.eventId}`}></ZoneEditor>
+<ZoneEditor place={place} zoneState={seatState} backLink={`/admin/events/${params.eventId}`}></ZoneEditor>
 {/if}
 

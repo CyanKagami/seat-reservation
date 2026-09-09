@@ -3,11 +3,6 @@ import { BaseToolStrategy } from './BaseToolStrategy';
 
 import { PointerToolStrategy } from './PointerTool';
 import { LassoToolStrategy } from './LassoTool';
-import { SingleSeatToolStrategy } from './SingleSeatTool';
-import { LineToolStrategy } from "./LineTool";
-import { ArrayToolStrategy } from './ArrayTool';
-import { RectToolStrategy } from './RectTool';
-import { CircleToolStrategy } from './CircleTool';
 import { PolygonToolStrategy } from './PolygonTool';
 
 export const toolRegistry: Record<ToolType, BaseToolStrategy> = {

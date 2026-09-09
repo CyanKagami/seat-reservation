@@ -17,6 +17,10 @@ export interface CanvasObject {
 	}
 }
 
+export interface Zone {
+	color:string;
+}
+
 export interface Point {
 	x: number;
 	y: number;
