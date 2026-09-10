@@ -263,7 +263,7 @@ export class ZoneEditorState {
 	loadFromMessagePack(buffer: ArrayBuffer) {
 		try {
 			const data = decode(buffer) as any;
-
+			console.log(data)
 			if (data.canvas) {
 				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
 				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
@@ -272,9 +272,13 @@ export class ZoneEditorState {
 			if (Array.isArray(data.objects)) {
 				this.objects = data.objects;
 				this.selectedIds.clear();
-				this.centerGrid();
 				//this.clearHistory?.();
 			}
+			if (data.zones) {
+				this.zones = data.zones;
+				//this.clearHistory?.();
+			}
+			this.centerGrid();
 		} catch (err) {
 			console.error("Failed to parse MessagePack layout file:", err);
 		}

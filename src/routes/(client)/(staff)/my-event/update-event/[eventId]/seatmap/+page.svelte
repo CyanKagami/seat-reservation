@@ -16,7 +16,7 @@
             return (await response.json()).body[0]
         })
 		place = event.place
-		await fetch(`/api/place/layout?placeId=${place.placeId}`, {
+		await fetch(`/api/event/layout?eventId=${params.eventId}`, {
 			method: 'GET',
 			credentials:'include'
 		})
@@ -40,6 +40,6 @@
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {:else}
-<ZoneEditor place={place} zoneState={seatState} backLink={`/admin/events/${params.eventId}`}></ZoneEditor>
+<ZoneEditor place={place} zoneState={seatState} backLink={`/my-event/update-event/${params.eventId}`}></ZoneEditor>
 {/if}
 

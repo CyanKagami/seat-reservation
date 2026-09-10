@@ -101,7 +101,7 @@ export async function readFileAsByteArray(bucketName:string, fileKey:string) {
     return new Uint8Array();
   } catch (error) {
     console.error("Error reading file from S3:", error);
-    return new Uint8Array();
+    throw error
   }
 }
 

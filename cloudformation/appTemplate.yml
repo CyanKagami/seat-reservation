@@ -12,6 +12,17 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  EventLayoutBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-event-layout
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+
   PlaceLayoutBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -78,4 +89,20 @@ Resources:
       KeySchema:
         - AttributeName: locationId
           KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  ReservationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: reservation
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+        - AttributeName: seatId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+        - AttributeName: seatId
+          KeyType: RANGE
       BillingMode: PAY_PER_REQUEST

@@ -99,7 +99,6 @@
 						{#if !currentCharacteristic}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
 						<option value="standard">มาตรฐาน (Standard)</option>
 						<option value="vip">วีไอพี (VIP)</option>
-						<option value="accessible">สำหรับรถเข็น (Accessible)</option>
 						<option value="restricted">มุมมองจำกัด (Restricted View)</option>
 					</select>
 				</div>

@@ -121,4 +121,11 @@
             </div>
         </div>
     </form>
+     <h2 class="text-center text-xl">แผนผังที่นั่ง</h2>
+     <div class="flex flex-col items-center">
+        <a href="/admin/places/{params.placeId}/seatmap">
+            <button class="w-full max-w-32 px-3 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg">แก้ไขแผนผัง</button>
+        </a>
+        
+     </div>
 </div>
