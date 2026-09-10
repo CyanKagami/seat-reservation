@@ -61,7 +61,8 @@
         let data = new FormData();
         if (e.target) {
             let formData = new FormData(e.target as HTMLFormElement);
-            if (imageFile) formData.append("picture", imageFile, imageFile?.name);
+            if (imageFile) {formData.append("picture", imageFile, imageFile?.name)}
+            else {formData.append("picture", '')}
             data = formData;
             data.append("placeId", params.placeId)
         }

@@ -66,7 +66,6 @@ async function formatData(data:PlaceFormData, creator:User) {
         description:data.description,
         name: data.name,
         location: await fetchData('locations', {locationId: data.location}),
-        layoutURL:data.layoutURL
     } as Place
 
     return place
@@ -94,7 +93,7 @@ export const POST: RequestHandler = async ({request, cookies}) => {
     if (picture)
     {
         let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        pictureURL = await addFile("k-seat-place-picture", `${Date.now()}-${uuid4()}.${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
+        pictureURL = await addFile("k-seat-place-picture", `${Date.now()}-${uuid4()}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
     }
 
     let uniqueId = await addDataUniqueId("places", {
@@ -139,11 +138,12 @@ export const PATCH: RequestHandler = async ({request, cookies}) => {
 
     let data:PlaceFormData = Object.fromEntries(await request.formData()) as unknown as PlaceFormData
     let processData:Place = {} as Place
+    console.log('processData: ',data)
     let picture = data.picture as File
     if (picture)
     {
         let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        processData.picture = await addFile("k-seat-place-picture", `${data.placeId}.${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
+        processData.picture = await addFile("k-seat-place-picture", `${data.placeId}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
     }
     delete data.picture
     processData = {
