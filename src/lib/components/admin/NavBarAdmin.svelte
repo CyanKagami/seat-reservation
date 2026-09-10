@@ -1,6 +1,8 @@
 <script lang='ts'>
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
     import { userStore } from "$lib/store/auth.svelte";
+    const {url} = $props();
     const user = $derived(userStore.currentUser);
     function handleLogout() {
         userStore.logout();
@@ -10,9 +12,11 @@
 <div class="w-full h-20 py-5 px-10 bg-pale flex justify-between fixed top-0 z-50">
     <a href="/" class="text-4xl font-semibold">K-<span class="text-accent">SEAT</span></a>
     <div class="flex gap-10 items-center">
+        {#if page.url.pathname !== '/'}
+            <a href="/" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">กลับหน้าผู้ใช้</a>
+        {/if}
         <a href="/admin/users" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Users</a>
         <a href="/admin/places" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Places</a>
-        <a href="/admin/events" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Events</a>
         <div>
             <div class="ring ring-secondary h-12 w-12 rounded-full hover:ring-4 flex items-center justify-center group relative">
             <img src={user?.picture} alt="your profile" class="object-cover h-full w-full rounded-full" referrerpolicy="no-referrer">

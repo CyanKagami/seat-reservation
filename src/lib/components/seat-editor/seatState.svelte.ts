@@ -384,7 +384,8 @@ export class SeatEditorState {
 			width: w,
 			height: h,
 			points: initialPoints,
-			rotation: 0
+			rotation: 0,
+			metadata: {}
 		};
 
 		this.objects = [...this.objects, newObj];
@@ -699,13 +700,13 @@ export class SeatEditorState {
 				iconType:src.iconType,
 				label:src.label,
 				points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
-				rotation: src.rotation
+				rotation: src.rotation,
+				metadata: src.metadata
 			});
 			nextSelected.add(newId);
 		});
 
 		this.objects = [...this.objects, ...nextBatch];
-		console.log(this.objects)
 		this.selectedIds = nextSelected;
 		this.copiedObjects = nextBatch.map(s => ({ ...s }));
 	};

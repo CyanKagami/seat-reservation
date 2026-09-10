@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Resources for K-Seat
+
+Resources:
+  EventPictureBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-event-picture
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  EventLayoutBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-event-layout
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+
+  PlaceLayoutBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-place-layout
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  PlacePictureBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: k-seat-place-picture
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: users
+      AttributeDefinitions:
+        - AttributeName: googleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: googleId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: events
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  PlacesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: places
+      AttributeDefinitions:
+        - AttributeName: placeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: placeId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  LoactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: locations
+      AttributeDefinitions:
+        - AttributeName: locationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: locationId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  ReservationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: reservation
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+        - AttributeName: seatId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+        - AttributeName: seatId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST

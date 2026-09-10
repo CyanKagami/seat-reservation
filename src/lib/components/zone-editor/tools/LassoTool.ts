@@ -49,6 +49,7 @@ export class LassoToolStrategy extends BaseToolStrategy {
 		const nextSelected = new Set(hasModifier ? state.selectedIds : []);
 
 		state.objects.forEach((o) => {
+			if (o.type !== 'seat' || (o.metadata && o.metadata.status === 'unavailable')) return;
 			const center = { x: o.x + o.width / 2, y: o.y + o.height / 2 };
 			if (this.pointInPolygon(center, polyCanvas)) {
 				nextSelected.add(o.id);

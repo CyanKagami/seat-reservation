@@ -1,4 +1,4 @@
-export type ToolType = 'pointer' | 'lasso' | 'add-polygon';
+export type ToolType = 'pointer' | 'lasso';
 export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
 
 export interface CanvasObject {
@@ -15,6 +15,10 @@ export interface CanvasObject {
 	metadata?:{
 	[key: string]: any;
 	}
+}
+
+export interface Zone {
+	color:string;
 }
 
 export interface Point {

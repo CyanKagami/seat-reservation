@@ -17,15 +17,17 @@
 		<span class="text-slate-700 font-medium text-sm">ขนาด</span>
 		<input 
 			type="number" 
-			bind:value={state.gridWidth} 
+			value={state.gridWidth} 
 			min={BOX_SIZE * 2}
+			readonly
 			max={3000}
 			class="w-12 h-7 px-1 text-center bg-white border border-slate-400 rounded focus:outline-none font-medium text-sm"
 		/>
 		<span class="text-slate-500 font-bold text-sm">✕</span>
 		<input 
 			type="number" 
-			bind:value={state.gridHeight} 
+			value={state.gridHeight}
+			readonly
 			min={BOX_SIZE * 2}
 			max={3000}
 			class="w-12 h-7 px-1 text-center bg-white border border-slate-400 rounded focus:outline-none font-medium text-sm"
@@ -56,32 +58,6 @@
 				onSelect={(id) => state.activeTool = id} 
 			/>
 		{/each}
-	</div>
-
-	<!-- Action Shortcuts -->
-	<div class="flex items-center gap-1 ml-2">
-		<button 
-			onclick={state.copySelected}
-			disabled={state.selectedIds.size === 0}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
-		>
-			Copy
-		</button>
-		<button 
-			onclick={state.pasteSquares}
-			disabled={state.copiedObjects.length === 0}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
-		>
-			Paste
-		</button>
-		<button 
-            id="delete-button"
-			onclick={state.removeSelected}
-			disabled={state.selectedIds.size === 0}
-			class="px-2 h-7 bg-red-100 border border-red-300 text-red-700 rounded hover:bg-red-200 disabled:opacity-40 text-[11px] font-semibold"
-		>
-			Delete
-		</button>
 	</div>
 
 	<!-- Zoom Controls -->

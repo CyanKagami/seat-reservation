@@ -34,17 +34,7 @@ export const GET: RequestHandler = async ({request, cookies, url}) => {
 				'Content-Length': fileContent.byteLength.toString(),
 				'Cache-Control': 'no-cache'
             }
-        }
-        )
-        return json(
-            {
-                statusCode: 200,
-                body: {
-                    "message": "OK",
-                    "layout": fileContent.buffer.slice(fileContent.byteOffset, fileContent.byteOffset + fileContent.byteLength)
-                }
-            }
-        )
+        })
     }
     catch(err) {
         console.log(err);

@@ -1,6 +1,6 @@
 import { BaseToolStrategy } from './BaseToolStrategy';
 import type { ToolContext } from './types';
-import type { Point } from '../types';
+import type { CanvasObject, Point } from '../types';
 
 export class PolygonToolStrategy extends BaseToolStrategy {
 	readonly id = 'add-polygon';
@@ -84,14 +84,15 @@ export class PolygonToolStrategy extends BaseToolStrategy {
 				y: p.y - minY
 			}));
 
-			const newPolygon = {
+			const newPolygon:CanvasObject = {
 				id: `env_poly_${state.objects.length + 1}`,
 				type: 'env-polygon' as const,
 				x: minX,
 				y: minY,
 				width,
 				height,
-				points: relativePoints
+				points: relativePoints,
+				metadata:{}
 			};
 
 			state.objects = [...state.objects, newPolygon];

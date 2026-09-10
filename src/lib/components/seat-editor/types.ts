@@ -12,8 +12,8 @@ export interface CanvasObject {
 	points?:Point[];
 	iconType?: string;
 	label?: string;
-	metadata?:{
-	[key: string]: any;
+	metadata:{
+		[key: string]: any;
 	}
 }
 
