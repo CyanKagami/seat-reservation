@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
     import { userStore } from "$lib/store/auth.svelte";
-    const {url} = $props();
     const user = $derived(userStore.currentUser);
     function handleLogout() {
         userStore.logout();
