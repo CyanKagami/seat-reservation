@@ -12,6 +12,7 @@
             users = data.body.items;
             token.push(data.body.nextToken);
         })
+        console.log(users)
     })
 
     async function fetchNextPage() {

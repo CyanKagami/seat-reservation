@@ -29,7 +29,9 @@ export const POST: RequestHandler = async ({request, cookies, url}) => {
         );
     }
     try {
+        
         let newAttributes = await updateAllAttributes("users", { googleId }, {googleId, role})
+        console.log(newAttributes);
         return json(
             {
                 statusCode: 200,

@@ -23,9 +23,6 @@ export const GET: RequestHandler = async ({request, cookies, url}) => {
     let page = url.searchParams.get('nextToken') || undefined;
     try {
         let {items, nextToken} = (await paginateReadData("users", 25, page))
-        for (let item of items) {
-            delete item.googleId; // Remove googleId from the response
-        }
         return json(
             {
                 statusCode: 200,

@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
     // Verify the token signature
     const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
+    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
         return json(
             {
                 statusCode: 403,
@@ -27,6 +27,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
     try {
         let data = await fetchAllData("places");
+        console.log("Place Data:", data)
         console.log("Fetched data from 'places' table:", data);
         return json(
             {

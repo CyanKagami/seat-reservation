@@ -4,7 +4,7 @@
   import { userStore } from '$lib/store/auth.svelte';
 
 	let { children } = $props();
-
+	console.log(userStore.currentUser.role);
 </script>
 <div class="flex flex-col justify-center w-full font-inter my-20">
 
