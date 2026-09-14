@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 3-Service Lambda Architecture with Express.js
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - arm64
+    Timeout: 10
+
+Resources:
+  # Shared HTTP API Gateway instance
+  SharedApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendOrigin
+        AllowCredentials: true
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  # 1. Auth Service Lambda
+  AuthServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/auth/
+      Handler: lambda.handler
+      Events:
+        AuthApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/auth/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+
+  # 2. Seat Booking Service Lambda
+  BookingServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/booking/
+      Handler: lambda.handler
+      Events:
+        BookingApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /booking/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+
+  # 3. Core API Service Lambda
+  CoreApiServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/core/
+      Handler: lambda.handler
+      Events:
+        CoreApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+
+Parameters:
+  JwtSecret:
+    Type: String
+    NoEcho: true
+  GoogleClientId:
+    Type: String
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+  FrontendOrigin:
+    Type: String
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL for your API Gateway
+    Value: !Sub "https://${SharedApiGateway}.execute-api.${AWS::Region}.amazonaws.com"
