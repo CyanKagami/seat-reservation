@@ -22,7 +22,6 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-
   PlaceLayoutBucket:
     Type: AWS::S3::Bucket
     Properties:

@@ -2,26 +2,11 @@
   import ZoneChoosing from "$lib/components/ZoneChoosing.svelte";
   import ProgressBar from "$lib/components/reservation/ProgressBar.svelte";
   import EventRoom from "$lib/components/EventRoom.svelte";
-  import type { Event } from "$lib/type/event.js";
-  import { onMount } from "svelte";
   import { formatThaiDateTimeShort } from "$lib/scripts/formatTime";
+  import ReservationZonePicker from "$lib/components/zone-editor/components/ReservationZonePicker.svelte";
+  import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
 
-  let {params} = $props()
-  let event:Event = $state({} as Event)
-  let start_date = $state(new Date())
-  let end_date = $state(new Date())
-  onMount(async () => {
-        console.log("page", params.eventId)
-        event = await fetch(`/api/event/getFromId/${params.eventId}`, {
-            method: "GET",
-            credentials: 'include'
-        })
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-        start_date = new Date(event.date.start)
-        end_date = new Date(event.date.end)
-      })
+  let {data} = $props() 
     // state can be "zone", "seat" and "confirm"
     let status = $state("zone")
 
@@ -29,13 +14,15 @@
     let seat = $state("D2")
 </script>
 <div class="items-center flex flex-col gap-2 mt-10">
-  <h1 class="text-3xl font-semibold">{event.name || ""}</h1>
+  <h1 class="text-3xl font-semibold">{data.event.name}</h1>
   <ProgressBar status={status}></ProgressBar>
 
   {#if status === "zone"}
-    <ZoneChoosing></ZoneChoosing>
+  <div class="w-3xl bg-gray-200 h-auto py-10 self-center mt-4 flex flex-col gap-5 px-10">
+    <ReservationZonePicker objects={data.seatState.objects} zone={data.seatState.zones} onZoneSelect={(zoneId) => {zone = zoneId; status = "seat"}}></ReservationZonePicker>
+  </div>
   {:else if status === "seat"}
-    <EventRoom></EventRoom>
+    <ZoneSeatPicker seats={data.seatState.objects.filter((s) => s.metadata?.zoneId === zone)} onBack={() => {status = "zone"}}></ZoneSeatPicker>
   {:else}
     <div class="bg-gray-200 w-180 p-7 rounded-lg flex flex-col items-center gap-7">
       <h1 class="font-semibold text-xl">สรุปข้อมูล</h1>
@@ -43,19 +30,19 @@
         <div class="w-1/2 flex flex-col justify-center items-center gap-1">
           <div class="grid grid-cols-2 w-full">
             <p>กิจกรรม</p>
-            <p>{event.name || ""}</p>
+            <p>{data.event.name}</p>
           </div>
           <div class="grid grid-cols-2 w-full">
             <p>วันที่จัดกิจกรรม</p>
-            <p>{formatThaiDateTimeShort(start_date, end_date) || ""}</p>
+            <p>{formatThaiDateTimeShort(new Date(data.event.date.start), new Date(data.event.date.end))}</p>
           </div>
           <div class="grid grid-cols-2 w-full">
             <p>สถานที่จัดกิจกรรม</p>
-            <p>{event.place || ""}</p>
+            <p>{data.event.place}</p>
           </div>
           <div class="grid grid-cols-2 w-full">
             <p>ผู้จัดกิจกรรม</p>
-            <p>{event.host || ""}</p>
+            <p>{data.event.host}</p>
           </div>
           <div class="w-full my-5">
             <p class="text-xl font-semibold">Zone {zone}, Seat {seat}</p>

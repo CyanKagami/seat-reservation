@@ -350,6 +350,11 @@
 	});
 
 	function handleZoneClick(zoneId: string, seats: CanvasObject[]) {
+		if (selectedZoneId === zoneId) {
+			selectedZoneId = "";
+			onZoneSelect?.("", []);
+			return;
+		}
 		selectedZoneId = zoneId;
 		onZoneSelect?.(zoneId, seats);
 	}
@@ -449,7 +454,7 @@
 				<path
 					d={zone.pathData}
 					style="fill: {isUnavailable ? '#090d16' : zone.color}; stroke: {isUnavailable ? '#1e293b' : isSelected ? '#ffffff' : zone.color};"
-					class="transition-all duration-200 
+					class="transition-all duration-200 outline-0 rounded-sm
 						{isUnavailable ? 'cursor-not-allowed fill-opacity-90 stroke-1' : 'cursor-pointer'}
 						{!isUnavailable && isSelected 
 							? 'fill-opacity-50 stroke-[3px] filter drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]' 

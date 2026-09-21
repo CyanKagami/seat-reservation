@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { userStore } from "$lib/store/auth.svelte";
+  import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
+import { userStore } from "$lib/store/auth.svelte";
   import type { Daytable } from "$lib/type/event";
   import type { Place } from "$lib/type/place";
   import { onMount } from "svelte";
@@ -8,8 +9,21 @@
     isValid: boolean;
     errors: string[];
   }
-
   let places:Place[] = $state([])
+  
+  interface DateTimeRange {
+    start: Date;
+    end: Date;
+  }
+  
+  let eventDate : DateTimeRange = $state({
+    start: new Date(),
+    end: new Date(Date.now() + 86400000 * 3)
+  });
+  let registerDate : DateTimeRange = $state({
+    start: new Date(),
+    end: new Date(Date.now() + 86400000 * 3)
+  });
 
   onMount(()=> {
     fetch('/api/place', {
@@ -183,6 +197,10 @@ function addDate() {
     let data = new FormData();
     if (e.target) {
       let formData = new FormData(e.target as HTMLFormElement);
+      formData.append("start", eventDate.start.toISOString());
+      formData.append("end", eventDate.end.toISOString());
+      formData.append("register-date-start", registerDate.start.toISOString());
+      formData.append("register-date-end", registerDate.end.toISOString());
       if (imageFile) formData.append("img", imageFile, imageFile?.name);
       formData.append("timetable", JSON.stringify(timetable));
       formData.append(
@@ -274,29 +292,18 @@ function addDate() {
       <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
       <input name="condition" class="w-100 rounded-sm" />
     </div>
+    
 
     <div class="flex w-full gap-3 justify-between items-center">
-      <label for="start">ช่วงเวลาจัดกิจกรรม</label>
+      <label>ช่วงเวลาจัดกิจกรรม</label>
       <div class="flex w-100 justify-between items-center">
-        <input type="datetime-local" name="start" class="w-45 rounded-sm" />
-        <p>-</p>
-        <input type="datetime-local" name="end" class="w-45 rounded-sm" />
+        <DateRangeSelector bind:value={eventDate}></DateRangeSelector>
       </div>
     </div>
     <div class="flex w-full gap-3 justify-between items-center">
-      <label for="start">เวลาเปิดลงทะเบียน</label>
+      <label>เวลาเปิดลงทะเบียน</label>
       <div class="w-100 flex justify-between items-center">
-        <input
-          type="datetime-local"
-          name="register-date-start"
-          class="w-45 rounded-sm"
-        />
-        <p>-</p>
-        <input
-          type="datetime-local"
-          name="register-date-end"
-          class="w-45 rounded-sm"
-        />
+        <DateRangeSelector bind:value={registerDate}></DateRangeSelector>
       </div>
     </div>
 

@@ -5,42 +5,34 @@
   import { onMount } from "svelte";
   import type { Event as MyEvent } from "$lib/type/event";
   import type { Place } from "$lib/type/place";
+  import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
+  let props: PageProps = $props();
+  let params = $derived(props.params);
+  let data = $derived(props.data);
 
-  let { params }: PageProps = $props();
-
-  let timetable:Daytable [] = $state([])
-  let event:MyEvent = $state({} as MyEvent)
-  let places: Place[] = $state([]);
-  let previewUrl = $state<string | null>(null);
-    onMount(async () => {
-        event = await fetch(`/api/event/getFromId/${params.eventId}`, {
-            method: "GET",
-            credentials: 'include'
-        })
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-        console.log(event)
-        if (event.timetable) {
-            timetable = event.timetable
-        }
-        if (event.picture) previewUrl = event.picture
-        console.log(previewUrl)
-      places = await fetch('/api/place', {
-        method:"GET",
-        credentials:'include'
-      })
-      .then((response) => response.json())
-      .then((data) => {
-        return data.body.data;
-      })
-    })
-
-
+  let event:MyEvent = $derived(data.event)
+  let places: Place[] = $derived(data.places);
+  let timetable:Daytable [] = $derived(data.event.timetable);
+  let previewUrl = $derived(data.event.picture);
+    
   interface ValidationResult {
   isValid: boolean;
   errors: string[];
   }
+
+    interface DateTimeRange {
+    start: Date;
+    end: Date;
+  }
+  
+  let eventDate : DateTimeRange = $derived({
+    start: new Date(event.date && event.date.start ? event.date.start : Date.now()),
+    end: new Date(event.date && event.date.end ? event.date.end : Date.now() + 86400000 * 3)
+  });
+  let registerDate : DateTimeRange = $derived({
+    start: new Date(event['register-date'] && event['register-date'].start ? event['register-date'].start : Date.now()),
+    end: new Date(event['register-date'] && event['register-date'].end ? event['register-date'].end : Date.now() + 86400000 * 3)
+  });
 
 
   let isSubmitting = $state(false);
@@ -183,6 +175,10 @@
     let data = new FormData()
     if (e.target) {
       let formData = new FormData(e.target as HTMLFormElement)
+      formData.append("start", eventDate.start.toISOString());
+      formData.append("end", eventDate.end.toISOString());
+      formData.append("register-date-start", registerDate.start.toISOString());
+      formData.append("register-date-end", registerDate.end.toISOString());
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
       formData.append("timetable",JSON.stringify(timetable))
       formData.append("creatorId", userStore.currentUser?.googleId ? userStore.currentUser?.googleId : "")
@@ -259,29 +255,18 @@
           <input name="condition" class="w-100 rounded-sm" value="{(event.condition ? event.condition : "")}">
         </div>
 
-         <div class="flex w-full gap-3 justify-between items-center">
-          <label for="start">ช่วงเวลาจัดกิจกรรม</label>
+        <div class="flex w-full gap-3 justify-between items-center">
+          <label>ช่วงเวลาจัดกิจกรรม</label>
           <div class="flex w-100 justify-between items-center">
-            <input type="datetime-local" name="start" class="w-45 rounded-sm"
-            value="{event.date && event.date.start ? event.date.start : ""}">
-            <p>-</p>
-            <input type="datetime-local" name="end" class="w-45 rounded-sm"
-            value="{event.date && event.date.end ? event.date.end : ""}">
+            <DateRangeSelector bind:value={eventDate}></DateRangeSelector>
           </div>
         </div>
         <div class="flex w-full gap-3 justify-between items-center">
-          <label for="start">เวลาเปิดลงทะเบียน</label>
+          <label>เวลาเปิดลงทะเบียน</label>
           <div class="w-100 flex justify-between items-center">
-             <input type="datetime-local" name="register-date-start" class="w-45 rounded-sm"
-             value="{event["register-date"] && event["register-date"].start ? event["register-date"].start : ""}">
-              <p>-</p>
-              <input type="datetime-local" name="register-date-end" class="w-45 rounded-sm"
-              value="{event["register-date"] && event["register-date"].end ? event["register-date"].end : ""}">
+            <DateRangeSelector bind:value={registerDate}></DateRangeSelector>
           </div>
-
         </div>
-
-  
     <div class="my-10">
     <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
 

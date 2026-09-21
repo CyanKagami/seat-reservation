@@ -50,7 +50,7 @@ async function formatData(data:EventFormData){
 export const POST: RequestHandler = async ({request }) => {
     let data:EventFormData = Object.fromEntries(await request.formData()) as unknown as EventFormData
     let processData:Event = {} as Event
-
+    console.log(data)
     let picture = data.img as File
     if (picture)
     {
