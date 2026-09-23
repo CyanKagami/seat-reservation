@@ -22,6 +22,11 @@ export class SeatEditorState {
 	activeTool = $state<ToolType>('pointer');
 	canvasElement = $state<HTMLDivElement | null>(null);
 
+	// Undo/Redo History
+	private static readonly MAX_HISTORY_DEPTH = 50;
+	history = $state<CanvasObject[][]>([]);
+	historyIndex = $state<number>(-1);
+
 	// Viewport State
 	panX = $state(0);
 	panY = $state(0);
@@ -66,6 +71,54 @@ export class SeatEditorState {
 
 	constructor(locationId:string) {
 		this.locationId = locationId;
+	}
+
+	// --- Undo/Redo History Management ---
+
+	canUndo = $derived(this.historyIndex > 0);
+	canRedo = $derived(this.historyIndex < this.history.length - 1);
+
+	commitHistory() {
+		const snapshot = $state.snapshot(this.objects) as CanvasObject[];
+
+		// Skip if identical to the current history entry
+		if (this.historyIndex >= 0) {
+			const current = this.history[this.historyIndex];
+			if (JSON.stringify(current) === JSON.stringify(snapshot)) return;
+		}
+
+		// Truncate any future entries (discard redo stack on new action)
+		const trimmed = this.history.slice(0, this.historyIndex + 1);
+		trimmed.push(snapshot);
+
+		// Enforce max depth
+		if (trimmed.length > SeatEditorState.MAX_HISTORY_DEPTH) {
+			trimmed.shift();
+			this.historyIndex = trimmed.length - 1;
+		} else {
+			this.historyIndex = trimmed.length - 1;
+		}
+
+		this.history = trimmed;
+	}
+
+	undo = () => {
+		if (!this.canUndo) return;
+		this.historyIndex--;
+		this.objects = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+		this.selectedIds = new Set();
+	};
+
+	redo = () => {
+		if (!this.canRedo) return;
+		this.historyIndex++;
+		this.objects = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+		this.selectedIds = new Set();
+	};
+
+	clearHistory() {
+		this.history = [];
+		this.historyIndex = -1;
 	}
 
 	private rafPending = false;
@@ -322,7 +375,8 @@ export class SeatEditorState {
 				this.objects = data.objects;
 				this.selectedIds.clear();
 				this.centerGrid();
-				//this.clearHistory?.();
+				this.clearHistory();
+				this.commitHistory();
 			}
 		} catch (err) {
 			console.error("Failed to parse MessagePack layout file:", err);
@@ -342,6 +396,7 @@ export class SeatEditorState {
 			}
 			return obj;
 		});
+		this.commitHistory();
 	}
 	// --- Add State Variables for Vertex Manipulation ---
 	activeVertexDrag = $state<{ objId: string; index: number } | null>(null);
@@ -390,6 +445,7 @@ export class SeatEditorState {
 
 		this.objects = [...this.objects, newObj];
 		this.selectedIds = new Set([newObj.id]);
+		this.commitHistory();
 	};
 
 	handleDragOver = (event: DragEvent) => {
@@ -433,6 +489,7 @@ export class SeatEditorState {
 
 		this.objects = this.objects.map((o) => (o.id === objId ? { ...o, points: newPoints } : o));
 		this.activeVertexDrag = { objId, index:index + 1};
+		this.commitHistory();
 	};
 
 	// --- Add inside SeatEditorState class ---
@@ -668,6 +725,7 @@ export class SeatEditorState {
 		if (this.selectedIds.size === 0) return;
 		this.objects = this.objects.filter(o => !this.selectedIds.has(o.id));
 		this.selectedIds = new Set();
+		this.commitHistory();
 	};
 
 	copySelected = () => {
@@ -714,6 +772,7 @@ export class SeatEditorState {
 		this.objects = [...this.objects, ...nextBatch];
 		this.selectedIds = nextSelected;
 		this.copiedObjects = nextBatch.map(s => ({ ...s }));
+		this.commitHistory();
 	};
 
 	// Generic MouseDown handler for seats AND environment rectangles
@@ -796,6 +855,7 @@ export class SeatEditorState {
 
 		const ctx = { state: this, event, screenPoint, canvasPoint };
 		toolRegistry[this.activeTool]?.onMouseDown?.(ctx);
+		this.commitHistory();
 	};
 
 	handleMouseMove = (event: MouseEvent) => {
@@ -987,6 +1047,7 @@ export class SeatEditorState {
 		this.isPanning = false;
 		this.isRotating = false;
 		this.isDragging = false;
+		this.commitHistory();
 	};
 
 	handleWheel = (event: WheelEvent) => {
@@ -1013,6 +1074,7 @@ export class SeatEditorState {
 			const polyTool = toolRegistry['add-polygon'] as PolygonToolStrategy;
 			if (event.key === 'Enter') {
 				polyTool.finishPolygon(this);
+				this.commitHistory();
 			} else if (event.key === 'Escape') {
 				polyTool.cancelPolygon(this);
 			}
@@ -1026,6 +1088,16 @@ export class SeatEditorState {
 		} else if (event.key.toLowerCase() === 'v') {
 			event.preventDefault();
 			this.pasteSquares();
+		} else if (event.key.toLowerCase() === 'z') {
+			event.preventDefault();
+			if (event.shiftKey) {
+				this.redo();
+			} else {
+				this.undo();
+			}
+		} else if (event.key.toLowerCase() === 'y') {
+			event.preventDefault();
+			this.redo();
 		}
 	};
 

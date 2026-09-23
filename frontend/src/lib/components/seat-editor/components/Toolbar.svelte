@@ -61,6 +61,23 @@
 	<!-- Action Shortcuts -->
 	<div class="flex items-center gap-1 ml-2">
 		<button 
+			onclick={state.undo}
+			disabled={!state.canUndo}
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			title="Undo (Ctrl+Z)"
+		>
+			Undo
+		</button>
+		<button 
+			onclick={state.redo}
+			disabled={!state.canRedo}
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			title="Redo (Ctrl+Y)"
+		>
+			Redo
+		</button>
+		<div class="w-px h-5 bg-slate-300 mx-1"></div>
+		<button 
 			onclick={state.copySelected}
 			disabled={state.selectedIds.size === 0}
 			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
