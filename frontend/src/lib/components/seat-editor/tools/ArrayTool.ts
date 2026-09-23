@@ -10,27 +10,37 @@ export class ArrayToolStrategy extends BaseToolStrategy {
 		const p1 = this.screenToCanvas(startScreen, state.panX, state.panY, state.scale);
 		const p2 = this.screenToCanvas(endScreen, state.panX, state.panY, state.scale);
 
-		const minX = Math.min(p1.x, p2.x);
-		const maxX = Math.max(p1.x, p2.x);
-		const minY = Math.min(p1.y, p2.y);
-		const maxY = Math.max(p1.y, p2.y);
+		const dx = p2.x - p1.x;
+		const dy = p2.y - p1.y;
+		const absDx = Math.abs(dx);
+		const absDy = Math.abs(dy);
 
 		const stride = BOX_SIZE + GAP;
-		const cols = (maxX - minX) < BOX_SIZE ? 1 : Math.floor((maxX - minX - BOX_SIZE) / stride) + 1;
-		const rows = (maxY - minY) < BOX_SIZE ? 1 : Math.floor((maxY - minY - BOX_SIZE) / stride) + 1;
+		const cols = absDx < BOX_SIZE ? 1 : Math.floor((absDx - BOX_SIZE) / stride) + 1;
+		const rows = absDy < BOX_SIZE ? 1 : Math.floor((absDy - BOX_SIZE) / stride) + 1;
+
+		const maxX = state.gridWidth * GRID_SIZE - BOX_SIZE;
+		const maxY = state.gridHeight * GRID_SIZE - BOX_SIZE;
 
 		const arraySeats: Point[] = [];
 
 		for (let r = 0; r < rows; r++) {
 			for (let c = 0; c < cols; c++) {
-				const posX = Math.max(0, Math.min(state.gridWidth * GRID_SIZE - BOX_SIZE, minX + c * stride));
-				const posY = Math.max(0, Math.min(state.gridHeight * GRID_SIZE - BOX_SIZE, minY + r * stride));
+				// Spawn relative to the starting point p1
+				const rawX = dx >= 0 ? p1.x + c * stride : p1.x - BOX_SIZE - c * stride;
+				const rawY = dy >= 0 ? p1.y + r * stride : p1.y - BOX_SIZE - r * stride;
 
-				const overlaps = state.objects.some(
-					o => o.type === 'seat' && Math.abs(o.x - posX) < BOX_SIZE && Math.abs(o.y - posY) < BOX_SIZE
+				const posX = Math.max(0, Math.min(maxX, rawX));
+				const posY = Math.max(0, Math.min(maxY, rawY));
+
+				const overlapsExisting = state.objects.some(
+					(o) => o.type === 'seat' && Math.abs(o.x - posX) < BOX_SIZE && Math.abs(o.y - posY) < BOX_SIZE
+				);
+				const overlapsBatch = arraySeats.some(
+					(s) => Math.abs(s.x - posX) < BOX_SIZE && Math.abs(s.y - posY) < BOX_SIZE
 				);
 
-				if (!overlaps) {
+				if (!overlapsExisting && !overlapsBatch) {
 					arraySeats.push({ x: posX, y: posY });
 				}
 			}
