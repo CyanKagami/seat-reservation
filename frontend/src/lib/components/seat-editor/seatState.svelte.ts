@@ -684,9 +684,13 @@ export class SeatEditorState {
 
 		const nextBatch: CanvasObject[] = [];
 		const nextSelected = new Set<string>();
-
+		const highestExistingId = this.objects.reduce((maxId, obj) => {
+			if (obj.type !== 'seat') return maxId;
+			const idNum = parseInt(obj.id.split('_')[1]);
+			return Math.max(maxId, idNum);
+		}, 0);
 		this.copiedObjects.forEach((src, idx) => {
-			const newId = `${src.type}_${this.objects.length + idx + 1}`;
+			const newId = `${src.type}_${highestExistingId + idx + 1}`;
 			const targetX = src.x + GRID_SIZE * 2;
 			const targetY = src.y + GRID_SIZE * 2;
 
@@ -705,7 +709,8 @@ export class SeatEditorState {
 			});
 			nextSelected.add(newId);
 		});
-
+		console.log("existing objects:", this.objects);
+		console.log("Pasting objects:", nextBatch);
 		this.objects = [...this.objects, ...nextBatch];
 		this.selectedIds = nextSelected;
 		this.copiedObjects = nextBatch.map(s => ({ ...s }));

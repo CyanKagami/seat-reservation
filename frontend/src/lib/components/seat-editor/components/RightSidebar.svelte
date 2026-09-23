@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { SeatEditorState } from "../seatState.svelte";
 
-	let { state }: { state: SeatEditorState } = $props();
+	let { state, onOpenPopup }: { state: SeatEditorState, onOpenPopup: () => void } = $props();
 
 	// ดึงรายการวัตถุที่กำลังถูกเลือก
 	let selectedObjects = $derived(
@@ -16,12 +16,6 @@
 		hasSelection && selectedObjects.every((o) => o.type !== "seat")
 	);
 
-	// ดึงค่าจาก obj.metadata
-	let currentStatus = $derived(
-		isSeatSelection && selectedObjects.every((o) => o.metadata?.status === selectedObjects[0].metadata?.status)
-			? selectedObjects[0].metadata?.status ?? "available"
-			: ""
-	);
 
 	let currentCharacteristic = $derived(
 		isSeatSelection && selectedObjects.every((o) => o.metadata?.characteristic === selectedObjects[0].metadata?.characteristic)
@@ -34,11 +28,6 @@
 			? selectedObjects[0].metadata?.color ?? "#e2e8f0"
 			: "มีหลายค่าเลือกอยู่"
 	);
-
-	function handleStatusChange(e: Event) {
-		const target = e.target as HTMLSelectElement;
-		state.updateSelectedObjectMetadata({ status: target.value });
-	}
 
 	function handleCharacteristicChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
@@ -71,25 +60,15 @@
 			<!-- คุณสมบัติของที่นั่ง -->
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label for="seat-status" class="text-xs font-medium text-slate-600 block">
-						สถานะที่นั่ง
-					</label>
-					<select
-						id="seat-status"
-						value={currentStatus}
-						onchange={handleStatusChange}
-						class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-					>
-						{#if !currentStatus}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
-						<option value="available">ว่าง (Available)</option>
-						<option value="unavailable">ไม่พร้อมใช้งาน (Unavailable)</option>
-					</select>
-				</div>
-
-				<div class="space-y-1.5">
-					<label for="seat-char" class="text-xs font-medium text-slate-600 block">
+				<div class="flex items-center justify-between gap-2">
+				<label for="seat-char" class="text-xs font-medium text-slate-600 block">
 						คุณลักษณะที่นั่ง
 					</label>
+					<button onclick={onOpenPopup}>
+						<svg class="h-3 fill-slate-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M352 128C352 110.3 337.7 96 320 96C302.3 96 288 110.3 288 128L288 288L128 288C110.3 288 96 302.3 96 320C96 337.7 110.3 352 128 352L288 352L288 512C288 529.7 302.3 544 320 544C337.7 544 352 529.7 352 512L352 352L512 352C529.7 352 544 337.7 544 320C544 302.3 529.7 288 512 288L352 288L352 128z"/></svg>
+					</button>
+				</div>
+					
 					<select
 						id="seat-char"
 						value={currentCharacteristic}

@@ -17,6 +17,20 @@ export interface CanvasObject {
 	}
 }
 
+export interface SeatMetadata {
+  zone: string;       // "Z1"
+  status: string;     // "available" (User customizable)
+  characteristic: string; // "Sofa" (Seat characteristic, User customizable)
+  row: string;        // "A" (User customizable)
+  seatNo: string;     // "12" (User customizable)
+  label: string;      // "A12" or "Z1-A12"
+  isManualRow?: boolean; // Flag if user explicitly locked this row
+}
+
+export interface EnvironmentMetadata {
+	color: string;      // "#FF0000"
+}
+
 export interface Point {
 	x: number;
 	y: number;

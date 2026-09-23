@@ -44,6 +44,6 @@
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {:else}
-<SeatEditor place={place} state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
+<SeatEditor place={place} seatState={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
 {/if}
 
