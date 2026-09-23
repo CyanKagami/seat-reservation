@@ -313,6 +313,74 @@ export class ZoneEditorState {
 			return obj;
 		});
 	}
+
+	autoLabelZone = (zoneName: string, overwriteManual: boolean = false) => {
+		if (!zoneName) return;
+		const ROW_TOLERANCE = BOX_SIZE / 2;
+		const zoneSeats = this.objects.filter(
+			(o) => o.type === 'seat' && o.metadata?.zone === zoneName
+		);
+
+		if (zoneSeats.length === 0) return;
+
+		// Sort all zone seats top-to-bottom (Y), then left-to-right (X)
+		const sorted = [...zoneSeats].sort((a, b) => a.y - b.y || a.x - b.x);
+
+		// Group into rows by Y proximity
+		const rows: CanvasObject[][] = [];
+		for (const seat of sorted) {
+			const matchingRow = rows.find(
+				(row) => Math.abs(seat.y - row[0].y) <= ROW_TOLERANCE
+			);
+			if (matchingRow) {
+				matchingRow.push(seat);
+			} else {
+				rows.push([seat]);
+			}
+		}
+
+		// Sort rows by top-to-bottom Y
+		rows.sort((r1, r2) => r1[0].y - r2[0].y);
+
+		// Sort each row left-to-right (X)
+		rows.forEach((row) => row.sort((a, b) => a.x - b.x));
+
+		// Helper to convert 0 -> A, 1 -> B, ..., 25 -> Z, 26 -> AA...
+		const getRowLetter = (index: number) => {
+			let str = '';
+			let num = index;
+			while (num >= 0) {
+				str = String.fromCharCode(65 + (num % 26)) + str;
+				num = Math.floor(num / 26) - 1;
+			}
+			return str;
+		};
+
+		// Assign labels to seats in objects
+		this.objects = this.objects.map((obj) => {
+			if (obj.type !== 'seat' || obj.metadata?.zone !== zoneName) return obj;
+			if (!overwriteManual && obj.metadata?.isManualLabel) return obj;
+
+			const rowIdx = rows.findIndex((r) => r.some((s) => s.id === obj.id));
+			if (rowIdx === -1) return obj;
+
+			const colIdx = rows[rowIdx].findIndex((s) => s.id === obj.id);
+			const rowLetter = getRowLetter(rowIdx);
+			const seatNumber = String(colIdx + 1);
+
+			return {
+				...obj,
+				metadata: {
+					...(obj.metadata || {}),
+					row: rowLetter,
+					seatNo: seatNumber,
+					label: `${rowLetter}${seatNumber}`,
+					isManualLabel: overwriteManual ? false : (obj.metadata?.isManualLabel ?? false)
+				}
+			};
+		});
+	};
+
 	// --- Add State Variables for Vertex Manipulation ---
 	activeVertexDrag = $state<{ objId: string; index: number } | null>(null);
 
@@ -574,7 +642,6 @@ export class ZoneEditorState {
 			event.stopPropagation();
 			if (this.isSaving) return;
 			if (event.button !== 0) return;
-			if (obj.metadata && obj.metadata.status === 'unavailable') return;
 			const hasModifier = event.shiftKey || event.metaKey || event.ctrlKey;
 	
 			if (hasModifier) {

@@ -17,6 +17,18 @@ export interface CanvasObject {
 	}
 }
 
+export interface ZoneSeatMetadata {
+	zone?: string;
+	status?: 'available' | 'unavailable' | string;
+	row?: string;
+	seatNo?: string;
+	label?: string;
+	isManualLabel?: boolean;
+	characteristic?: string;
+	color?: string;
+	[key: string]: any;
+}
+
 export interface Zone {
 	color:string;
 }

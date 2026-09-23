@@ -227,7 +227,7 @@
 								y={centerY}
 								text-anchor="middle"
 								dominant-baseline="central"
-								class="text-[10px] font-bold pointer-events-none tracking-tighter fill-slate-800"
+								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : 'fill-slate-800'}"
 							>
 								{seatLabel}
 							</text>

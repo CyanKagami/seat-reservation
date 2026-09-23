@@ -73,6 +73,10 @@
 				{#if obj.type === 'seat'}
 					{@const isOverlapping = state.overlappingIds.has(obj.id)}
 					{@const status = obj.metadata?.status ?? 'available'}
+					{@const zoneName = obj.metadata?.zone}
+					{@const hasZone = !!(zoneName && state.zones[zoneName])}
+					{@const zoneColor = hasZone && zoneName ? state.zones[zoneName].color : ''}
+					{@const seatLabel = obj.metadata?.label || (obj.metadata?.row ? `${obj.metadata.row}${obj.metadata.seatNo ?? ''}` : (obj.metadata?.seatNo ?? ''))}
 
 					<!-- Determine fill/stroke based on status and selection -->
 					{@const statusClasses = 
@@ -94,8 +98,22 @@
 							{isOverlapping 
 								? (isSelected ? 'fill-red-400 stroke-red-700 ring-2 ring-red-500' : 'fill-red-200 stroke-red-500') 
 								: statusClasses}"
-						style={obj.metadata && obj.metadata.zone && state.zones[obj.metadata.zone] ? `${isSelected? `fill:${darkenHexColor(state.zones[obj.metadata.zone].color, 0.3)};`: `fill:${state.zones[obj.metadata.zone].color};`} stroke:unset;` : ''}
+						style={hasZone && status !== 'unavailable' && !isOverlapping ? `${isSelected ? `fill:${darkenHexColor(zoneColor, 0.3)};` : `fill:${zoneColor};`} stroke:unset;` : ''}
 					/>
+
+					{#if seatLabel}
+						<text
+							x={centerX}
+							y={centerY}
+							text-anchor="middle"
+							dominant-baseline="central"
+							transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
+							class="font-bold pointer-events-none select-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : 'fill-slate-800'}"
+							style="font-size: {Math.max(7, Math.min(11, 8.5 * state.scale))}px;"
+						>
+							{seatLabel}
+						</text>
+					{/if}
 				<!-- 1. env-rect -->
 				{:else if obj.type === 'env-rect'}
 					<rect 
