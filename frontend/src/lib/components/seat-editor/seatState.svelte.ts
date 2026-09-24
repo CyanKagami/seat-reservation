@@ -920,16 +920,33 @@ export class SeatEditorState {
 					const init = this.initialStates.get(obj.id);
 					if (!init) return obj;
 
-					// Orbit origin (x, y) around group pivot center
-					const dx = init.x - this.rotateCenter.x;
-					const dy = init.y - this.rotateCenter.y;
+					const w = obj.width ?? BOX_SIZE;
+					const h = obj.height ?? BOX_SIZE;
 
-					const newX = this.rotateCenter.x + (dx * cos - dy * sin);
-					const newY = this.rotateCenter.y + (dx * sin + dy * cos);
+					// 1. Calculate the initial CENTER point of this object
+					const initCenterX = init.x + w / 2;
+					const initCenterY = init.y + h / 2;
 
-					// Increment orientation
+					// 2. Vector from group pivot center to object center
+					const dx = initCenterX - this.rotateCenter.x;
+					const dy = initCenterY - this.rotateCenter.y;
+
+					// 3. Orbit object center around group pivot center
+					const newCenterX = this.rotateCenter.x + (dx * cos - dy * sin);
+					const newCenterY = this.rotateCenter.y + (dx * sin + dy * cos);
+
+					// 4. Convert back to Top-Left (x, y)
+					const newX = newCenterX - w / 2;
+					const newY = newCenterY - h / 2;
+
+					// 5. Update rotation orientation
 					const newRot = (init.rotation + deltaAngle) % 360;
-
+										console.log({
+						...obj,
+						x: newX,
+						y: newY,
+						rotation: newRot < 0 ? newRot + 360 : newRot
+					});
 					return {
 						...obj,
 						x: newX,
@@ -944,6 +961,7 @@ export class SeatEditorState {
 				);
 
 				if (!hasViolation) {
+
 					this.objects = updatedObjects;
 				}
 				return;
