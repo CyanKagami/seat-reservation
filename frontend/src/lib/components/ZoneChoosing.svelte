@@ -4,5 +4,5 @@
   let {seatState} : {seatState:ZoneEditorState} = $props();
 </script>
 <div class="w-3xl bg-gray-200 h-auto py-10 self-center mt-4 flex flex-col gap-5 px-10">
-<ReservationZonePicker objects={seatState.objects} zone={seatState.zones} ></ReservationZonePicker>
+<ReservationZonePicker objects={seatState.objects} zone={seatState.zones} gridWidth={seatState.gridWidth} gridHeight={seatState.gridHeight} ></ReservationZonePicker>
 </div>

@@ -33,6 +33,8 @@
       <ReservationZonePicker 
         objects={data.seatState.objects} 
         zone={data.seatState.zones} 
+        gridWidth={data.seatState.gridWidth}
+        gridHeight={data.seatState.gridHeight}
         onZoneSelect={(zoneId) => {
           zone = zoneId; 
           status = "seat";

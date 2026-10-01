@@ -52,10 +52,12 @@
 			<ReservationZonePicker
 					objects={zoneState.objects}
 					zone={zoneState.zones}
+					gridWidth={zoneState.gridWidth}
+					gridHeight={zoneState.gridHeight}
 					bind:selectedZoneId
 					onZoneSelect={handleZoneSelect}
-					width={zoneState.gridWidth * GRID_SIZE + 'px'}
-					height={zoneState.gridHeight * GRID_SIZE + 'px'}
+					width={zoneState.gridWidth * 10 + 'px'}
+					height={zoneState.gridHeight * 10 + 'px'}
 				/>
 		</div>
 				

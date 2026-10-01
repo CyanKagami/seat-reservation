@@ -12,6 +12,17 @@
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
 	});
+	function isDarkColor(hex: string): boolean {
+		if (!hex) return false;
+		hex = hex.replace(/^#/, '');
+		if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+		const r = parseInt(hex.substring(0, 2), 16) || 0;
+		const g = parseInt(hex.substring(2, 4), 16) || 0;
+		const b = parseInt(hex.substring(4, 6), 16) || 0;
+		const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+		return yiq < 128;
+	}
+
 	function darkenHexColor(hex:string, percent:number) {
 		// Remove the '#' if it's there
 		hex = hex.replace(/^#/, '');
@@ -115,6 +126,8 @@
 					/>
 					{/if}
 
+					{@const activeFill = hasZone && status !== 'unavailable' && !isOverlapping ? (isSelected ? darkenHexColor(zoneColor, 0.3) : zoneColor) : ''}
+					{@const textDark = activeFill ? isDarkColor(activeFill) : false}
 					{#if seatLabel}
 						<text
 							x={centerX}
@@ -122,7 +135,7 @@
 							text-anchor="middle"
 							dominant-baseline="central"
 							transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
-							class="font-bold pointer-events-none select-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : 'fill-slate-800'}"
+							class="font-bold pointer-events-none select-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : (textDark ? 'fill-white' : 'fill-slate-800')}"
 							style="font-size: {Math.max(7, Math.min(11, 8.5 * state.scale))}px;"
 						>
 							{seatLabel}

@@ -9,6 +9,8 @@
 	let {
 		objects = [],
 		zone = {},
+		gridWidth,
+		gridHeight,
 		selectedZoneId = $bindable(""),
 		padding = 40,
 		width = "100%",
@@ -18,6 +20,8 @@
 	}: {
 		objects: CanvasObject[];
 		zone: { [key: string]: Zone };
+		gridWidth?: number;
+		gridHeight?: number;
 		selectedZoneId?: string;
 		padding?: number;
 		width?: string;
@@ -322,6 +326,12 @@
 
 	// --- 5. Dynamic ViewBox (Calculated across all object points) ---
 	let viewBox = $derived.by(() => {
+		if (gridWidth && gridHeight) {
+			const w = gridWidth * 10;
+			const h = gridHeight * 10;
+			return `0 0 ${w} ${h}`;
+		}
+
 		let minX = Infinity,
 			minY = Infinity,
 			maxX = -Infinity,
@@ -381,67 +391,71 @@
 				{@const maxY = Math.max(...pts.map((p) => p.y))}
 				{@const w = maxX - minX}
 				{@const h = maxY - minY}
-				{@const cx = minX + w / 2}
-				{@const cy = minY + h / 2}
+				
+				{@const isPoly = obj.type === 'env-polygon' || obj.type === 'env-icon-polygon' || (obj.points && obj.points.length > 0)}
+				{@const rotCx = isPoly && pts.length ? (pts.reduce((sum, p) => sum + p.x, 0) / pts.length) : minX + w/2}
+				{@const rotCy = isPoly && pts.length ? (pts.reduce((sum, p) => sum + p.y, 0) / pts.length) : minY + h/2}
 				{@const fillColor = obj.metadata?.color ?? '#dcdcd6'}
 
-				{#if obj.type === 'env-polygon' || obj.type === 'env-icon-polygon' || (obj.points && obj.points.length > 0)}
-					<polygon
-						points={ptsString}
-						style="fill: {fillColor};"
-						class="stroke-slate-600 stroke-[1.5px]"
-					/>
-				{:else if obj.type === 'env-circle'}
-					<ellipse
-						cx={cx}
-						cy={cy}
-						rx={w / 2}
-						ry={h / 2}
-						style="fill: {fillColor};"
-						class="stroke-slate-600 stroke-[1.5px]"
-					/>
-				{:else}
-					<rect
-						x={minX}
-						y={minY}
-						width={w}
-						height={h}
-						rx={2}
-						style="fill: {fillColor};"
-						class="stroke-slate-600 stroke-[1.5px]"
-					/>
-				{/if}
+				<g transform="rotate({obj.rotation ?? 0} {rotCx} {rotCy})">
+					{#if isPoly}
+						<polygon
+							points={ptsString}
+							style="fill: {fillColor};"
+							class="stroke-slate-600 stroke-[1.5px]"
+						/>
+					{:else if obj.type === 'env-circle'}
+						<ellipse
+							cx={minX + w / 2}
+							cy={minY + h / 2}
+							rx={w / 2}
+							ry={h / 2}
+							style="fill: {fillColor};"
+							class="stroke-slate-600 stroke-[1.5px]"
+						/>
+					{:else}
+						<rect
+							x={minX}
+							y={minY}
+							width={w}
+							height={h}
+							rx={2}
+							style="fill: {fillColor};"
+							class="stroke-slate-600 stroke-[1.5px]"
+						/>
+					{/if}
 
-				<!-- Canvas Target/Stage Icon & Centered Label Overlay -->
-				<foreignObject
-					x={cx - 75}
-					y={cy - 30}
-					width={150}
-					height={60}
-					class="pointer-events-none overflow-visible"
-				>
-					<div class="w-full h-full flex flex-col items-center justify-center p-1 text-slate-800">
-						{#if obj.iconType === 'toilet'}
-							<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
-								<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
-							</svg>
-						{:else if obj.iconType === 'entrance'}
-							<svg class="w-5 h-5 fill-slate-800 mb-0.5" viewBox="0 0 24 24">
-								<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
-							</svg>
-						{:else if obj.iconType === 'stage' || obj.type === 'env-icon-polygon' || obj.type === 'env-polygon'}
-							<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
-								<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-							</svg>
-						{/if}
+					<!-- Canvas Target/Stage Icon & Centered Label Overlay -->
+					<foreignObject
+						x={rotCx - 75}
+						y={rotCy - 30}
+						width={150}
+						height={60}
+						class="pointer-events-none overflow-visible"
+					>
+						<div class="w-full h-full flex flex-col items-center justify-center p-1 text-slate-800">
+							{#if obj.iconType === 'toilet'}
+								<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
+									<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
+								</svg>
+							{:else if obj.iconType === 'entrance'}
+								<svg class="w-5 h-5 fill-slate-800 mb-0.5" viewBox="0 0 24 24">
+									<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
+								</svg>
+							{:else if obj.iconType === 'stage'}
+								<svg class="w-5 h-5 stroke-slate-800 fill-none mb-0.5" viewBox="0 0 24 24" stroke-width="1.8">
+									<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+								</svg>
+							{/if}
 
-						{#if obj.label}
-							<span class="text-[11px] font-semibold text-slate-800 leading-tight text-center">
-								{obj.label}
-							</span>
-						{/if}
-					</div>
-				</foreignObject>
+							{#if obj.label}
+								<span class="text-[11px] font-semibold text-slate-800 leading-tight text-center">
+									{obj.label}
+								</span>
+							{/if}
+						</div>
+					</foreignObject>
+				</g>
 			{/each}
 		</g>
 
