@@ -12,36 +12,7 @@
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
 	});
-	function isDarkColor(hex: string): boolean {
-		if (!hex) return false;
-		hex = hex.replace(/^#/, '');
-		if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-		const r = parseInt(hex.substring(0, 2), 16) || 0;
-		const g = parseInt(hex.substring(2, 4), 16) || 0;
-		const b = parseInt(hex.substring(4, 6), 16) || 0;
-		const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-		return yiq < 128;
-	}
-
-	function darkenHexColor(hex:string, percent:number) {
-		// Remove the '#' if it's there
-		hex = hex.replace(/^#/, '');
-
-		// Parse the R, G, B values from the hex string
-		let r = parseInt(hex.substring(0, 2), 16);
-		let g = parseInt(hex.substring(2, 4), 16);
-		let b = parseInt(hex.substring(4, 6), 16);
-
-		// Reduce the channels by the percentage (clamp at 0)
-		r = Math.max(0, Math.floor(r * (1 - percent)));
-		g = Math.max(0, Math.floor(g * (1 - percent)));
-		b = Math.max(0, Math.floor(b * (1 - percent)));
-
-		// Convert back to hex and pad with leading zeros if necessary
-		const toHex = (val:number) => val.toString(16).padStart(2, '0');
-
-		return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-	}
+	import { darkenHexColor, isDarkColor } from '../../canvas-shared/utils';
 
 </script>
 
@@ -122,6 +93,7 @@
 						height={barHeight} 
 						rx={1.5} 
 						fill={accentColor}
+						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
 						class="pointer-events-none"
 					/>
 					{/if}

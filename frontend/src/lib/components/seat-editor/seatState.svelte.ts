@@ -1,6 +1,7 @@
 import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
 import type { Point, Rect, ToolType, CanvasObject, SeatType } from "./types";
+import { rotatePoint } from '../canvas-shared/utils';
 import { toolRegistry } from "./tools";
 import type { LineToolStrategy } from "./tools/LineTool";
 import type { ArrayToolStrategy } from "./tools/ArrayTool";
@@ -307,7 +308,7 @@ export class SeatEditorState {
 		this.selectedIds.clear();
 		const binaryData = this.exportToMessagePack();
 
-		const blob = new Blob([binaryData], { type: 'application/msgpack' });
+		const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
 		const file = new File([blob], `${this.locationId}.msgpack`, {
 			type: blob.type,
 			lastModified: Date.now()
@@ -355,7 +356,7 @@ export class SeatEditorState {
 		const binaryData = this.exportToMessagePack();
 		
 		// Create binary Blob
-		const blob = new Blob([binaryData], { type: "application/msgpack" });
+		const blob = new Blob([binaryData as any], { type: "application/msgpack" });
 		const url = URL.createObjectURL(blob);
 
 		const anchor = document.createElement("a");
@@ -569,19 +570,10 @@ export class SeatEditorState {
 		px: number, 
 		py: number, 
 		cx: number, 
-		cy: number, 
+		 cy: number, 
 		angleDegrees: number
 	): { x: number; y: number } {
-		const rad = (angleDegrees * Math.PI) / 180;
-		const cos = Math.cos(rad);
-		const sin = Math.sin(rad);
-		const dx = px - cx;
-		const dy = py - cy;
-
-		return {
-			x: cx + (dx * cos - dy * sin),
-			y: cy + (dx * sin + dy * cos)
-		};
+		return rotatePoint(px, py, cx, cy, angleDegrees);
 	}
 
 	getObjectWorldExtents(

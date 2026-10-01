@@ -1,21 +1,6 @@
-export type ToolType = 'pointer' | 'lasso';
-export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
+export * from '../canvas-shared/types';
 
-export interface CanvasObject {
-	id: string;
-	type: ObjectType;
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-	rotation?: number;
-	points?:Point[];
-	iconType?: string;
-	label?: string;
-	metadata?:{
-	[key: string]: any;
-	}
-}
+export type ToolType = 'pointer' | 'lasso';
 
 export interface ZoneSeatMetadata {
 	zone?: string;
@@ -27,20 +12,4 @@ export interface ZoneSeatMetadata {
 	characteristic?: string;
 	color?: string;
 	[key: string]: any;
-}
-
-export interface Zone {
-	color:string;
-}
-
-export interface Point {
-	x: number;
-	y: number;
-}
-
-export interface Rect {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
 }

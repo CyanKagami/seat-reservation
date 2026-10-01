@@ -48,7 +48,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       await addUser(user); // Store user data in DynamoDB
     }
     else {
-      user = existingUser;
+      user = existingUser as User;
     }
     const signedToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1d' });
     

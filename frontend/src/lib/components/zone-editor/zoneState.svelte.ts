@@ -1,9 +1,9 @@
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
 import type { Point, Rect, ToolType, CanvasObject, Zone } from "./types";
 import { toolRegistry } from "./tools";
-import type { PolygonToolStrategy } from "./tools/PolygonTool";
+import { rotatePoint } from '../canvas-shared/utils';
 import { decode, encode } from "@msgpack/msgpack";
-import type { SeatType } from "../seat-editor/types";
+import type { SeatType } from "../canvas-shared/types";
 
 export class ZoneEditorState {
 	locationId = $state("");
@@ -198,7 +198,7 @@ export class ZoneEditorState {
 		this.selectedIds.clear();
 		const binaryData = this.exportToMessagePack();
 
-		const blob = new Blob([binaryData], { type: 'application/msgpack' });
+		const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
 		const file = new File([blob], `${this.locationId}.msgpack`, {
 			type: blob.type,
 			lastModified: Date.now()
@@ -247,7 +247,7 @@ export class ZoneEditorState {
 		const binaryData = this.exportToMessagePack();
 		
 		// Create binary Blob
-		const blob = new Blob([binaryData], { type: "application/msgpack" });
+		const blob = new Blob([binaryData as any], { type: "application/msgpack" });
 		const url = URL.createObjectURL(blob);
 
 		const anchor = document.createElement("a");
@@ -424,7 +424,8 @@ export class ZoneEditorState {
 			width: w,
 			height: h,
 			points: initialPoints,
-			rotation: 0
+			rotation: 0,
+			metadata: {}
 		};
 
 		this.objects = [...this.objects, newObj];
@@ -513,19 +514,10 @@ export class ZoneEditorState {
 		px: number, 
 		py: number, 
 		cx: number, 
-		cy: number, 
+		 cy: number, 
 		angleDegrees: number
 	): { x: number; y: number } {
-		const rad = (angleDegrees * Math.PI) / 180;
-		const cos = Math.cos(rad);
-		const sin = Math.sin(rad);
-		const dx = px - cx;
-		const dy = py - cy;
-
-		return {
-			x: cx + (dx * cos - dy * sin),
-			y: cy + (dx * sin + dy * cos)
-		};
+		return rotatePoint(px, py, cx, cy, angleDegrees);
 	}
 
 	getObjectWorldExtents(
@@ -1035,15 +1027,7 @@ export class ZoneEditorState {
 		if (event.key === 'Shift') {
 			this.isShiftPressed = true;
 		}
-		// Polygon keyboard controls
-		if (this.isPolygonDrawing) {
-			const polyTool = toolRegistry['add-polygon'] as PolygonToolStrategy;
-			if (event.key === 'Enter') {
-				polyTool.finishPolygon(this);
-			} else if (event.key === 'Escape') {
-				polyTool.cancelPolygon(this);
-			}
-		}
+		// Polygon keyboard controls removed
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
 	};

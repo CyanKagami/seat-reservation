@@ -1,6 +1,8 @@
-import type { ToolType, Point } from '../types';
+import type { ToolType } from '../types';
+import type { Point } from '../../canvas-shared/types';
 import type { ToolContext } from './types';
-import { BOX_SIZE } from '../constants';
+import { BOX_SIZE } from '../../canvas-shared/constants';
+import { screenToCanvas } from '../../canvas-shared/utils';
 
 export abstract class BaseToolStrategy {
 	abstract readonly id: ToolType;
@@ -30,10 +32,7 @@ export abstract class BaseToolStrategy {
 	}
 
 	protected screenToCanvas(screenPt: Point, panX: number, panY: number, scale: number): Point {
-		return {
-			x: (screenPt.x - panX) / scale,
-			y: (screenPt.y - panY) / scale
-		};
+		return screenToCanvas(screenPt, panX, panY, scale);
 	}
 
 	protected createSeatObject(id: number, x: number, y: number) {
@@ -43,7 +42,11 @@ export abstract class BaseToolStrategy {
 			x,
 			y,
 			width: BOX_SIZE,
-			height: BOX_SIZE
+			height: BOX_SIZE,
+			metadata: {
+				status: 'available',
+				seatType: 'standard'
+			}
 		};
 	}
 }

@@ -85,6 +85,7 @@
 						height={barHeight} 
 						rx={1.5} 
 						fill={accentColor}
+						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
 						class="pointer-events-none"
 					/>
 					{/if}

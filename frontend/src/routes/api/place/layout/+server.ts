@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({request, cookies, url}) => {
     let placeId = url.searchParams.get('placeId');
     try {
         const fileContent = await readFileAsByteArray('k-seat-place-layout', `${placeId}.msgpack`)
-        return new Response(fileContent, {
+        return new Response(fileContent as any, {
 			status: 200,
 			headers: {
 				'Content-Type': 'application/msgpack',

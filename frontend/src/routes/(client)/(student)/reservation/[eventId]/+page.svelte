@@ -5,7 +5,7 @@
   import { formatThaiDateTimeShort } from "$lib/scripts/formatTime";
   import ReservationZonePicker from "$lib/components/zone-editor/components/ReservationZonePicker.svelte";
   import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
-  import type { CanvasObject } from "$lib/components/seat-editor/types";
+  import type { CanvasObject } from "$lib/components/canvas-shared/types";
 
   let { data } = $props();
 

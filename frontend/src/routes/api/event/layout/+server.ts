@@ -14,10 +14,11 @@ interface UpdataLayoutFormData {
 }
 
 async function getLayoutFromPlace(eventId:string) {
-    let event:Event = await fetchData('events', {eventId:eventId});
+    let event = await fetchData('events', {eventId:eventId}) as Event | null;
+    if (!event) throw new Error('Event not found');
     try {
         const fileContent = await readFileAsByteArray('k-seat-place-layout', `${event.place.placeId}.msgpack`)
-        return new Response(fileContent, {
+        return new Response(fileContent as any, {
 			status: 200,
 			headers: {
 				'Content-Type': 'application/msgpack',
@@ -69,7 +70,7 @@ export const GET: RequestHandler = async ({request, cookies, url}) => {
     })
     try {
         const fileContent = await readFileAsByteArray('k-seat-event-layout', `${eventId}.msgpack`)
-        return new Response(fileContent, {
+        return new Response(fileContent as any, {
 			status: 200,
 			headers: {
 				'Content-Type': 'application/msgpack',

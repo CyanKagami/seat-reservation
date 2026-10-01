@@ -178,8 +178,8 @@ describe('SeatEditorState', () => {
     describe('updateSelectedObjectMetadata', () => {
         it('should update metadata for selected objects', () => {
             state.objects = [
-                { id: 'seat_1', type: 'seat', metadata: { foo: 'bar' } } as CanvasObject,
-                { id: 'seat_2', type: 'seat', metadata: {} } as CanvasObject
+                { id: 'seat_1', type: 'seat', x: 0, y: 0, width: 20, height: 20, metadata: { foo: 'bar' } } as CanvasObject,
+                { id: 'seat_2', type: 'seat', x: 20, y: 0, width: 20, height: 20, metadata: {} } as CanvasObject
             ];
             
             state.selectedIds = new Set(['seat_1']);

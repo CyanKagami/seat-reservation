@@ -39,7 +39,7 @@
 	<div class="fixed w-screen h-screen flex items-center justify-center p-8 text-xs text-slate-500">
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
-{:else}
+{:else if place && seatState}
 <ZoneEditor place={place} zoneState={seatState} backLink={`/my-event/update-event/${params.eventId}`}></ZoneEditor>
 {/if}
 

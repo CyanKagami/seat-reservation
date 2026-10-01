@@ -1,21 +1,6 @@
-export type ToolType = 'pointer' | 'lasso' | 'add-square' | 'add-line' | 'add-array'| 'add-rect' | 'add-circle' | 'add-polygon';
-export type ObjectType = 'seat' | 'env-rect' | 'env-circle' | 'env-polygon' | 'env-icon-polygon';
+export * from '../canvas-shared/types';
 
-export interface CanvasObject {
-	id: string;
-	type: ObjectType;
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-	rotation?: number;
-	points?:Point[];
-	iconType?: string;
-	label?: string;
-	metadata:{
-		[key: string]: any;
-	}
-}
+export type ToolType = 'pointer' | 'lasso' | 'add-square' | 'add-line' | 'add-array' | 'add-rect' | 'add-circle' | 'add-polygon';
 
 export interface SeatMetadata {
   zone: string;       // "Z1"
@@ -29,23 +14,4 @@ export interface SeatMetadata {
 
 export interface EnvironmentMetadata {
 	color: string;      // "#FF0000"
-}
-
-export interface Point {
-	x: number;
-	y: number;
-}
-
-export interface Rect {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
-
-export interface SeatType {
-	readonly name: string;
-	readonly description?: string;
-	readonly color: string;
-	readonly picture?: string;
 }

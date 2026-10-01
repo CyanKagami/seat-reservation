@@ -68,7 +68,8 @@ export class CircleToolStrategy extends BaseToolStrategy {
 				x: bounds.x,
 				y: bounds.y,
 				width: bounds.width,
-				height: bounds.height
+				height: bounds.height,
+				metadata: {}
 			};
 
 			state.objects = [...state.objects, newCircle];
