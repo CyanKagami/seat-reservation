@@ -26,4 +26,4 @@ vite.config.ts.timestamp-*
 localstack
 .aws-sam
 
-*/dev-scripts
+dev-scripts
