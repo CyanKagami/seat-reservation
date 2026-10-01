@@ -45,7 +45,8 @@ export abstract class BaseToolStrategy {
 			width: BOX_SIZE,
 			height: BOX_SIZE,
 			metadata: {
-				status:'available'
+				status:'available',
+				seatType: 'standard'
 			}
 		};
 	}

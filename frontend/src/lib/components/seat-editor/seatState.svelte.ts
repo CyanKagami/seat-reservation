@@ -1,6 +1,6 @@
 import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
-import type { Point, Rect, ToolType, CanvasObject } from "./types";
+import type { Point, Rect, ToolType, CanvasObject, SeatType } from "./types";
 import { toolRegistry } from "./tools";
 import type { LineToolStrategy } from "./tools/LineTool";
 import type { ArrayToolStrategy } from "./tools/ArrayTool";
@@ -13,10 +13,11 @@ export class SeatEditorState {
 	locationId = $state("v_123");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
-	isSaving = $state(false);
+	isUneditable = $state(false);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
+	seatTypes = $state<{[key: string]: SeatType;}>({ 'standard': { name: 'standard', color: '#e2e8f0', description: 'Standard seat' } });
 	copiedObjects = $state<CanvasObject[]>([]);
 	selectedIds = $state<Set<string>>(new Set());
 	activeTool = $state<ToolType>('pointer');
@@ -291,12 +292,18 @@ export class SeatEditorState {
 		this.centerGrid();
 	};
 
+	createSeatType = ({name, color, description, picture}:{name:string, color:string, description?: string, picture?: string}) => {
+		if (this.seatTypes[name]) return null;
+		this.seatTypes[name] = {name, color, description, picture};
+		return this.seatTypes[name];
+	}
+
 	handleSaveButtonClick = async (event:MouseEvent) => {
 		await this.uploadToAPI()
 	}
 
 	async uploadToAPI(apiEndpoint = '/api/place/layout') {
-		this.isSaving = true;
+		this.isUneditable = true;
 		this.selectedIds.clear();
 		const binaryData = this.exportToMessagePack();
 
@@ -324,7 +331,7 @@ export class SeatEditorState {
 		} catch (err) {
 			alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
 		} finally {
-			this.isSaving = false;
+			this.isUneditable = false;
 		}	
 	}
 
@@ -336,6 +343,7 @@ export class SeatEditorState {
 				gridWidth: this.gridWidth,
 				gridHeight: this.gridHeight,
 			},
+			seatTypes: $state.snapshot(this.seatTypes),
 			// Strip Svelte 5 reactive proxy wrappers before binary encoding
 			objects: $state.snapshot(this.objects)
 		};
@@ -358,7 +366,7 @@ export class SeatEditorState {
 		URL.revokeObjectURL(url);
 
 		// Freeze editing after save
-		this.isSaving = true;
+		this.isUneditable = true;
 		this.selectedIds.clear();
 	}
 
@@ -370,14 +378,16 @@ export class SeatEditorState {
 				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
 				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
 			}
-
+			if (data.seatTypes) {
+				this.seatTypes = data.seatTypes;
+			}
 			if (Array.isArray(data.objects)) {
 				this.objects = data.objects;
-				this.selectedIds.clear();
-				this.centerGrid();
-				this.clearHistory();
-				this.commitHistory();
 			}
+			this.selectedIds.clear();
+			this.centerGrid();
+			this.clearHistory();
+			this.commitHistory();
 		} catch (err) {
 			console.error("Failed to parse MessagePack layout file:", err);
 		}
@@ -404,7 +414,7 @@ export class SeatEditorState {
 	// --- Drop Handler ---
 	handleDrop = (event: DragEvent) => {
 		event.preventDefault();
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		const iconType = event.dataTransfer?.getData('iconType') as 'toilet' | 'entrance' | 'stage';
 		const label = event.dataTransfer?.getData('label') || '';
 		if (!iconType || !this.canvasElement) return;
@@ -450,7 +460,7 @@ export class SeatEditorState {
 
 	handleDragOver = (event: DragEvent) => {
 		event.preventDefault();
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		if (event.dataTransfer) {
 			event.dataTransfer.dropEffect = 'copy';
 		}
@@ -466,7 +476,7 @@ export class SeatEditorState {
 	// --- Vertex Interaction Handlers ---
 	handleVertexMouseDown = (objId: string, index: number, event: MouseEvent) => {
 		event.stopPropagation();
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		this.activeVertexDrag = { objId, index };
 	};
 
@@ -686,7 +696,7 @@ export class SeatEditorState {
 
 	// Start rotation interaction when user clicks rotation handle
 	handleRotateStart = (event: MouseEvent) => {
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
 			event.stopPropagation();
 
@@ -777,7 +787,7 @@ export class SeatEditorState {
 
 	// Generic MouseDown handler for seats AND environment rectangles
 	handleObjectMouseDown = (obj: CanvasObject, event: MouseEvent) => {
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		if (event.button !== 0) return;
 		event.stopPropagation();
 
@@ -809,7 +819,7 @@ export class SeatEditorState {
 	};
 
 	handleSelectionBoundsMouseDown = (event: MouseEvent) => {
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		// Only trigger on primary left click
 		if (event.button !== 0) return;
 		
@@ -829,7 +839,7 @@ export class SeatEditorState {
 	};
 
 	handleCanvasMouseDown = (event: MouseEvent) => {
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		if (!this.canvasElement) return;
 
 		if (event.button === 2 || event.button === 1) {
@@ -1044,7 +1054,7 @@ export class SeatEditorState {
 	};
 
 	handleMouseUp = (event: MouseEvent) => {
-		if (this.isSaving) return;
+		if (this.isUneditable) return;
 		if (this.activeVertexDrag) {
 			this.activeVertexDrag = null;
 			return;
@@ -1078,49 +1088,49 @@ export class SeatEditorState {
 	};
 
 	handleKeyDown = (event: KeyboardEvent) => {
-				if (this.isSaving) return;
-		if (event.key === 'Delete' || event.key === 'Backspace') {
+		if (this.isUneditable) return;
+		if (event.code === 'Delete' || event.code === 'Backspace') {
 			event.preventDefault();
 			this.removeSelected();
 			return;
 		}
-		if (event.key === 'Shift') {
+		if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
 			this.isShiftPressed = true;
 		}
 		// Polygon keyboard controls
 		if (this.isPolygonDrawing) {
 			const polyTool = toolRegistry['add-polygon'] as PolygonToolStrategy;
-			if (event.key === 'Enter') {
+			if (event.code === 'Enter') {
 				polyTool.finishPolygon(this);
 				this.commitHistory();
-			} else if (event.key === 'Escape') {
+			} else if (event.code === 'Escape') {
 				polyTool.cancelPolygon(this);
 			}
 		}
 		const isModifier = event.ctrlKey || event.metaKey;
 		if (!isModifier) return;
 
-		if (event.key.toLowerCase() === 'c') {
+		if (event.code === 'KeyC') {
 			event.preventDefault();
 			this.copySelected();
-		} else if (event.key.toLowerCase() === 'v') {
+		} else if (event.code === 'KeyV') {
 			event.preventDefault();
 			this.pasteSquares();
-		} else if (event.key.toLowerCase() === 'z') {
+		} else if (event.code === 'KeyZ') {
 			event.preventDefault();
 			if (event.shiftKey) {
 				this.redo();
 			} else {
 				this.undo();
 			}
-		} else if (event.key.toLowerCase() === 'y') {
+		} else if (event.code === 'KeyY') {
 			event.preventDefault();
 			this.redo();
 		}
 	};
 
 	handleKeyUp = (event: KeyboardEvent) => {
-		if (event.key === 'Shift') {
+		if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
 			this.isShiftPressed = false;
 		}
 	};

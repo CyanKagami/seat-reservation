@@ -1,9 +1,9 @@
-import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
 import type { Point, Rect, ToolType, CanvasObject, Zone } from "./types";
 import { toolRegistry } from "./tools";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
 import { decode, encode } from "@msgpack/msgpack";
+import type { SeatType } from "../seat-editor/types";
 
 export class ZoneEditorState {
 	locationId = $state("");
@@ -15,6 +15,7 @@ export class ZoneEditorState {
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
 	zones = $state<{[key: string]: Zone;}>({})
+	seatTypes = $state<{[key: string]: SeatType;}>({ 'standard': { name: 'standard', color: '#e2e8f0', description: 'Standard seat' } });
 	copiedObjects = $state<CanvasObject[]>([]);
 	selectedIds = $state<Set<string>>(new Set());
 	activeTool = $state<ToolType>('pointer');
@@ -234,6 +235,7 @@ export class ZoneEditorState {
 				gridHeight: this.gridHeight,
 			},
 			zones:$state.snapshot(this.zones),
+			seatTypes: $state.snapshot(this.seatTypes),
 			// Strip Svelte 5 reactive proxy wrappers before binary encoding
 			objects: $state.snapshot(this.objects)
 		};
@@ -268,15 +270,15 @@ export class ZoneEditorState {
 				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
 				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
 			}
-
+			if (data.seatTypes) {
+				this.seatTypes = data.seatTypes;
+			}
 			if (Array.isArray(data.objects)) {
 				this.objects = data.objects;
 				this.selectedIds.clear();
-				//this.clearHistory?.();
 			}
 			if (data.zones) {
 				this.zones = data.zones;
-				//this.clearHistory?.();
 			}
 			this.centerGrid();
 		} catch (err) {

@@ -20,7 +20,7 @@ export interface CanvasObject {
 export interface SeatMetadata {
   zone: string;       // "Z1"
   status: string;     // "available" (User customizable)
-  characteristic: string; // "Sofa" (Seat characteristic, User customizable)
+  seatType: string; // "Sofa" (Seat characteristic, User customizable)
   row: string;        // "A" (User customizable)
   seatNo: string;     // "12" (User customizable)
   label: string;      // "A12" or "Z1-A12"
@@ -41,4 +41,11 @@ export interface Rect {
 	y: number;
 	width: number;
 	height: number;
+}
+
+export interface SeatType {
+	readonly name: string;
+	readonly description?: string;
+	readonly color: string;
+	readonly picture?: string;
 }

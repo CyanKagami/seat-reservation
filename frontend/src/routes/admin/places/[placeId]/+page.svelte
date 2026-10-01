@@ -116,7 +116,7 @@
             <textarea name="description" class="w-full resize-none h-40 rounded-lg">{data.description}</textarea>
             <div class="flex self-end w-90 gap-3 mt-10">
                 <a href="/admin/places" class="w-1/2">
-                    <button type="button" class="w-full border-2 border-black h-10 hover:bg-accent-hover hover:cursor-pointer rounded-lg">ยกเลิก</button>
+                    <button type="button" class="w-full border-2 border-black h-10 hover:bg-dim-gray hover:cursor-pointer rounded-lg">ยกเลิก</button>
                 </a>
                 <button class="w-1/2 px-3 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg">บันทึกการเปลี่ยนแปลง</button>
             </div>

@@ -18,8 +18,8 @@
 
 
 	let currentCharacteristic = $derived(
-		isSeatSelection && selectedObjects.every((o) => o.metadata?.characteristic === selectedObjects[0].metadata?.characteristic)
-			? selectedObjects[0].metadata?.characteristic ?? "standard"
+		isSeatSelection && selectedObjects.every((o) => o.metadata?.seatType === selectedObjects[0].metadata?.seatType)
+			? selectedObjects[0].metadata?.seatType ?? "standard"
 			: ""
 	);
 
@@ -31,7 +31,7 @@
 
 	function handleCharacteristicChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
-		state.updateSelectedObjectMetadata({ characteristic: target.value });
+		state.updateSelectedObjectMetadata({ seatType: target.value });
 	}
 
 	function handleColorChange(e: Event) {
@@ -62,10 +62,14 @@
 				<div class="space-y-1.5">
 				<div class="flex items-center justify-between gap-2">
 				<label for="seat-char" class="text-xs font-medium text-slate-600 block">
-						คุณลักษณะที่นั่ง
+						ประเภทที่นั่ง
 					</label>
-					<button onclick={onOpenPopup}>
-						<svg class="h-3 fill-slate-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M352 128C352 110.3 337.7 96 320 96C302.3 96 288 110.3 288 128L288 288L128 288C110.3 288 96 302.3 96 320C96 337.7 110.3 352 128 352L288 352L288 512C288 529.7 302.3 544 320 544C337.7 544 352 529.7 352 512L352 352L512 352C529.7 352 544 337.7 544 320C544 302.3 529.7 288 512 288L352 288L352 128z"/></svg>
+					<button
+						onclick={onOpenPopup}
+						type="button"
+						class="text-[11px] text-indigo-600 hover:text-indigo-800 cursor-pointer font-medium"
+					>
+						+ เพิ่มประเภทที่นั่ง
 					</button>
 				</div>
 					
@@ -77,8 +81,12 @@
 					>
 						{#if !currentCharacteristic}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
 						<option value="standard">มาตรฐาน (Standard)</option>
-						<option value="vip">วีไอพี (VIP)</option>
-						<option value="restricted">มุมมองจำกัด (Restricted View)</option>
+						{#each Object.values(state.seatTypes).filter((v) => v.name !== 'standard') as seatType}
+							<option value={seatType.name} selected={seatType.name === currentCharacteristic}>
+								{seatType.name} {seatType.description ? `- ${seatType.description}` : ''}
+							</option>
+						{/each}
+						
 					</select>
 				</div>
 			</div>

@@ -77,7 +77,8 @@
 					{@const hasZone = !!(zoneName && state.zones[zoneName])}
 					{@const zoneColor = hasZone && zoneName ? state.zones[zoneName].color : ''}
 					{@const seatLabel = obj.metadata?.label || (obj.metadata?.row ? `${obj.metadata.row}${obj.metadata.seatNo ?? ''}` : (obj.metadata?.seatNo ?? ''))}
-
+					{@const seatType = state.seatTypes[obj.metadata?.seatType] || {name: 'standard', color: '#e2e8f0', description: ''}}
+					{@const accentColor = seatType.color || '#e2e8f0'}
 					<!-- Determine fill/stroke based on status and selection -->
 					{@const statusClasses = 
 						status === 'unavailable'
@@ -100,6 +101,19 @@
 								: statusClasses}"
 						style={hasZone && status !== 'unavailable' && !isOverlapping ? `${isSelected ? `fill:${darkenHexColor(zoneColor, 0.3)};` : `fill:${zoneColor};`} stroke:unset;` : ''}
 					/>
+					<!-- 2. Top Accent Bar (Indicates custom seatType) -->
+					{#if accentColor && seatType.name && seatType.name !== 'standard'}
+					{@const barHeight = Math.max(3, Math.floor(screenHeight * 0.22))} <!-- ~20% of seat height -->
+					<rect 
+						x={screenX + 1} 
+						y={screenY + 1} 
+						width={screenWidth - 2} 
+						height={barHeight} 
+						rx={1.5} 
+						fill={accentColor}
+						class="pointer-events-none"
+					/>
+					{/if}
 
 					{#if seatLabel}
 						<text

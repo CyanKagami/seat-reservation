@@ -53,15 +53,11 @@
 
 				{#if obj.type === 'seat'}
 					{@const isOverlapping = state.overlappingIds.has(obj.id)}
-					{@const status = obj.metadata?.status ?? 'available'}
+					{@const seatType = state.seatTypes[obj.metadata?.seatType] || {name: 'standard', color: '#e2e8f0', description: ''}}
+					{@const accentColor = seatType.color || '#e2e8f0'}
 
 					<!-- Determine fill/stroke based on status and selection -->
-					{@const statusClasses = 
-						status === 'unavailable'
-							? (isSelected ? 'fill-stone-900 stroke-stone-900 ring-2 ring-indigo-400' : 'fill-stone-700 stroke-stone-600')
-							: status === 'held'
-								? (isSelected ? 'fill-amber-300 stroke-amber-600 ring-2 ring-indigo-400' : 'fill-amber-200 stroke-amber-500 hover:fill-amber-300')
-								: (isSelected ? 'fill-indigo-300 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
+					{@const statusClasses = (isSelected ? 'fill-indigo-300 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
 
 					<rect 
 						x={screenX} 
@@ -78,6 +74,20 @@
 								: statusClasses}"
 						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
 					/>
+
+					<!-- 2. Top Accent Bar (Indicates custom seatType) -->
+					{#if accentColor && seatType.name && seatType.name !== 'standard'}
+					{@const barHeight = Math.max(3, Math.floor(screenHeight * 0.22))} <!-- ~20% of seat height -->
+					<rect 
+						x={screenX + 1} 
+						y={screenY + 1} 
+						width={screenWidth - 2} 
+						height={barHeight} 
+						rx={1.5} 
+						fill={accentColor}
+						class="pointer-events-none"
+					/>
+					{/if}
 				<!-- 1. env-rect -->
 				{:else if obj.type === 'env-rect'}
 					<rect 
