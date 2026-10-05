@@ -9,7 +9,7 @@ export interface ZoneSeatMetadata {
 	seatNo?: string;
 	label?: string;
 	isManualLabel?: boolean;
-	characteristic?: string;
+	seatType?: string;
 	color?: string;
 	[key: string]: any;
 }

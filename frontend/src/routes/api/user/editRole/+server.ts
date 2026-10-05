@@ -1,3 +1,4 @@
+// /api/editRole/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { updateAllAttributes } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';

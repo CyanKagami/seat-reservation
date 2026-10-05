@@ -304,6 +304,11 @@ export class ZoneEditorState {
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
 		this.objects = this.objects.map((obj) => {
 			if (this.selectedIds.has(obj.id)) {
+				if (obj.type === 'seat') {
+					obj.metadata.row = '';
+					obj.metadata.seatNo = '';
+					obj.metadata.label = '';
+				}
 				return {
 					...obj,
 					metadata: {

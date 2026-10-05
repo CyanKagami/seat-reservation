@@ -13,8 +13,7 @@ export const GET: RequestHandler = async ({ request, cookies }) => {
         // Verify the token signature
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        // Fetch user details from database using decoded.userId
-        const user = decoded // Assuming you have a function to get user by ID
+        const user = decoded
         return json({
             statusCode: 200,
             body: user

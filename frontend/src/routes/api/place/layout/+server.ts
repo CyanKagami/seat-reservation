@@ -1,3 +1,4 @@
+// /api/place/layout/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';

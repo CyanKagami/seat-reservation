@@ -1,3 +1,4 @@
+// /api/place/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { addFile, createBucket } from "$lib/scripts/s3";
 import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from "$lib/scripts/dynamo";

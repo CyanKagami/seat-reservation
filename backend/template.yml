@@ -7,10 +7,25 @@ Globals:
     Runtime: nodejs20.x
     Architectures:
       - arm64
-    Timeout: 10
+    MemorySize: 512
+    Timeout: 20
+    Environment:
+      Variables:
+        AWS_REGION: us-east-1
 
 Resources:
-  # Shared HTTP API Gateway instance
+  # --- Shared layer ---
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: shared-lib
+      ContentUri: layers/shared/
+      CompatibleRuntimes:
+        - nodejs20.x
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
   SharedApiGateway:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -28,13 +43,39 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
+      Auth:
+        DefaultAuthorizer: JwtLambdaAuthorizer
+        Authorizers:
+          JwtLambdaAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionInvokeRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+            AuthorizerPayloadFormatVersion: "2.0"
+            EnableSimpleResponses: true
+            Identity:
+              Headers:
+                - Authorization
 
-  # 1. Auth Service Lambda
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/core/
+      Runtime: nodejs20.x
+      Handler: authorizer.handler
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+
   AuthServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: services/auth/
+      Runtime: nodejs20.x
       Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
       Events:
         AuthApiRoute:
           Type: HttpApi
@@ -42,6 +83,8 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/auth/{proxy+}
             Method: ANY
+            Auth:
+              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:
@@ -49,13 +92,17 @@ Resources:
           GOOGLE_CLIENT_ID: !Ref GoogleClientId
           GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
           FRONTEND_ORIGIN: !Ref FrontendOrigin
+          AWS_LOCALSTACK_URL: !Ref AwsLocalstackUrl
+          API_BASE_URL: !GetAtt SharedApiGateway.ApiEndpoint
 
-  # 2. Seat Booking Service Lambda
   BookingServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: services/booking/
+      Runtime: nodejs20.x
       Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
       Events:
         BookingApiRoute:
           Type: HttpApi
@@ -64,13 +111,18 @@ Resources:
             Path: /booking/{proxy+}
             Method: ANY
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
 
-  # 3. Core API Service Lambda
   CoreApiServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: services/core/
+      Runtime: nodejs20.x
       Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
       Events:
         CoreApiRoute:
           Type: HttpApi
@@ -95,8 +147,12 @@ Parameters:
     NoEcho: true
   FrontendOrigin:
     Type: String
+    Default: "http://localhost:5173"
+  AwsLocalstackUrl:
+    Type: String
+    Default: "http://host.docker.internal:4566"
 
 Outputs:
   ApiEndpoint:
     Description: Base URL for your API Gateway
-    Value: !Sub "https://${SharedApiGateway}.execute-api.${AWS::Region}.amazonaws.com"
+    Value: !GetAtt SharedApiGateway.ApiEndpoint

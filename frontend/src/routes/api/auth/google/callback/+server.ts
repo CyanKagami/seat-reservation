@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
         email: payload.email ?? '',
         name: payload.name ?? '',
         picture: payload.picture ?? '',
-        role: 'admin'
+        role: 'admin' // Default role for new users, CHANGE THIS IN PRODUCTION
     };
     
     let existingUser = await fetchUser(user.googleId);

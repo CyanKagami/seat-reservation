@@ -1,9 +1,8 @@
+// /api/user/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { paginateReadData } from "$lib/scripts/dynamo";
-import type { Event } from "$lib/type/event";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
-import type { GoogleUser } from "$lib/type/googleUser";
 import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
 

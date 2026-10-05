@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { API_URL } from "$lib/constants";
+  import { loginWithGoogle } from "$lib/scripts/auth";
+
   let { clientId } = $props();
 
   function handleGoogleRedirect() {
     // 1. Where Google will send the user back after login
-    const origin = window.location.origin.replace(/\/$/, '');
-    const redirectUri = `${origin}/api/auth/google/callback`;
+   //const origin = window.location.origin.replace(/\/$/, '');
+    const redirectUri = `${API_URL}/api/auth/google/callback`;
     
     // 2. Request standard profile and email scopes
     const scope = 'openid email profile';
@@ -26,7 +29,7 @@
 
 <button
   class="bg-secondary hover:bg-secondary-hover transition-colors duration-200 cursor-pointer w-full h-10 rounded-lg text-white font-semibold"
-  onclick={handleGoogleRedirect}
+  onclick={loginWithGoogle}
 >
   GOOGLE AUTH
 </button>
