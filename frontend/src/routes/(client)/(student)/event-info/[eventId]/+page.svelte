@@ -2,6 +2,7 @@
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
     import {formatThaiDateTime, formatThaiDateTimeShort} from "$lib/scripts/formatTime"
+  import { apiFetch } from "$lib/scripts/api.js";
 
     let {params} = $props()
     //fetch event
@@ -11,15 +12,12 @@
     let register_date_start = $state(new Date())
     let register_date_end = $state(new Date())
     onMount(async () => {
-        console.log("page", params.eventId)
-        event = await fetch(`/api/event/getFromId/${params.eventId}`, {
+        event = await apiFetch(`/event/getFromId/${params.eventId}`, {
             method: "GET",
-            credentials: 'include'
         })
         .then(async (response) => {
             return (await response.json()).body[0]
         })
-        console.log(event)
         start_date = new Date(event.date.start)
         end_date = new Date(event.date.end)
         register_date_start = new Date(event["register-date"].start)

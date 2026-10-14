@@ -1,14 +1,10 @@
 // /api/location/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addFile, createBucket } from "$lib/scripts/s3";
-import { addDataUniqueId, fetchAllData, updateAllAttributes } from "$lib/scripts/dynamo";
+import { fetchAllData } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
 import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
-import { request } from "node:http";
-import type { Place } from "$lib/type/place";
-import path from "node:path";
 
 export const GET: RequestHandler = async ({request, cookies}) => {
     const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";

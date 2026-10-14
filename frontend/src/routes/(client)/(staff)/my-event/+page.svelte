@@ -1,17 +1,16 @@
 <script lang='ts'>
     import StaffEventBox from "$lib/components/staff/StaffEventBox.svelte";
+  import { apiFetch } from "$lib/scripts/api";
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
     let events:Event[] = $state([])
     onMount(async () => {
-        events = await fetch('/api/event/getFromHost', {
+        events = await apiFetch('/event/getFromHost', {
             method: "GET",
-            credentials: 'include'
         })
         .then(async (response) => {
             return (await response.json()).body
         })
-        console.log(events)
     })
 
      // placeholder

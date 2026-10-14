@@ -9,6 +9,7 @@ import type { CircleToolStrategy } from "./tools/CircleTool";
 import type { RectToolStrategy } from "./tools/RectTool";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
 import { decode, encode } from "@msgpack/msgpack";
+import { apiFetch } from "$lib/scripts/api";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
@@ -318,7 +319,7 @@ export class SeatEditorState {
 		formData.append('placeId', this.locationId);
 
 		try {
-			const res = await fetch("/api/place/layout", {
+			const res = await apiFetch("/place/layout", {
 				method: "PUT",
 				body: formData
 			});

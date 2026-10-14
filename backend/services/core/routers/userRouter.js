@@ -52,7 +52,6 @@ router.post('/editRole', async (req, res) => {
 
   try {
     const newAttributes = await updateAllAttributes('users', { googleId }, { googleId, role });
-    console.log(newAttributes);
     return res.status(200).json({ body: { message: 'User role updated successfully', newAttributes } });
   } catch (error) {
     console.error('Error updating role:', error);

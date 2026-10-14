@@ -1,16 +1,16 @@
 <script lang="ts">
 	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
 	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
+  import { apiFetch } from "$lib/scripts/api.js";
   import type { Place } from "$lib/type/place.js";
-	import { onMount, tick } from "svelte";
+	import { onMount } from "svelte";
 	let { params } = $props();
 	let seatState: SeatEditorState | undefined = $state();
 	let isLoading = $state(true);
 	let place:Place | null = $state(null)
 	onMount(async () => {
-		place = await fetch(`/api/place/${params.placeId}`, {
+		place = await apiFetch(`/place/${params.placeId}`, {
 			method: 'GET',
-			credentials:'include'
 		})
 		.then((response) => {
 			return response.json()
@@ -19,9 +19,8 @@
 			return data.body.data
 		})
 		
-		await fetch(`/api/place/layout?placeId=${params.placeId}`, {
+		await apiFetch(`/place/layout?placeId=${params.placeId}`, {
 			method: 'GET',
-			credentials:'include'
 		})
 		.then((response) => {
 			return response.arrayBuffer()

@@ -4,6 +4,7 @@
     import type { Slide } from "$lib/type/slide";
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
+  import { apiFetch } from "$lib/scripts/api";
 
   // sample data
     const mySlides: Slide[] = [
@@ -26,14 +27,12 @@
 
   let events:Event[] = $state([])
     onMount(async () => {
-        events = await fetch('/api/event/', {
+        events = await apiFetch('/event/', {
             method: "GET",
-            credentials: 'include'
         })
         .then(async (response) => {
             return (await response.json()).body
         })
-        console.log(events)
     })
 </script>
 <Carousel slides={mySlides} />

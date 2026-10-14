@@ -40,7 +40,7 @@ async function formatData(data, creator) {
 router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
   const { placeId } = req.query;
   try {
-    const fileContent = await readFileAsByteArray('k-seat-place-layout', `${placeId}.msgpack`);
+    const fileContent = await readFileAsByteArray(`layouts/place/${placeId}.msgpack`);
     res.set({
       'Content-Type': 'application/msgpack',
       'Content-Length': fileContent.byteLength.toString(),
@@ -57,7 +57,7 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
 router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (req, res) => {
   const { placeId } = req.body;
   try {
-    const layoutURL = await addFile('k-seat-place-layout', `${placeId}.msgpack`, req.file.buffer);
+    const layoutURL = await addFile(`layouts/place/${placeId}.msgpack`, req.file.buffer);
     await updateAllAttributes('places', { placeId }, { layoutURL });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
@@ -87,8 +87,7 @@ router.post('/', requireRole('admin'), upload.single('picture'), async (req, res
     if (req.file) {
       const ext = path.extname(req.file.originalname);
       pictureURL = await addFile(
-        'k-seat-place-picture',
-        `${Date.now()}-${uuidv4()}${ext || ''}`,
+        `pictures/place/${Date.now()}-${uuidv4()}${ext || ''}`,
         req.file.buffer
       );
     }
@@ -112,7 +111,7 @@ router.post('/', requireRole('admin'), upload.single('picture'), async (req, res
       objects: []
     };
     const msgpack = encode(initialLayout);
-    await addFile('k-seat-place-layout', `${uniqueId}.msgpack`, Buffer.from(msgpack));
+    await addFile(`layouts/place/${uniqueId}.msgpack`, Buffer.from(msgpack));
 
     return res.status(200).json({ body: { message: 'ok', placeId: uniqueId } });
   } catch (error) {
@@ -130,8 +129,7 @@ router.patch('/', requireRole('admin'), upload.single('picture'), async (req, re
     if (req.file) {
       const ext = path.extname(req.file.originalname);
       processData.picture = await addFile(
-        'k-seat-place-picture',
-        `${data.placeId}${ext || ''}`,
+        `pictures/place/${Date.now()}-${uuidv4()}${ext || ''}`,
         req.file.buffer
       );
     }

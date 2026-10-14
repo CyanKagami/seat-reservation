@@ -1,12 +1,11 @@
-import { ZoneEditorState } from '$lib/components/zone-editor/zoneState.svelte';
 import type { PageLoad } from './$types';
-import type { Event } from '$lib/type/event';
+import { apiFetch } from '$lib/scripts/api';
 
 export const load: PageLoad = async ({ fetch, params }) => {
-    const event = await fetch(`/api/event/getFromId/${params.eventId}`, {
+    const event = await apiFetch(`/api/event/getFromId/${params.eventId}`, {
             method: "GET",
             credentials: 'include'
-        })
+        }, fetch)
         .then(async (response) => {
             return (await response.json()).body[0]
         })
@@ -16,10 +15,10 @@ export const load: PageLoad = async ({ fetch, params }) => {
     if (!event.picture) {
         event.picture = null;
     }
-    const places = await fetch('/api/place', {
+    const places = await apiFetch('/api/place', {
         method:"GET",
         credentials:'include'
-      })
+      }, fetch)
       .then((response) => response.json())
       .then((data) => {
         return data.body.data;

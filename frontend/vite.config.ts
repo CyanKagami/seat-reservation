@@ -14,9 +14,9 @@ export default defineConfig({
 			adapter: adapter({
 				pages: 'build',
 				assets: 'build',
-				fallback: '200.html', // 'index.html' if you want SPA-style client routing fallback
+				fallback: 'index.html', // 'index.html' if you want SPA-style client routing fallback
 				precompress: false,
-				strict: true
+				strict: false
 			})
 		})
 	],

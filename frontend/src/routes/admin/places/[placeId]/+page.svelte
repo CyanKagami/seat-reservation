@@ -1,5 +1,6 @@
 <script lang="ts">
     import PlaceBox from "$lib/components/admin/PlaceBox.svelte"
+  import { apiFetch } from "$lib/scripts/api.js";
     import type { CampusLocation } from "$lib/type/location";
     import type { Place } from "$lib/type/place";
     import { onMount } from "svelte";
@@ -10,12 +11,12 @@
         await fetchPageData()
     })
     async function fetchPageData(){
-        let place = await fetch(`/api/place/${params.placeId}`, {method: 'GET' , credentials: 'include'})
+        let place = await apiFetch(`/place/${params.placeId}`, {method: 'GET'})
         .then((res) => res.json())
         .then((result) => {
             return result.body.data;
         })
-        let location = await fetch("/api/location", {method: 'GET' , credentials: 'include'})
+        let location = await apiFetch("/location", {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             return data.body.data;
@@ -68,7 +69,7 @@
         }
 
         try {
-            const res = await fetch("/api/place", {
+            const res = await apiFetch("/place", {
                 method: "PATCH",
                 body: data,
             });

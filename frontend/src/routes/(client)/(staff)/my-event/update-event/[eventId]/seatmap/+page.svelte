@@ -1,6 +1,7 @@
 <script lang="ts">
   	import ZoneEditor from "$lib/components/zone-editor/components/ZoneEditor.svelte";
 	import { ZoneEditorState } from "$lib/components/zone-editor/zoneState.svelte.js";
+  import { apiFetch } from "$lib/scripts/api.js";
   	import type { Place } from "$lib/type/place.js";
 	import { onMount } from "svelte";
 	let { params } = $props();
@@ -8,17 +9,15 @@
 	let isLoading = $state(true);
 	let place:Place | null = $state(null)
 	onMount(async () => {
-		const event = await fetch(`/api/event/getFromId/${params.eventId}`, {
+		const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
             method: "GET",
-            credentials: 'include'
         })
         .then(async (response) => {
             return (await response.json()).body[0]
         })
 		place = event.place
-		await fetch(`/api/event/layout?eventId=${params.eventId}`, {
+		await apiFetch(`/event/layout?eventId=${params.eventId}`, {
 			method: 'GET',
-			credentials:'include'
 		})
 		.then((response) => {
 			return response.arrayBuffer();

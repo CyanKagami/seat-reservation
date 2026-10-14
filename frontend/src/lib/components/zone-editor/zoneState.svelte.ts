@@ -4,6 +4,7 @@ import { toolRegistry } from "./tools";
 import { rotatePoint } from '../canvas-shared/utils';
 import { decode, encode } from "@msgpack/msgpack";
 import type { SeatType } from "../canvas-shared/types";
+import { apiFetch } from "$lib/scripts/api";
 
 export class ZoneEditorState {
 	locationId = $state("");
@@ -208,7 +209,7 @@ export class ZoneEditorState {
 		formData.append('eventId', this.eventId);
 
 		try {
-			const res = await fetch("/api/event/layout", {
+			const res = await apiFetch("/event/layout", {
 				method: "PUT",
 				body: formData
 			});

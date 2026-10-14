@@ -1,7 +1,8 @@
 // layers/shared/nodejs/node_modules/shared-lib/s3.js
 import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
-const localstackUrl = process.env.AWS_LOCALSTACK_URL;
+export const BUCKET = process.env.S3_BUCKET || 'k-seat-object';
+const localstackUrl = process.env.AWS_LOCALSTACK_URL ;
 const region = process.env.AWS_REGION || 'us-east-1';
 
 export const s3Client = new S3Client({
@@ -26,17 +27,17 @@ function removeInvalidXmlCharacters(str) {
   return str.replace(invalidXmlRegex, '');
 }
 
-export async function addFile(folder, filename, fileBuffer) {
-  const cleanFileName = folder + '/' + removeInvalidXmlCharacters(filename);
+export async function addFile(filename, fileBuffer) {
+  const cleanFileName = removeInvalidXmlCharacters(filename);
   try {
-    await s3Client.send(new PutObjectCommand({ Bucket: 'k-seat-object', Key: cleanFileName, Body: fileBuffer }));
+    await s3Client.send(new PutObjectCommand({ Bucket: BUCKET, Key: cleanFileName, Body: fileBuffer }));
 
     if (localstackUrl) {
-      return `${localstackUrl}/k-seat-object/${cleanFileName}`;
+      return `${localstackUrl}/${BUCKET}/${cleanFileName}`;
     }
     // NOTE: fixed — original built "https://bucket.s3.region://key", which is
     // not a valid URL (malformed scheme). Standard virtual-hosted-style URL:
-    return `https://k-seat-object.s3.${region}.amazonaws.com/${cleanFileName}`;
+    return `https://${BUCKET}.s3.${region}.amazonaws.com/${cleanFileName}`;
   } catch (error) {
     if (error.$responseBodyText) console.error('S3 Raw response text:', error.$responseBodyText);
     if (error.$response) console.error('S3 HTTP Status Code:', error.$response.statusCode);
@@ -44,9 +45,9 @@ export async function addFile(folder, filename, fileBuffer) {
   }
 }
 
-export async function readFileAsString(folder, fileKey) {
-  const trueFileKey = folder + '/' + fileKey;
-  const command = new GetObjectCommand({ Bucket: 'k-seat-object', Key: trueFileKey });
+export async function readFileAsString(fileKey) {
+  const trueFileKey = fileKey;
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: trueFileKey });
   try {
     const response = await s3Client.send(command);
     if (response.Body) {
@@ -59,9 +60,9 @@ export async function readFileAsString(folder, fileKey) {
   }
 }
 
-export async function readFileAsByteArray(folder, fileKey) {
-  const trueFileKey = folder + '/' + fileKey;
-  const command = new GetObjectCommand({ Bucket: 'k-seat-object', Key: trueFileKey });
+export async function readFileAsByteArray(fileKey) {
+  const trueFileKey = fileKey;
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: trueFileKey });
   try {
     const response = await s3Client.send(command);
     if (response.Body) {

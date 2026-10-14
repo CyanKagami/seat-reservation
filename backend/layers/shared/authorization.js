@@ -47,3 +47,12 @@ export function requireRole(...allowedRoles) {
     next();
   };
 }
+
+export function requireAuth(req, res, next) {
+  const user = getUser(req);
+  if (!user.googleId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  req.user = user;
+  next();
+}

@@ -1,3 +1,4 @@
+// /api/event/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { addFile } from "$lib/scripts/s3";
 import { updateAllAttributes, fetchAllData, addDataUniqueId, fetchData } from "$lib/scripts/dynamo";

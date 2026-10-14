@@ -4,17 +4,21 @@ import { redirect } from "@sveltejs/kit";
 import type { LayoutLoad } from "./$types";
 import { apiFetch } from "$lib/scripts/api";
 
-export const load: LayoutLoad = async ({ fetch }) => {
+export const load: LayoutLoad = async ({ fetch, url }) => {
+    if (url.pathname === "/login") {
+        return {user: null};
+    }
     if (userStore.currentUser) {
         return {
             user: userStore.currentUser,
         };
     }
-    let response = await apiFetch(fetch, `/auth/me`, {
+    let response = await apiFetch(`/auth/me`, {
         method: "GET",
-    });
+    }, fetch);
     let userData = await response.json();
     userStore.setUser(userData.body);
+
     if (userData.body === null) {
         throw redirect(302, "/login");
     }

@@ -16,10 +16,15 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+function getBaseUrl(req) {
+  // optional override, e.g. for local testing
+  if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return `${proto}://${req.headers.host}`;
+}
+
 function getOAuthClient(req) {
-  // req.originalUrl under API Gateway's {proxy+} still reflects the real path,
-  // but the host/stage prefix needs reconstructing for the redirect URI.
-  const redirectUri = `${process.env.API_BASE_URL}/api/auth/google/callback`;
+  const redirectUri = `${getBaseUrl(req)}/api/auth/google/callback`;
   return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,

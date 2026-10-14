@@ -1,3 +1,4 @@
+// /api/event/getFromHost/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { fetchEventFromHost } from "$lib/scripts/dynamo";
 import jwt from 'jsonwebtoken';

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiFetch } from "$lib/scripts/api";
   import type { User } from "$lib/type/user";
   import { onMount } from "svelte";
     let users:User[] = $state([])
@@ -6,19 +7,18 @@
     let token:string[] = $state([])
     let editing = $state({index: -1, role: ''});
     onMount(async () => {
-        await fetch("/api/user", {method: 'GET' , credentials: 'include'})
+        await apiFetch("/user", {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             users = data.body.items;
             token.push(data.body.nextToken);
         })
-        console.log(users)
     })
 
     async function fetchNextPage() {
-        let fetchUrl = "/api/user?nextToken=" + token[currentPage - 1];
+        let fetchUrl = "/user?nextToken=" + token[currentPage - 1];
         if (token[currentPage - 1] === null) return; // No more pages
-        await fetch(fetchUrl, {method: 'GET' , credentials: 'include'})
+        await apiFetch(fetchUrl, {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             users = data.body.items;
@@ -36,7 +36,7 @@
         if (currentPage === 2) {
             fetchUrl = "/api/user";
         }
-        await fetch(fetchUrl, {method: 'GET' , credentials: 'include'})
+        await fetch(fetchUrl, {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             users = data.body.items;
@@ -46,9 +46,8 @@
     }
 
     async function saveRole(index:number) {
-        await fetch(`/api/user/editRole?googleId=${encodeURIComponent(users[index].googleId)}&email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
+        await apiFetch(`/user/editRole?googleId=${encodeURIComponent(users[index].googleId)}&email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
             method: 'POST',
-            credentials: 'include'
         })
         .then((res) => res.json())
         .then((data) => {

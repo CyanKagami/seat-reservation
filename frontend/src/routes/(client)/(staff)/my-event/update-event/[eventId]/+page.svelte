@@ -6,6 +6,7 @@
   import type { Event as MyEvent } from "$lib/type/event";
   import type { Place } from "$lib/type/place";
   import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
+  import { apiFetch } from "$lib/scripts/api";
   let props: PageProps = $props();
   let params = $derived(props.params);
   let data = $derived(props.data);
@@ -187,7 +188,7 @@
     }
 
     try {
-      const res = await fetch('/api/event', {
+      const res = await apiFetch('/event', {
         method: 'PATCH',
         body: data
       });

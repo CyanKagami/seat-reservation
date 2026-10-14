@@ -1,5 +1,6 @@
 <script lang="ts">
     import PlaceBox from "$lib/components/admin/PlaceBox.svelte"
+  import { apiFetch } from "$lib/scripts/api";
   import { userStore } from "$lib/store/auth.svelte";
   import type { CampusLocation } from "$lib/type/location";
     import type { Place } from "$lib/type/place";
@@ -10,12 +11,12 @@
         fetchPageData()
     })
     function fetchPageData(){
-        fetch("/api/place", {method: 'GET' , credentials: 'include'})
+        apiFetch("/place", {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             places = data.body.data;
         })
-        fetch("/api/location", {method: 'GET' , credentials: 'include'})
+        apiFetch("/location", {method: 'GET'})
         .then((res) => res.json())
         .then((data) => {
             locations = data.body.data;
@@ -60,12 +61,12 @@
     let data = new FormData();
     if (e.target) {
       let formData = new FormData(e.target as HTMLFormElement);
-      if (imageFile) formData.append("picture", imageFile, imageFile?.name);
+      if (imageFile) formData.set("picture", imageFile, imageFile?.name);
       data = formData;
     }
 
     try {
-      const res = await fetch("/api/place", {
+      const res = await apiFetch("/place", {
         method: "POST",
         body: data,
       });
@@ -78,7 +79,8 @@
         alert(`เกิดข้อผิดพลาด: ${err.error}`);
       }
     } catch (err) {
-      alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+      alert(`ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ: ${err}`);
+      console.error(err);
     } finally {
       isSubmitting = false;
       isCreatePopupOpen = false;

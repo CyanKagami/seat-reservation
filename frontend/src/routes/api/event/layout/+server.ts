@@ -1,3 +1,4 @@
+// /api/event/layout/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
@@ -8,7 +9,7 @@ import { fetchData, updateAllAttributes } from "$lib/scripts/dynamo";
 import { S3ServiceException } from "@aws-sdk/client-s3";
 import type { Event } from "$lib/type/event";
 
-interface UpdataLayoutFormData {
+interface UpdateLayoutFormData {
     layoutFile: File,
     eventId: string
 }
@@ -125,7 +126,7 @@ export const PUT: RequestHandler = async ({request, cookies}) => {
         );
     }
 
-    let data:UpdataLayoutFormData = Object.fromEntries(await request.formData()) as unknown as UpdataLayoutFormData
+    let data:UpdateLayoutFormData = Object.fromEntries(await request.formData()) as unknown as UpdateLayoutFormData
     let fileBuffer = Buffer.from(await data.layoutFile.arrayBuffer())
     try {
         let layoutURL = await addFile("k-seat-event-layout", `${data.eventId}.msgpack`, fileBuffer);

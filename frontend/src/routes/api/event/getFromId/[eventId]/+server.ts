@@ -1,3 +1,4 @@
+// /api/event/getFromId/[eventId]/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { fetchEventFromEventId } from "$lib/scripts/dynamo";
 

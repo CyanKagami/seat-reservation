@@ -1,5 +1,6 @@
 <script lang="ts">
   import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
+  import { apiFetch } from "$lib/scripts/api";
 import { userStore } from "$lib/store/auth.svelte";
   import type { Daytable } from "$lib/type/event";
   import type { Place } from "$lib/type/place";
@@ -26,14 +27,12 @@ import { userStore } from "$lib/store/auth.svelte";
   });
 
   onMount(()=> {
-    fetch('/api/place', {
+    apiFetch('/place', {
       method:"GET",
-      credentials:'include'
     })
     .then((response) => response.json())
     .then((data) => {
       places = data.body.data;
-      console.log(places)
     })
   })
 
@@ -211,7 +210,7 @@ function addDate() {
     }
 
     try {
-      const res = await fetch("/api/event", {
+      const res = await apiFetch("/event", {
         method: "POST",
         body: data,
       });

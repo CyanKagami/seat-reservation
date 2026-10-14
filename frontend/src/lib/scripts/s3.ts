@@ -2,6 +2,7 @@ import { AWS_LOCALSTACK_URL, AWS_REGION } from "$env/static/private";
 import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
+const BUCKET = 'k-seat-objects';
 const localstackUrl = AWS_LOCALSTACK_URL;
 
 export const s3Client = new S3Client({
@@ -39,18 +40,18 @@ function removeInvalidXmlCharacters(str:string) {
   return str.replace(invalidXmlRegex, '');
 }
 
-export async function addFile(bucket:string, filename:string, fileBuffer:Buffer) {
+export async function addFile(folder:string, filename:string, fileBuffer:Buffer) {
     let cleanFileName = removeInvalidXmlCharacters(filename);
     try {
       await s3Client.send(new PutObjectCommand({
-          Bucket: bucket,
-          Key: cleanFileName,
+          Bucket: BUCKET,
+          Key: `${folder}/${cleanFileName}`,
           Body: fileBuffer,
       }));
     if (localstackUrl) {
-      return `${localstackUrl}/${bucket}/${cleanFileName}`
+      return `${localstackUrl}/${BUCKET}/${cleanFileName}`
     }
-    return `https://${bucket}.s3.${AWS_REGION}://${cleanFileName}`
+    return `https://${BUCKET}.s3.${AWS_REGION}://${cleanFileName}`
   }
   catch (error:any) {
     if (error.$responseBodyText) {
@@ -64,10 +65,10 @@ export async function addFile(bucket:string, filename:string, fileBuffer:Buffer)
   }
 }
 
-export async function readFileAsString(bucketName:string, fileKey:string) {
+export async function readFileAsString(folder:string, fileKey:string) {
   const command = new GetObjectCommand({
-    Bucket: bucketName,
-    Key: fileKey,
+    Bucket: BUCKET,
+    Key: `${folder}/${fileKey}`,
   });
 
   try {
@@ -75,7 +76,6 @@ export async function readFileAsString(bucketName:string, fileKey:string) {
     // 2. Convert the stream to a string directly
     if (response.Body){
        const fileContent = await response.Body.transformToString();
-       console.log("File content:", fileContent);
        return fileContent
     }
     return '';
@@ -85,10 +85,10 @@ export async function readFileAsString(bucketName:string, fileKey:string) {
   }
 }
 
-export async function readFileAsByteArray(bucketName:string, fileKey:string) {
+export async function readFileAsByteArray(folder:string, fileKey:string) {
   const command = new GetObjectCommand({
-    Bucket: bucketName,
-    Key: fileKey,
+    Bucket: BUCKET,
+    Key: `${folder}/${fileKey}`,
   });
 
   try {
