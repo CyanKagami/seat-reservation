@@ -1,42 +1,19 @@
-// /api/place/[placeId]/+server.ts
-import { json, type RequestHandler } from "@sveltejs/kit";
-import { fetchData } from "$lib/scripts/dynamo";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import { verifyAccess } from "$lib/scripts/authorization";
-import type { User } from "$lib/type/user";
-
-export const GET: RequestHandler = async ({request, cookies, params}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-
-    try {
-        let data = await fetchData("places", {placeId: params.placeId});
-        console.log("Fetched data from 'places' table:", data);
-        return json(
-            {
-                statusCode: 200,
-                body: { data }
-            }
-        )
-    }
-    catch (error) {
-        console.error("Error fetching users:", error);
-        return json(
-            {
-                statusCode: 500,
-                body: { error: "Internal server error" }
-            }
-        );
-    }
-}
+// src/routes/api/place/[placeId]/+server.ts
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { guard } from '$lib/scripts/guard';
+import { fetchData } from '$lib/scripts/dynamo';
+ 
+// GET /api/place/:placeId - a single place
+export const GET: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin', 'organizer']);
+  if (user instanceof Response) return user;
+ 
+  try {
+    const data = await fetchData('places', { placeId: event.params.placeId });
+    return json({ body: { data } });
+  } catch (error) {
+    console.error('Error fetching place:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
+};
+ 

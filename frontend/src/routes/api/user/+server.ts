@@ -1,41 +1,19 @@
-// /api/user/+server.ts
-import { json, type RequestHandler } from "@sveltejs/kit";
-import { paginateReadData } from "$lib/scripts/dynamo";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import { verifyAccess } from "$lib/scripts/authorization";
-import type { User } from "$lib/type/user";
+// src/routes/api/user/+server.ts
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { guard } from '$lib/scripts/guard';
+import { paginateReadData } from '$lib/scripts/dynamo';
 
-export const GET: RequestHandler = async ({request, cookies, url}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-    let page = url.searchParams.get('nextToken') || undefined;
-    try {
-        let {items, nextToken} = (await paginateReadData("users", 25, page))
-        return json(
-            {
-                statusCode: 200,
-                body: { items, nextToken }
-            }
-        )
-    }
-    catch (error) {
-        console.error("Error fetching users:", error);
-        return json(
-            {
-                statusCode: 500,
-                body: { error: "Internal server error" }
-            }
-        );
-    }
-}
+// GET /api/user?nextToken=... - paginated list of users
+export const GET: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin']);
+  if (user instanceof Response) return user;
+
+  const page = event.url.searchParams.get('nextToken') || undefined;
+  try {
+    const { items, nextToken } = await paginateReadData('users', 25, page);
+    return json({ body: { items, nextToken } });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
+};

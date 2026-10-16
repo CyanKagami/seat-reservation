@@ -106,7 +106,7 @@ Resources:
   ReservationTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: reservation
+      TableName: reservations
       AttributeDefinitions:
         - AttributeName: eventId
           AttributeType: S

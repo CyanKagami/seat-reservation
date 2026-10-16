@@ -11,42 +11,7 @@ import type { Place } from "$lib/type/place";
 import path from "node:path";
 import { v4 as uuid4} from "uuid";
 import { encode } from "@msgpack/msgpack";
-
-export const GET: RequestHandler = async ({request, cookies}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-
-    try {
-        let data = await fetchAllData("places");
-        console.log("Place Data:", data)
-        console.log("Fetched data from 'places' table:", data);
-        return json(
-            {
-                statusCode: 200,
-                body: { data }
-            }
-        )
-    }
-    catch (error) {
-        console.error("Error fetching users:", error);
-        return json(
-            {
-                statusCode: 500,
-                body: { error: "Internal server error" }
-            }
-        );
-    }
-}
+import { guard } from "$lib/scripts/guard";
 
 interface PlaceFormData {
     placeId?: string;
@@ -73,95 +38,89 @@ async function formatData(data:PlaceFormData, creator:User) {
     return place
 }
 
-export const POST: RequestHandler = async ({request, cookies}) => {
-    // Doing some verify
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-
-    let formData = await request.formData();
-    let location = await fetchData('locations', {locationId: formData.get('location')})
-    let picture = formData.get('picture') as File
-    let pictureURL = '';
-    if (picture)
-    {
-        let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        pictureURL = await addFile("k-seat-place-picture", `${Date.now()}-${uuid4()}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
-    }
-
-    let uniqueId = await addDataUniqueId("places", {
-        name:formData.get('name'),
-        picture: pictureURL,
-        location: location,
-        creatorId: decoded.googleId,
-        creatorName: decoded.name
-    }, 'placeId');
-
-    const initialLayout = {
-        version: "1.0",
-        timestamp: new Date().toISOString(),
-            canvas: {
-                gridWidth: 80,
-                gridHeight: 80,
-            },
-
-            objects: []
-    };
-    let msgpack = encode(initialLayout);
+export const GET: RequestHandler = async (event) => {
+    const user = await guard(event, ['admin', 'organizer']);
+    if (user instanceof Response) return user;
     
-    await addFile("k-seat-place-layout", `${uniqueId}.msgpack`, Buffer.from(msgpack));
-
-    return json({status:200, body: {message:"ok"}})
+    try {
+        const data = await fetchAllData('places');
+        return json({ body: { data } });
+    } catch (error) {
+        console.error('Error fetching places:', error);
+        return json({ error: 'Internal server error' }, { status: 500 });
+    }
 }
 
-export const PATCH: RequestHandler = async ({request, cookies}) => {
-        // Doing some verify
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
 
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
+export const POST: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin']);
+  if (user instanceof Response) return user;
+ 
+  try {
+    const formData = await event.request.formData();
+    const location = await fetchData('locations', { locationId: formData.get('location') as string });
+    const picture = formData.get('picture') as File | null;
+ 
+    let pictureURL = '';
+    if (picture && picture.size > 0) {
+      const buffer = Buffer.from(await picture.arrayBuffer());
+      pictureURL = await addFile(
+        `pictures/place`,`${Date.now()}-${uuid4()}${path.extname(picture.name)}`,
+        buffer
+      );
     }
-
-    let data:PlaceFormData = Object.fromEntries(await request.formData()) as unknown as PlaceFormData
-    let processData:Place = {} as Place
-    console.log('processData: ',data)
-    let picture = data.picture as File
-    if (picture)
-    {
-        let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        processData.picture = await addFile("k-seat-place-picture", `${data.placeId}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
-    }
-    delete data.picture
-    processData = {
-        ...processData,
-        ...(await formatData(data, decoded))
-    }
-    console.log(processData)
-    await updateAllAttributes("places", {placeId: processData.placeId}, processData)
-    return json(
-        {
-            body: {
-                "message": "OK"
-            }
-        },
-        {
-            status:200
-        }
-    )
+ 
+    const uniqueId = await addDataUniqueId(
+      'places',
+      {
+        name: formData.get('name'),
+        picture: pictureURL,
+        location,
+        creatorId: user.googleId,
+        creatorName: user.name
+      },
+      'placeId'
+    );
+ 
+    const initialLayout = {
+      version: '1.0',
+      timestamp: new Date().toISOString(),
+      canvas: { gridWidth: 80, gridHeight: 80 },
+      objects: []
+    };
+    await addFile(`layouts/place/`,`${uniqueId}.msgpack`, Buffer.from(encode(initialLayout)));
+ 
+    return json({ body: { message: 'ok', placeId: uniqueId } });
+  } catch (error) {
+    console.error('Error creating place:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
+
+export const PATCH: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin']);
+  if (user instanceof Response) return user;
+ 
+  try {
+    const data = Object.fromEntries(await event.request.formData()) as unknown as PlaceFormData;
+    const processData = {} as Place;
+ 
+    const picture = data.picture;
+    if (picture && picture.size > 0) {
+      const buffer = Buffer.from(await picture.arrayBuffer());
+      processData.picture = await addFile(
+        `pictures/place/`,`${data.placeId}${path.extname(picture.name)}`,
+        buffer
+      );
+    }
+    delete data.picture;
+ 
+    Object.assign(processData, await formatData(data, user));
+    await updateAllAttributes('places', { placeId: processData.placeId }, processData);
+ 
+    return json({ body: { message: 'OK' } });
+  } catch (error) {
+    console.error('Error updating place:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
+};

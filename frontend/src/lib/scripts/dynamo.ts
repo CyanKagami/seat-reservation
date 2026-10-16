@@ -1,8 +1,7 @@
-import { DynamoDBClient, CreateTableCommand, GetItemCommand, type GetItemCommandInput } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient, CreateTableCommand, GetItemCommand, type GetItemCommandInput, type QueryCommandInput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
-import type { User } from "$lib/type/user";
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
 
@@ -160,21 +159,56 @@ export async function addDataIfNotExists(tableName:string, item:Object, primaryK
   }
 }
 
-export async function fetchAllData(tableName: string): Promise<Record<string, any>[]> {
+export async function fetchAllData(
+  tableName: string, 
+  filter?: Record<string, any>
+): Promise<Record<string, any>[]> {
   const allItems: Record<string, any>[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    do {
-      // Configure scan parameters
-      const params: ScanCommandInput = {
-        TableName: tableName,
-        ExclusiveStartKey: lastEvaluatedKey, // Resume from the last checkpoint
-      };
+    // Determine if we are querying by a hash key or scanning the whole table
+    const hasFilter = filter && Object.keys(filter).length > 0;
+    
+    // Extract the first key-value pair to use as the hash key condition
+    let hashKeyName: string | undefined;
+    let hashKeyValue: any;
+    if (hasFilter) {
+      const entries = Object.entries(filter);
+      hashKeyName = entries[0][0];
+      hashKeyValue = entries[0][1];
+    }
 
-      // Execute the scan command
-      const command = new ScanCommand(params);
-      const response = await docClient.send(command);
+    do {
+      let response;
+
+      if (hasFilter && hashKeyName) {
+        // --- QUERY MODE (Efficient: Target specific Hash Key) ---
+        const params: QueryCommandInput = {
+          TableName: tableName,
+          KeyConditionExpression: "#hk = :hv",
+          ExpressionAttributeNames: {
+            "#hk": hashKeyName, // Prevents reserved keyword conflicts
+          },
+          ExpressionAttributeValues: {
+            ":hv": hashKeyValue,
+          },
+          ExclusiveStartKey: lastEvaluatedKey,
+        };
+
+        const command = new QueryCommand(params);
+        response = await docClient.send(command);
+
+      } else {
+        // --- SCAN MODE (Fallback: Read entire table) ---
+        const params: ScanCommandInput = {
+          TableName: tableName,
+          ExclusiveStartKey: lastEvaluatedKey,
+        };
+
+        const command = new ScanCommand(params);
+        response = await docClient.send(command);
+      }
 
       // Store retrieved items
       if (response.Items) {
@@ -188,7 +222,7 @@ export async function fetchAllData(tableName: string): Promise<Record<string, an
 
     return allItems;
   } catch (error) {
-    console.error("Error scanning DynamoDB table:", error);
+    console.error("Error fetching data from DynamoDB table:", error);
     throw error;
   }
 }
@@ -233,8 +267,6 @@ export async function fetchEventFromEventId(eventId:string) {
     }
   }
 
-  console.log(eventId)
-  console.log("Total items matching filter:", allItems.length);
   return allItems;
 }
 
@@ -286,25 +318,21 @@ export async function updateAllAttributes(tableName:string, primaryKey:Key, attr
 export async function addUser(user:Object) {
   const params:PutCommandInput = {
     TableName: 'users',
-    // Define the exact primary key match
     Item: user,
+    ConditionExpression: 'attribute_not_exists(googleId)'
   };
 
   try {
     const data = await docClient.send(new PutCommand(params));
     console.log('result : ' + JSON.stringify(data));
   } catch (error:any) {
-    if (error.name === "ConditionalCheckFailedException") {
-      console.warn("Collision detected! Retrying with a new ID...");
-      await addUser(user); // Recursive retry strategy
+    if (error.name === 'ConditionalCheckFailedException') {
+      console.warn('User already exists, not overwriting.');
+      return;
     }
-    if (error.$responseBodyText) {
-      console.error("Dynamo Raw response text:", error.$responseBodyText);
-    }
-  // Inspect the full HTTP response object
-    if (error.$response) {
-      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
-    }
+    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
+    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
+    throw error;
   }
 }
 

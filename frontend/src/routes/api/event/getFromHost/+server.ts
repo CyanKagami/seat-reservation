@@ -1,21 +1,18 @@
-// /api/event/getFromHost/+server.ts
-import { json, type RequestHandler } from "@sveltejs/kit";
-import { fetchEventFromHost } from "$lib/scripts/dynamo";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import type { GoogleUser } from "$lib/type/googleUser";
+// src/routes/api/event/getFromHost/+server.ts
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { guard } from '$lib/scripts/guard';
+import { fetchEventFromHost } from '$lib/scripts/dynamo';
 
+// GET /api/event/getFromHost - events created by the logged-in user
+export const GET: RequestHandler = async (event) => {
+    const user = await guard(event);
+    if (user instanceof Response) return user;
 
-export const GET: RequestHandler = async ({request, cookies}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-
-    // Verify the token signature
-    const decoded:GoogleUser = jwt.verify(token, JWT_SECRET) as GoogleUser;
-    let data = await fetchEventFromHost(decoded.googleId);
-    return json(
-        {
-            statusCode: 200,
-            body: data
-        }
-    )
-}
+    try {
+        const data = await fetchEventFromHost(user.googleId);
+        return json({ body: data });
+    } catch (error) {
+        console.error('Error fetching events for host:', error);
+        return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
+    }
+};

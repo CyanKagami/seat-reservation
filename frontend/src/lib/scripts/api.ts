@@ -5,7 +5,7 @@ import { clearToken, getToken } from '$lib/scripts/auth';
 export async function apiFetch(path:string, options:RequestInit = {}, fetchFunction?: typeof fetch) {
   const token = getToken();
   const isFormData = options.body instanceof FormData;
-
+  console.log("Token:", token);
   const res = await (fetchFunction || fetch)(`${PUBLIC_API_URL}${path}`, {
     ...options,
     headers: {

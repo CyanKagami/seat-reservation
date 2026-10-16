@@ -1,16 +1,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Resources for K-Seat
+Transform: AWS::Serverless-2016-10-31
+Description: K-Seat - seat reservation backend, data stores and frontend hosting
+
 
 Resources:
+  # ---------------------------------------------------------------
+  # Data layer (from your original appTemplate.yml)
+  # ---------------------------------------------------------------
+  # One bucket for all uploads:
+  #   pictures/place/*, pictures/event/*  -> public read (used by <img> tags)
+  #   layouts/place/*,  layouts/event/*   -> private (only Lambda reads/writes)
   KSeatS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: k-seat-object
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  KSeatS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref KSeatS3Bucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${KSeatS3Bucket.Arn}/pictures/*'
 
   UsersTable:
     Type: AWS::DynamoDB::Table
@@ -48,7 +67,7 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
-  LoactionsTable:
+  LocationsTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: locations
@@ -63,7 +82,7 @@ Resources:
   ReservationTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: reservation
+      TableName: reservations
       AttributeDefinitions:
         - AttributeName: eventId
           AttributeType: S

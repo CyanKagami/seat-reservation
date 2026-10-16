@@ -6,29 +6,22 @@ import { verifyAccess } from "$lib/scripts/authorization";
 import type { User } from "$lib/type/user";
 import { addFile, readFileAsByteArray, readFileAsString } from "$lib/scripts/s3";
 import { updateAllAttributes } from "$lib/scripts/dynamo";
+import { guard } from "$lib/scripts/guard";
 
 interface UpdataLayoutFormData {
     layoutFile: File,
     placeId: string
 }
 
-export const GET: RequestHandler = async ({request, cookies, url}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-    let placeId = url.searchParams.get('placeId');
+export const GET: RequestHandler = async (event) => {
+    const user = await guard(event, ['admin', 'organizer']);
+  if (user instanceof Response) return user;
+ 
+  const placeId = event.url.searchParams.get('placeId');
+  if (!placeId) return new Response(null, { status: 400 });
     try {
-        const fileContent = await readFileAsByteArray('k-seat-place-layout', `${placeId}.msgpack`)
-        return new Response(fileContent as any, {
+        const fileContent = await readFileAsByteArray('layouts/place', `${placeId}.msgpack`)
+        return new Response(fileContent as any as BodyInit, {
 			status: 200,
 			headers: {
 				'Content-Type': 'application/msgpack',
@@ -37,57 +30,34 @@ export const GET: RequestHandler = async ({request, cookies, url}) => {
             }
         })
     }
-    catch(err) {
-        console.log(err);
-        return json(
-            {
-                statusCode: 500,
-                body: {
-                    "message": "Internal Server Error"
-                }
-            }
-        )
+    catch (err) {
+        console.error(err);
+        return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
     
 }
 
-export const PUT: RequestHandler = async ({request, cookies}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
+export const PUT: RequestHandler = async (event) => {
+    const user = await guard(event, ['admin']);
+    if (user instanceof Response) return user;
+
+    const form = await event.request.formData();
+    const placeId = form.get('placeId') as string | null;
+    const layoutFile = form.get('layoutFile') as File | null;
+    if (!placeId || !layoutFile) {
+        return json({ error: 'Missing placeId or layoutFile' }, { status: 400 });
     }
 
-    let data:UpdataLayoutFormData = Object.fromEntries(await request.formData()) as unknown as UpdataLayoutFormData
-    let fileBuffer = Buffer.from(await data.layoutFile.arrayBuffer())
+
     try {
-        let layoutURL = await addFile("k-seat-place-layout", `${data.placeId}.msgpack`, fileBuffer);
-        await updateAllAttributes("places", {placeId:data.placeId}, {layoutURL: layoutURL});
+        const fileBuffer = Buffer.from(await layoutFile.arrayBuffer());
+        let layoutURL = await addFile("layouts/place", `${placeId}.msgpack`, fileBuffer);
+
+        await updateAllAttributes("places", {placeId}, {layoutURL});
+        return json({ body: { message: 'OK' } });
     }
-    catch(err) {
-        console.log(err);
-        return json(
-            {
-                statusCode: 500,
-                body: {
-                    "message": "Internal Server Error"
-                }
-            }
-        )
+    catch (err) {
+        console.error(err);
+        return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
-    return json(
-        {
-            statusCode: 200,
-            body: {
-                "message": "OK"
-            }
-        }
-    )
 }

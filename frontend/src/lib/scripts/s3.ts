@@ -2,7 +2,7 @@ import { AWS_LOCALSTACK_URL, AWS_REGION } from "$env/static/private";
 import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
-const BUCKET = 'k-seat-objects';
+export const BUCKET = 'k-seat-object';
 const localstackUrl = AWS_LOCALSTACK_URL;
 
 export const s3Client = new S3Client({
@@ -49,9 +49,10 @@ export async function addFile(folder:string, filename:string, fileBuffer:Buffer)
           Body: fileBuffer,
       }));
     if (localstackUrl) {
-      return `${localstackUrl}/${BUCKET}/${cleanFileName}`
+      console.log(`File "${cleanFileName}" uploaded successfully to localstack at ${localstackUrl}/${BUCKET}/${folder}/${cleanFileName}`);
+      return `${localstackUrl}/${BUCKET}/${folder}/${cleanFileName}`
     }
-    return `https://${BUCKET}.s3.${AWS_REGION}://${cleanFileName}`
+    return `https://${BUCKET}.s3.${AWS_REGION}://${folder}/${cleanFileName}`
   }
   catch (error:any) {
     if (error.$responseBodyText) {

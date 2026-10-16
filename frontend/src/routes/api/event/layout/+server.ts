@@ -1,154 +1,72 @@
-// /api/event/layout/+server.ts
-import { json, type RequestHandler } from "@sveltejs/kit";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import { verifyAccess } from "$lib/scripts/authorization";
-import type { User } from "$lib/type/user";
-import { addFile, readFileAsByteArray, readFileAsString } from "$lib/scripts/s3";
-import { fetchData, updateAllAttributes } from "$lib/scripts/dynamo";
-import { S3ServiceException } from "@aws-sdk/client-s3";
-import type { Event } from "$lib/type/event";
+// src/routes/api/event/layout/+server.ts
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { S3ServiceException } from '@aws-sdk/client-s3';
+import { guard } from '$lib/scripts/guard';
+import { addFile, readFileAsByteArray } from '$lib/scripts/s3';
+import { fetchData, updateAllAttributes } from '$lib/scripts/dynamo';
+import type { Event } from '$lib/type/event';
 
-interface UpdateLayoutFormData {
-    layoutFile: File,
-    eventId: string
+function msgpackResponse(content: Uint8Array) {
+  return new Response(content as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/msgpack',
+      'Content-Length': content.byteLength.toString(),
+      'Cache-Control': 'no-cache'
+    }
+  });
 }
 
-async function getLayoutFromPlace(eventId:string) {
-    let event = await fetchData('events', {eventId:eventId}) as Event | null;
-    if (!event) throw new Error('Event not found');
+// If an event has no custom layout yet, fall back to its place's layout.
+async function getLayoutFromPlace(eventId: string) {
+  const ev = (await fetchData('events', { eventId })) as Event | null;
+  if (!ev) throw new Error('Event not found');
+  return readFileAsByteArray(`layouts/place`, `${ev.place.placeId}.msgpack`);
+}
+
+// GET /api/event/layout?eventId=...
+export const GET: RequestHandler = async (event) => {
+    const user = await guard(event, ['admin', 'organizer']);
+    if (user instanceof Response) return user;
+
+    const eventId = event.url.searchParams.get('eventId');
+    if (!eventId) return new Response(null, { status: 400 });
+
     try {
-        const fileContent = await readFileAsByteArray('k-seat-place-layout', `${event.place.placeId}.msgpack`)
-        return new Response(fileContent as any, {
-			status: 200,
-			headers: {
-				'Content-Type': 'application/msgpack',
-				'Content-Length': fileContent.byteLength.toString(),
-				'Cache-Control': 'no-cache'
-            }
-        })
-    }
-    catch(error) {
-        if (error instanceof S3ServiceException) {
-            console.error(`S3 Error [${error.name}]: ${error.message}`);
-            
-            // Access specific properties
-            const statusCode = error.$metadata?.httpStatusCode; // e.g., 404, 403
-            const faultType = error.$fault; // 'client' or 'server'
-            
-            switch (error.name) {
-                case "NoSuchKey":
-                console.error("The requested file does not exist.");
-
-                break;
-                case "AccessDenied":
-                console.error("Check your IAM permissions or Bucket policies.");
-                break;
-                default:
-                console.error("Other S3 specific issue.");
-            }
+        return msgpackResponse(await readFileAsByteArray(`layouts/event`, `${eventId}.msgpack`));
+    } catch (error) {
+        if (error instanceof S3ServiceException && error.name === 'NoSuchKey') {
+        try {
+            return msgpackResponse(await getLayoutFromPlace(eventId));
+        } catch (fallbackErr) {
+            console.error(fallbackErr);
         }
-        throw error
+        } else {
+        console.error(error);
+        }
+        return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
-}
+};
 
-export const GET: RequestHandler = async ({request, cookies, url}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
+// PUT /api/event/layout - save an event-specific layout
+export const PUT: RequestHandler = async (event) => {
+    const user = await guard(event, ['admin']);
+    if (user instanceof Response) return user;
+
+    const form = await event.request.formData();
+    const eventId = form.get('eventId') as string | null;
+    const layoutFile = form.get('layoutFile') as File | null;
+    if (!eventId || !layoutFile) {
+        return json({ error: 'Missing eventId or layoutFile' }, { status: 400 });
     }
-    let eventId = url.searchParams.get('eventId');
-    if (!eventId) return new Response(null,{
-			status: 400
-    })
+
     try {
-        const fileContent = await readFileAsByteArray('k-seat-event-layout', `${eventId}.msgpack`)
-        return new Response(fileContent as any, {
-			status: 200,
-			headers: {
-				'Content-Type': 'application/msgpack',
-				'Content-Length': fileContent.byteLength.toString(),
-				'Cache-Control': 'no-cache'
-            }
-        })
+        const fileBuffer = Buffer.from(await layoutFile.arrayBuffer());
+        const layoutURL = await addFile(`layouts/event`,`${eventId}.msgpack`, fileBuffer);
+        await updateAllAttributes('events', { eventId }, { layoutURL });
+        return json({ body: { message: 'OK' } });
+    } catch (err) {
+        console.error(err);
+        return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
-    catch(error) {
-        if (error instanceof S3ServiceException) {
-            console.error(`S3 Error [${error.name}]: ${error.message}`);
-            
-            // Access specific properties
-            const statusCode = error.$metadata?.httpStatusCode; // e.g., 404, 403
-            const faultType = error.$fault; // 'client' or 'server'
-            
-            switch (error.name) {
-                case "NoSuchKey":
-                console.error("The requested file does not exist.");
-                return await getLayoutFromPlace(eventId);
-                break;
-                case "AccessDenied":
-                console.error("Check your IAM permissions or Bucket policies.");
-                break;
-                default:
-                console.error("Other S3 specific issue.");
-            }
-        }
-        return json(
-            {
-                statusCode: 500,
-                body: {
-                    "message": "Internal Server Error"
-                }
-            }
-        )
-    }
-    
-}
-
-export const PUT: RequestHandler = async ({request, cookies}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
-    
-    // Verify the token signature
-    const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
-        return json(
-            {
-                statusCode: 403,
-                body: { error: "Access denied" }
-            }
-        );
-    }
-
-    let data:UpdateLayoutFormData = Object.fromEntries(await request.formData()) as unknown as UpdateLayoutFormData
-    let fileBuffer = Buffer.from(await data.layoutFile.arrayBuffer())
-    try {
-        let layoutURL = await addFile("k-seat-event-layout", `${data.eventId}.msgpack`, fileBuffer);
-        await updateAllAttributes("events", {eventId:data.eventId}, {layoutURL: layoutURL});
-    }
-    catch(err) {
-        console.log(err);
-        return json(
-            {
-                statusCode: 500,
-                body: {
-                    "message": "Internal Server Error"
-                }
-            }
-        )
-    }
-    return json(
-        {
-            statusCode: 200,
-            body: {
-                "message": "OK"
-            }
-        }
-    )
-}
+};

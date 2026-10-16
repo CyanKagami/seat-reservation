@@ -1,15 +1,18 @@
-// /api/event/getFromId/[eventId]/+server.ts
-import { json, type RequestHandler } from "@sveltejs/kit";
-import { fetchEventFromEventId } from "$lib/scripts/dynamo";
+// src/routes/api/event/getFromId/[eventId]/+server.ts
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { guard } from '$lib/scripts/guard';
+import { fetchEventFromEventId } from '$lib/scripts/dynamo';
 
-export const GET: RequestHandler = async ({request, cookies, params}) => {
-    const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
+// GET /api/event/getFromId/:eventId (any logged-in user)
+export const GET: RequestHandler = async (event) => {
+  const user = await guard(event);
+  if (user instanceof Response) return user;
 
-    let data = await fetchEventFromEventId(params.eventId as string)
-    return json(
-        {
-            statusCode: 200,
-            body: data
-        }
-    )
-}
+  try {
+    const data = await fetchEventFromEventId(event.params.eventId as string);
+    return json({ body: data });
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
+  }
+};

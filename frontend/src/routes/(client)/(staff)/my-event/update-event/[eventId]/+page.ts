@@ -2,7 +2,7 @@ import type { PageLoad } from './$types';
 import { apiFetch } from '$lib/scripts/api';
 
 export const load: PageLoad = async ({ fetch, params }) => {
-    const event = await apiFetch(`/api/event/getFromId/${params.eventId}`, {
+    const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
             method: "GET",
             credentials: 'include'
         }, fetch)
@@ -15,7 +15,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
     if (!event.picture) {
         event.picture = null;
     }
-    const places = await apiFetch('/api/place', {
+    const places = await apiFetch('/place', {
         method:"GET",
         credentials:'include'
       }, fetch)
