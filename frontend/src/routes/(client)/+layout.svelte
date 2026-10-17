@@ -7,11 +7,7 @@
 </script>
 <div class="flex flex-col justify-center w-full font-inter my-20">
 
-{#if userStore.isAuthenticated && userStore.currentUser?.role === "admin"}
-	<NavBarAdmin></NavBarAdmin>	
-{:else}
-	<NavBar></NavBar>
-{/if}
+<NavBar></NavBar>
 
 	{@render children()}
 </div>
