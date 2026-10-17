@@ -22,6 +22,7 @@
 			return response.json();
 		}).then((userData) => {
 			userStore.setUser(userData.body);
+			console.log(userStore.currentUser)
 			if (userData.body === null) {
 				goto("/login", { replaceState: true });
 			}

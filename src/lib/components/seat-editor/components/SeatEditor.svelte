@@ -6,10 +6,10 @@
 	import RightSidebar from "./RightSidebar.svelte";
 	import Canvas from "./Canvas.svelte";
 
-	let {state = $bindable(), place, backLink} = $props();
+	let {state , place, backLink} = $props();
 
 
-	state = new SeatEditorState(place.placeId);
+	
 	// Reactive side-effect triggered when grid dimensions change
 	$effect(() => {
 		state.moveSquareOnOutOfBound(state.gridWidth, state.gridHeight);

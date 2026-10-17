@@ -9,13 +9,14 @@ import { request } from "node:http";
 import type { Place } from "$lib/type/place";
 import path from "node:path";
 import { v4 as uuid4} from "uuid";
+import { encode } from "@msgpack/msgpack";
 
 export const GET: RequestHandler = async ({request, cookies}) => {
     const token = request.headers.get('Authorization')?.split(" ")[1] || cookies.get('user_session') || "";
 
     // Verify the token signature
     const decoded:User = jwt.verify(token, JWT_SECRET) as User;
-    if (!(await verifyAccess(decoded, ['admin']))) {
+    if (!(await verifyAccess(decoded, ['admin', 'organizer']))) {
         return json(
             {
                 statusCode: 403,
@@ -26,6 +27,7 @@ export const GET: RequestHandler = async ({request, cookies}) => {
 
     try {
         let data = await fetchAllData("places");
+        console.log("Place Data:", data)
         console.log("Fetched data from 'places' table:", data);
         return json(
             {
@@ -56,6 +58,7 @@ interface PlaceFormData {
     layoutURL?: string;
 }
 
+
 async function formatData(data:PlaceFormData, creator:User) {
     let place:Place = {
         placeId:data.placeId,
@@ -64,7 +67,6 @@ async function formatData(data:PlaceFormData, creator:User) {
         description:data.description,
         name: data.name,
         location: await fetchData('locations', {locationId: data.location}),
-        layoutURL:data.layoutURL
     } as Place
 
     return place
@@ -92,15 +94,31 @@ export const POST: RequestHandler = async ({request, cookies}) => {
     if (picture)
     {
         let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        pictureURL = await addFile("k-seat-place-picture", `${Date.now()}-${uuid4()}.${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
+        pictureURL = await addFile("k-seat-place-picture", `${Date.now()}-${uuid4()}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
     }
-    await addDataUniqueId("places", {
+
+    let uniqueId = await addDataUniqueId("places", {
         name:formData.get('name'),
         picture: pictureURL,
         location: location,
         creatorId: decoded.googleId,
         creatorName: decoded.name
     }, 'placeId');
+
+    const initialLayout = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+            canvas: {
+                gridWidth: 80,
+                gridHeight: 80,
+            },
+
+            objects: []
+    };
+    let msgpack = encode(initialLayout);
+    
+    await addFile("k-seat-place-layout", `${uniqueId}.msgpack`, Buffer.from(msgpack));
+
     return json({status:200, body: {message:"ok"}})
 }
 
@@ -121,11 +139,12 @@ export const PATCH: RequestHandler = async ({request, cookies}) => {
 
     let data:PlaceFormData = Object.fromEntries(await request.formData()) as unknown as PlaceFormData
     let processData:Place = {} as Place
+    console.log('processData: ',data)
     let picture = data.picture as File
     if (picture)
     {
         let pictureBuffer = Buffer.from(await picture.arrayBuffer())
-        processData.picture = await addFile("k-seat-place-picture", `${data.placeId}.${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
+        processData.picture = await addFile("k-seat-place-picture", `${data.placeId}${path.extname(picture.name)}` || 'Unknown', pictureBuffer);
     }
     delete data.picture
     processData = {

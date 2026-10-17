@@ -19,6 +19,7 @@
     .then((response) => response.json())
     .then((data) => {
       places = data.body.data;
+      console.log(places)
     })
   })
 

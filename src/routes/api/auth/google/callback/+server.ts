@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     if (!payload || !payload.email_verified) {
       throw redirect(303, '/login?error=unverified_email');
     }
-    const user: User = {
+    let user: User = {
         googleId: payload.sub ?? '',
         email: payload.email ?? '',
         name: payload.name ?? '',
@@ -46,6 +46,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     if (!existingUser) {
       console.log("User not found in DynamoDB. Adding new user:", user);
       await addUser(user); // Store user data in DynamoDB
+    }
+    else {
+      user = existingUser;
     }
     const signedToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1d' });
     

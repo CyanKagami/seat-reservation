@@ -4,11 +4,13 @@
   import type { PageProps } from "./$types";
   import { onMount } from "svelte";
   import type { Event as MyEvent } from "$lib/type/event";
+  import type { Place } from "$lib/type/place";
 
   let { params }: PageProps = $props();
 
   let timetable:Daytable [] = $state([])
   let event:MyEvent = $state({} as MyEvent)
+  let places: Place[] = $state([]);
   let previewUrl = $state<string | null>(null);
     onMount(async () => {
         event = await fetch(`/api/event/getFromId/${params.eventId}`, {
@@ -24,6 +26,14 @@
         }
         if (event.picture) previewUrl = event.picture
         console.log(previewUrl)
+      places = await fetch('/api/place', {
+        method:"GET",
+        credentials:'include'
+      })
+      .then((response) => response.json())
+      .then((data) => {
+        return data.body.data;
+      })
     })
 
 
@@ -234,7 +244,11 @@
       </div>
         <div class="flex w-full gap-3 justify-between">
           <label for="place">สถานที่จัด</label>
-          <input name="place" class="w-100 rounded-sm" value="{(event.place ? event.place : "")}">
+              <select name="place" class="w-100 rounded-lg">
+                {#each places as place}
+                    <option value={place.placeId} selected={place.placeId === event.place.placeId}>{place.name} ({place.location.name})</option>
+                {/each} 
+            </select>
         </div>
         <div class="flex w-full gap-3 justify-between">
           <label for="detail">รายละเอียด</label>
@@ -267,32 +281,89 @@
 
         </div>
 
+  
+    <div class="my-10">
+    <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
 
-        <div class="my-10">
-            <label for="timetable" class="text-xl font-bold block">ตารางเวลากิจกรรม</label>
-            <div>
-                {#each timetable as table, dayIndex}
-                  <input type="date" class="w-45 rounded-sm block" bind:value={table.date}>
-                  {#each table.activity as activity, activityIndex }
-                  <div class="flex">
-                    <input type="time" class="w-45 rounded-sm block" bind:value={activity.start}>
-                    <input type="time" class="w-45 rounded-sm block" bind:value={activity.end}>
-                    <input type="text" class="w-45 rounded-sm block" bind:value={activity.activity}>
-                    <button type="button" onclick={() => deleteActivity(dayIndex, activityIndex)} class="bg-red-500 text-white p-3">ลบ</button>
-                  </div>
-                  {/each}
-                  <div class="flex justify-end w-full">
-                    <button type="button" onclick={() => addActivity(dayIndex)} class="bg-secondary p-3 text-white rounded-lg">เพิ่มกิจกรรม</button>
-                    <button type="button" onclick={() => deleteDay(dayIndex)} class="bg-red-500 p-3 text-white rounded-lg">ลบวัน</button>
-                  </div>
-              {/each}
-
+    <div class="flex flex-col gap-8">
+        {#each timetable as table, dayIndex}
+        <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <input
+                    type="date"
+                    class="w-45 rounded-lg border border-gray-300 px-3 py-2"
+                    bind:value={table.date}
+                />
+                {#if dayIndex === 0}
+                <button
+                    type="button"
+                    onclick={addDate}
+                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
+                >
+                    เพิ่มวัน
+                </button>
+                {/if}
             </div>
 
-            <div class="flex justify-end">
-              <button type="button" onclick={addDate} class="bg-accent p-3 text-white rounded-lg">เพิ่มวัน</button>
+            {#if table.activity.length > 0}
+            <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+                <thead>
+                    <tr class="bg-white border-b border-gray-200">
+                        <th class="py-3 px-4 text-center font-normal text-gray-700">เริ่มกิจกรรม</th>
+                        <th class="py-3 px-4 text-center font-normal text-gray-700">สิ้นสุดกิจกรรม</th>
+                        <th class="py-3 px-4 text-center font-normal text-gray-700">กิจกรรม</th>
+                        <th class="py-3 px-4 text-center font-normal text-gray-700">ลบ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each table.activity as activity, activityIndex}
+                    <tr class={activityIndex % 2 === 1 ? "bg-gray-100" : "bg-white"}>
+                        <td class="py-3 px-4 text-center">
+                            <input type="time" class="rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.start} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <input type="time" class="rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.end} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <input type="text" class="w-full rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.activity} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button
+                                type="button"
+                                onclick={() => deleteActivity(dayIndex, activityIndex)}
+                                disabled={table.activity.length === 1}
+                                class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors duration-200"
+                            >
+                                ลบ
+                            </button>
+                        </td>
+                    </tr>
+                    {/each}
+                </tbody>
+            </table>
+            {/if}
+
+            <div class="flex justify-end gap-3">
+                <button
+                    type="button"
+                    onclick={() => deleteDay(dayIndex)}
+                    disabled={timetable.length === 1}
+                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+                >
+                    ลบวัน
+                </button>
+                <button
+                    type="button"
+                    onclick={() => addActivity(dayIndex)}
+                    class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
+                >
+                    เพิ่มกิจกรรม
+                </button>
             </div>
         </div>
+        {/each}
+    </div>
+</div>
 
         <div class="flex w-full justify-end mt-5">
             <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer">อัพเดท</button>

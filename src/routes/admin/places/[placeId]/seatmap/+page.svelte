@@ -6,23 +6,8 @@
 	let { params } = $props();
 	let seatState: SeatEditorState | undefined = $state();
 	let isLoading = $state(true);
-	let place:Place = $state({} as Place)
+	let place:Place | null = $state(null)
 	onMount(async () => {
-		await fetch(`/api/place/layout?placeId=${params.placeId}`, {
-			method: 'GET',
-			credentials:'include'
-		})
-		.then((response) => {
-			return response.arrayBuffer()
-		})
-		.then(async (data) => {
-			seatState?.loadFromMessagePack(data);
-			await tick()
-			isLoading = false;
-		})
-		.catch((err) => {
-			alert(err);
-		})
 		place = await fetch(`/api/place/${params.placeId}`, {
 			method: 'GET',
 			credentials:'include'
@@ -33,11 +18,32 @@
 		.then(async (data) => {
 			return data.body.data
 		})
+		
+		await fetch(`/api/place/layout?placeId=${params.placeId}`, {
+			method: 'GET',
+			credentials:'include'
+		})
+		.then((response) => {
+			return response.arrayBuffer()
+		})
+		.then(async (data) => {
+			if (place){
+				seatState = new SeatEditorState(place.placeId);
+				seatState.loadFromMessagePack(data);
+			}
+		})
+		.catch((err) => {
+			alert(err);
+		})
+		
+		isLoading = false;
 	})
 </script>
 {#if isLoading}
 	<div class="fixed w-screen h-screen flex items-center justify-center p-8 text-xs text-slate-500">
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
+{:else}
+<SeatEditor place={place} state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
 {/if}
-<SeatEditor place={place} bind:state={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
+

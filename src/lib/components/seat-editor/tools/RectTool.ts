@@ -1,6 +1,6 @@
 import { BaseToolStrategy } from './BaseToolStrategy';
 import type { ToolContext } from './types';
-import type { Point, Rect } from '../types';
+import type { CanvasObject, Point, Rect } from '../types';
 
 export class RectToolStrategy extends BaseToolStrategy {
 	readonly id = 'add-rect';
@@ -62,13 +62,14 @@ export class RectToolStrategy extends BaseToolStrategy {
 		);
 
 		if (bounds.width > 5 && bounds.height > 5) {
-			const newEnv = {
+			const newEnv:CanvasObject = {
 				id: `env_${state.objects.length + 1}`,
 				type: 'env-rect' as const,
 				x: bounds.x,
 				y: bounds.y,
 				width: bounds.width,
-				height: bounds.height
+				height: bounds.height,
+				metadata: {}
 			};
 
 			state.objects = [...state.objects, newEnv];

@@ -35,6 +35,7 @@ export class PointerToolStrategy extends BaseToolStrategy {
 			const nextSelected = new Set(hasModifier ? state.selectedIds : []);
 
 			state.objects.forEach((o) => {
+				if (o.type !== 'seat' || (o.metadata && o.metadata.status === 'unavailable')) return;
 				const intersects = o.x < x2 && o.x + o.width > x1 && o.y < y2 && o.y + o.height > y1;
 				if (intersects) nextSelected.add(o.id);
 			});
