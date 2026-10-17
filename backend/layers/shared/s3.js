@@ -29,8 +29,24 @@ function removeInvalidXmlCharacters(str) {
 
 export async function addFile(filename, fileBuffer) {
   const cleanFileName = removeInvalidXmlCharacters(filename);
+  const MIME_TYPES = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    json: 'application/json',
+    txt: 'text/plain',
+    pdf: 'application/pdf',
+  };
+
+  function guessContentType(filename) {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    return MIME_TYPES[ext] || 'application/octet-stream';
+  }
   try {
-    await s3Client.send(new PutObjectCommand({ Bucket: BUCKET, Key: cleanFileName, Body: fileBuffer }));
+    await s3Client.send(new PutObjectCommand({ Bucket: BUCKET, Key: cleanFileName, Body: fileBuffer,ContentType: contentType || guessContentType(cleanFileName) }));
 
     if (localstackUrl) {
       return `${localstackUrl}/${BUCKET}/${cleanFileName}`;
