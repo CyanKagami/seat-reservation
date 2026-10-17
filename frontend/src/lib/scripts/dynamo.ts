@@ -22,7 +22,7 @@ const client = new DynamoDBClient({
     },
   }),
 });
-const docClient = DynamoDBDocumentClient.from(client);
+export const docClient = DynamoDBDocumentClient.from(client);
 
 export async function createMyTable() {
   // 2. Define the configuration for the table
