@@ -50,6 +50,7 @@
         <ZoneSeatPicker 
           zoneName={zone} 
           selectedZoneId={zone} 
+          maxSeats={1}
           objects={data.seatState.objects} 
           onBack={() => {
             status = "zone";
