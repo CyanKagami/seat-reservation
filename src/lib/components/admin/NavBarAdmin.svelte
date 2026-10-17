@@ -12,7 +12,7 @@
     <div class="flex gap-10 items-center">
         <a href="/admin/users" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Users</a>
         <a href="/admin/places" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Places</a>
-        <a href="/admin/events" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Events</a>
+        <a href="/my-event" class="font-semibold text-xl hover:text-accent hover:cursor-pointer">Events</a>
         <div>
             <div class="ring ring-secondary h-12 w-12 rounded-full hover:ring-4 flex items-center justify-center group relative">
             <img src={user?.picture} alt="your profile" class="object-cover h-full w-full rounded-full" referrerpolicy="no-referrer">
