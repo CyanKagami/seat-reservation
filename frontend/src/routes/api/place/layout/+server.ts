@@ -1,12 +1,8 @@
 // /api/place/layout/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import { verifyAccess } from "$lib/scripts/authorization";
-import type { User } from "$lib/type/user";
-import { addFile, readFileAsByteArray, readFileAsString } from "$lib/scripts/s3";
-import { updateAllAttributes } from "$lib/scripts/dynamo";
-import { guard } from "$lib/scripts/guard";
+import { addFile, readFileAsByteArray } from "$lib/scripts/server/s3";
+import { updateAllAttributes } from "$lib/scripts/server/dynamo";
+import { guard } from "$lib/scripts/server/guard";
 
 interface UpdataLayoutFormData {
     layoutFile: File,

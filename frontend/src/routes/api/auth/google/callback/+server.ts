@@ -4,7 +4,7 @@ import { redirect, type RequestHandler } from '@sveltejs/kit';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { env } from '$env/dynamic/private';
-import { addUser, fetchUser } from '$lib/scripts/dynamo';
+import { addUser, fetchUser } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
 
 const adminEmails = (env.ADMIN_EMAILS ?? '')

@@ -1,7 +1,7 @@
 // src/routes/api/user/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { paginateReadData } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { paginateReadData } from '$lib/scripts/server/dynamo';
 
 // GET /api/user?nextToken=... - paginated list of users
 export const GET: RequestHandler = async (event) => {

@@ -1,7 +1,7 @@
 // src/routes/api/event/getFromHost/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { fetchEventFromHost } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { fetchEventFromHost } from '$lib/scripts/server/dynamo';
 
 // GET /api/event/getFromHost - events created by the logged-in user
 export const GET: RequestHandler = async (event) => {

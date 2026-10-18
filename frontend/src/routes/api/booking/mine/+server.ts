@@ -1,7 +1,7 @@
 // src/routes/api/booking/mine/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { listUserReservations } from '$lib/scripts/reservation';
+import { guard } from '$lib/scripts/server/guard';
+import { listUserReservations } from '$lib/scripts/server/reservation';
 
 // GET /api/booking/mine - the logged-in user's reservations across all events
 export const GET: RequestHandler = async (event) => {

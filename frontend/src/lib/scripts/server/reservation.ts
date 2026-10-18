@@ -11,11 +11,11 @@ import {
   type ScanCommandOutput
 } from '@aws-sdk/lib-dynamodb';
 // NOTE: add `export` to `const docClient` in $lib/scripts/dynamo.ts
-import { docClient } from '$lib/scripts/dynamo';
+import { docClient } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
 import type { Reservation } from '$lib/type/reservation';
 
-const TABLE = 'reservation';
+const TABLE = 'reservations';
 
 // Table layout: partition key = eventId, sort key = seatId.
 //

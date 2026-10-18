@@ -1,3 +1,5 @@
+import type { CanvasObject } from "../types";
+
 export interface Point {
 	x: number;
 	y: number;
@@ -88,4 +90,11 @@ export function loopsToSvgPath(loops: Point[][]): string {
 			loop.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z'
 		)
 		.join(' ');
+}
+
+export function getSeatId(object:CanvasObject) {
+	if (object.type !== "seat") {
+		throw Error('Argument is not a seat object');
+	}
+	return `${object.metadata.row}${object.metadata.seatNo}` || object.id.replace('seat_', '');
 }

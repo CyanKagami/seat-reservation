@@ -1,17 +1,13 @@
 // /api/place/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addFile, createBucket } from "$lib/scripts/s3";
-import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from "$lib/scripts/dynamo";
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '$env/static/private';
-import { verifyAccess } from "$lib/scripts/authorization";
+import { addFile } from "$lib/scripts/server/s3";
+import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from "$lib/scripts/server/dynamo";
 import type { User } from "$lib/type/user";
-import { request } from "node:http";
 import type { Place } from "$lib/type/place";
 import path from "node:path";
 import { v4 as uuid4} from "uuid";
 import { encode } from "@msgpack/msgpack";
-import { guard } from "$lib/scripts/guard";
+import { guard } from "$lib/scripts/server/guard";
 
 interface PlaceFormData {
     placeId?: string;

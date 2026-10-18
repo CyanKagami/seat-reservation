@@ -1,7 +1,7 @@
 // src/routes/api/booking/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { fetchData } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { fetchData } from '$lib/scripts/server/dynamo';
 import {
   bookingErrorResponse,
   cancelSeat,
@@ -10,7 +10,7 @@ import {
   listReservations,
   readSeatRequest,
   reserveSeat
-} from '$lib/scripts/reservation';
+} from '$lib/scripts/server/reservation';
 import type { Event } from '$lib/type/event';
 
 // Registration window = event['register-date'].start / .end.

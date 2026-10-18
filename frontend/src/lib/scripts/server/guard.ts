@@ -2,7 +2,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
 import { env } from '$env/dynamic/private';
-import { verifyAccess } from '$lib/scripts/authorization';
+import { verifyAccess } from '$lib/scripts/server/authorization';
 import type { User } from '$lib/type/user';
 
 /**

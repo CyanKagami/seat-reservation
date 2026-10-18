@@ -1,7 +1,7 @@
 // src/routes/api/place/[placeId]/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { fetchData } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { fetchData } from '$lib/scripts/server/dynamo';
  
 // GET /api/place/:placeId - a single place
 export const GET: RequestHandler = async (event) => {

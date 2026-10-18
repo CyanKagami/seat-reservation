@@ -1,12 +1,15 @@
 <script lang="ts">
+  import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject } from "../types";
+  import { getSeatId } from "../utils/zoneUtils";
 
 	let {
 		zoneName = "เลือกที่นั่ง",
 		selectedZoneId = "",
 		objects = [],
 		selectedSeatIds = $bindable([]),
-		maxSeats = 3,
+		maxSeats = 1,
+		reservationMap = {reservations: [], myReservation: null},
 		onBack,
 		onConfirm
 	}: {
@@ -15,6 +18,7 @@
 		objects: CanvasObject[];
 		selectedSeatIds?: string[];
 		maxSeats?: number;
+		reservationMap:SeatMap
 		onBack?: () => void;
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
@@ -66,7 +70,7 @@
 		if (!objects.length) return "0 0 800 600";
 
 		const zoneObjects = objects.filter(
-			(s) => s.metadata?.zone === selectedZoneId || s.id === selectedZoneId
+			(s) => s.metadata.zone === selectedZoneId && s.metadata.status === 'available'
 		);
 
 		const targetObjects = zoneObjects.length > 0 ? zoneObjects : objects;
@@ -111,15 +115,17 @@
 	function toggleSeat(seat: CanvasObject) {
 		const isZoneSeat = seat.metadata?.zone === selectedZoneId;
 		const status = seat.metadata?.status ?? "available";
+		const seatId = getSeatId(seat)
+		const isReserved = reservationMap.reservations.some((r) => (r.seatId === seatId));
 
-		if (!isZoneSeat || status === "unavailable") return;
+		if (!isZoneSeat || status === "unavailable" || isReserved) return;
+
 
 		if (selectedSeatIds.includes(seat.id)) {
 			selectedSeatIds = selectedSeatIds.filter((id) => id !== seat.id);
 		} else {
 			if (selectedSeatIds.length >= maxSeats) {
-				alert(`เลือกได้สูงสุด ${maxSeats} ที่นั่ง`);
-				return;
+				selectedSeatIds.shift();
 			}
 			selectedSeatIds = [...selectedSeatIds, seat.id];
 		}
@@ -161,10 +167,6 @@
 			<span>กำลังเลือก</span>
 		</div>
 		<div class="flex items-center gap-1.5">
-			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-stone-700 border border-stone-600"></span>
-			<span>ไม่ว่าง</span>
-		</div>
-		<div class="flex items-center gap-1.5">
 			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-slate-200 border border-slate-300 opacity-40"></span>
 			<span>นอกโซนที่เลือก</span>
 		</div>
@@ -184,21 +186,22 @@
 				{@const screenHeight = obj.height ?? 28}
 				{@const centerX = screenX + screenWidth / 2}
 				{@const centerY = screenY + screenHeight / 2}
-				{@const isZoneObject = obj.metadata?.zone === selectedZoneId || obj.id === selectedZoneId}
+				{@const isZoneObject = obj.metadata.zone === selectedZoneId && obj.metadata.status === 'available'}
 
 				<!-- 1. SEATS -->
 				{#if obj.type === 'seat'}
 					{@const isSelected = selectedSeatIds.includes(obj.id)}
-					{@const status = obj.metadata?.status ?? 'available'}
-					{@const seatLabel = obj.metadata?.label || obj.metadata?.seatNo || obj.id.replace('seat_', '') || ''}
+					{@const status = obj.metadata.status ?? 'available'}
+					{@const seatId = getSeatId(obj)}
+					{@const isReserved = reservationMap.reservations.some((r) => (r.seatId === seatId))}
 
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'
 						: status === 'unavailable'
 							? (isSelected ? 'fill-stone-900 stroke-stone-900 ring-2 ring-indigo-400' : 'fill-stone-700 stroke-stone-600')
-							: status === 'held'
+							: isReserved
 								? (isSelected ? 'fill-amber-300 stroke-amber-600 ring-2 ring-indigo-400' : 'fill-amber-200 stroke-amber-500 hover:fill-amber-300')
-								: (isSelected ? 'fill-indigo-300 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
+								: (isSelected ? 'fill-[#e35205] stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-[#e35205]/25 stroke-indigo-500 hover:fill-indigo-300')}
 
 					<g 
 						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
@@ -221,7 +224,7 @@
 							class="stroke-1 transition-colors {statusClasses}"
 						/>
 
-						{#if seatLabel && isZoneObject}
+						{#if seatId && isZoneObject}
 							<text
 								x={centerX}
 								y={centerY}
@@ -229,7 +232,7 @@
 								dominant-baseline="central"
 								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : 'fill-slate-800'}"
 							>
-								{seatLabel}
+								{seatId}
 							</text>
 						{/if}
 					</g>

@@ -1,7 +1,7 @@
 // /api/editRole/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { updateAllAttributes } from "$lib/scripts/dynamo";
-import { guard } from "$lib/scripts/guard";
+import { updateAllAttributes } from "$lib/scripts/server/dynamo";
+import { guard } from "$lib/scripts/server/guard";
 
 const VALID_ROLES = ['admin', 'organizer', 'guest']; 
 

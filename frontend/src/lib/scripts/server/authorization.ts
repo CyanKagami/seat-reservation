@@ -1,4 +1,3 @@
-import type { GoogleUser } from "$lib/type/googleUser";
 import type { User } from "$lib/type/user";
 import { fetchUser } from "./dynamo";
 

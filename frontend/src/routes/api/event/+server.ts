@@ -1,8 +1,8 @@
 // src/routes/api/event/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { addFile } from '$lib/scripts/s3';
-import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { addFile } from '$lib/scripts/server/s3';
+import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
 import type { Event } from '$lib/type/event';
 import type { Place } from '$lib/type/place';
 

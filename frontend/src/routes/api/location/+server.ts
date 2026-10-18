@@ -1,7 +1,7 @@
 // src/routes/api/location/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { guard } from '$lib/scripts/guard';
-import { fetchAllData } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { fetchAllData } from '$lib/scripts/server/dynamo';
  
 // GET /api/location - list all locations
 export const GET: RequestHandler = async (event) => {

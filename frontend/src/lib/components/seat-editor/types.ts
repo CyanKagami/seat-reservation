@@ -1,10 +1,10 @@
 export * from '../canvas-shared/types';
 
 export type ToolType = 'pointer' | 'lasso' | 'add-square' | 'add-line' | 'add-array' | 'add-rect' | 'add-circle' | 'add-polygon';
-
+export type seatStatus = 'unavailable' | 'available'
 export interface SeatMetadata {
   zone: string;       // "Z1"
-  status: string;     // "available" (User customizable)
+  status: seatStatus;     // "available" (User customizable)
   seatType: string; // "Sofa" (Seat characteristic, User customizable)
   row: string;        // "A" (User customizable)
   seatNo: string;     // "12" (User customizable)

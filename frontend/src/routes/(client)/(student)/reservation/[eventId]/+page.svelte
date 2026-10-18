@@ -1,19 +1,22 @@
 <script lang="ts">
-  import ZoneChoosing from "$lib/components/ZoneChoosing.svelte";
   import ProgressBar from "$lib/components/reservation/ProgressBar.svelte";
-  import EventRoom from "$lib/components/EventRoom.svelte";
   import { formatThaiDateTimeShort } from "$lib/scripts/formatTime";
   import ReservationZonePicker from "$lib/components/zone-editor/components/ReservationZonePicker.svelte";
   import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
   import type { CanvasObject } from "$lib/components/canvas-shared/types";
+  import { BookingApiError, getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
+  import { onMount } from "svelte";
+  import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
+  import type { Reservation } from "$lib/type/reservation.js";
 
   let { data } = $props();
 
   // State: "zone", "seat", "confirm"
   let status = $state("zone");
-  let zone = $state("Z1");
-  let seat = $state("D2");
-
+  let zone = $state("");
+  let seat = $state("");
+  let reservationMap:SeatMap = $state({myReservation:null, reservations:[]})
+  let reservedId:Set<string> = $derived(new Set(reservationMap.reservations.map(r => r.seatId)))
   // State for right fixed sidebar and selected seats
   let selectedSeats = $state<CanvasObject[]>([]);
   let showSidebar = $state(false);
@@ -22,6 +25,43 @@
   let totalPrice = $derived(
     selectedSeats.reduce((sum, s) => sum + Number(s.metadata?.price ?? 0), 0)
   );
+  
+  async function pollForSeats(){
+    try {
+      reservationMap = await getSeatMap(data.event.eventId);
+    }
+    catch (err) {
+      if (err instanceof BookingApiError) {
+        console.log(err.message);
+      }
+    }
+  }
+  
+  
+  async function handleBooking(){
+      let allSeat = [];
+      for (let i = 0; i < selectedSeats.length; i++) {
+          let seatId = getSeatId(selectedSeats[i])
+          try {
+          let {reservation} = await reserveSeat(data.event.eventId, seatId);
+          allSeat.push(reservation.seatId);
+        }
+        catch(err){
+          if (err instanceof BookingApiError) {
+            console.log(err.message);
+          }
+        }
+      }
+      seat = allSeat.join(', ')
+      showSidebar = false;
+      status = "confirm";
+  }
+
+  onMount(async () => {
+    await pollForSeats();
+    setInterval(() => {pollForSeats().catch(console.error)}, 10000)
+  })
+  $effect(() => {console.log(reservedId)})
 </script>
 
 <div class="items-center flex flex-col gap-2 mt-10 px-4 pb-12">
@@ -35,6 +75,7 @@
         zone={data.seatState.zones} 
         gridWidth={data.seatState.gridWidth}
         gridHeight={data.seatState.gridHeight}
+        reservedId={reservedId}
         onZoneSelect={(zoneId) => {
           zone = zoneId; 
           status = "seat";
@@ -51,7 +92,8 @@
           zoneName={zone} 
           selectedZoneId={zone} 
           maxSeats={1}
-          objects={data.seatState.objects} 
+          objects={data.seatState.objects}
+          reservationMap={reservationMap}
           onBack={() => {
             status = "zone";
             showSidebar = false;
@@ -178,13 +220,7 @@
           {/if}
 
           <button 
-            onclick={() => {
-              if (selectedSeats.length > 0) {
-                seat = selectedSeats.map(s => s.metadata?.label || s.metadata?.seatNo || s.id).join(", ");
-              }
-              showSidebar = false;
-              status = "confirm";
-            }}
+            onclick={handleBooking}
             class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>ดำเนินการจองที่นั่ง ({selectedSeats.length})</span>
@@ -235,9 +271,9 @@
           </svg>
         </div>
       </div>
-      <button class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer">
+      <a href="/event-info/{data.event.eventId}" class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer">
         Confirm
-      </button>
+      </a>
     </div>
   {/if}
 </div>

@@ -1,9 +1,9 @@
 // src/routes/api/event/layout/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { S3ServiceException } from '@aws-sdk/client-s3';
-import { guard } from '$lib/scripts/guard';
-import { addFile, readFileAsByteArray } from '$lib/scripts/s3';
-import { fetchData, updateAllAttributes } from '$lib/scripts/dynamo';
+import { guard } from '$lib/scripts/server/guard';
+import { addFile, readFileAsByteArray } from '$lib/scripts/server/s3';
+import { fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
 import type { Event } from '$lib/type/event';
 
 function msgpackResponse(content: Uint8Array) {

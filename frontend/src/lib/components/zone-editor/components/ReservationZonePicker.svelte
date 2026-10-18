@@ -1,5 +1,7 @@
 <script lang="ts">
+  import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject, Zone } from "../types";
+  import { getSeatId } from "../utils/zoneUtils";
 
 	interface Point {
 		x: number;
@@ -15,6 +17,7 @@
 		padding = 40,
 		width = "100%",
 		height = "100%",
+		reservedId = new Set(),
 		className = "",
 		onZoneSelect
 	}: {
@@ -26,6 +29,7 @@
 		padding?: number;
 		width?: string;
 		height?: string;
+		reservedId:Set<string>;
 		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
 	} = $props();
@@ -248,6 +252,7 @@
 				id: string;
 				name: string;
 				color: string;
+				reservedCount:number,
 				isUnavailableZone?: boolean;
 				seats: CanvasObject[];
 			}
@@ -264,23 +269,29 @@
 							id: uId,
 							name: "ไม่ว่าง / Reserved",
 							color: "#090d16",
+							reservedCount: 0,
 							isUnavailableZone: true,
 							seats: []
 						};
 					}
 					groups[uId].seats.push(obj);
 				} else if (obj.metadata?.zone) {
+					const isReserved = reservedId.has(getSeatId(obj));
 					const zId = obj.metadata.zone;
 					if (!groups[zId]) {
 						groups[zId] = {
 							id: zId,
 							name: obj.metadata?.zone ?? "โซนทั่วไป",
 							color: zone[zId]?.color ?? "#6366f1",
+							reservedCount:isReserved ? 1 : 0,
 							isUnavailableZone: false,
 							seats: []
 						};
 					}
 					groups[zId].seats.push(obj);
+					if (isReserved) {
+						groups[zId].reservedCount += 1;
+					}
 				}
 			}
 		});
@@ -296,7 +307,7 @@
 				color: g.color,
 				isUnavailableZone: g.isUnavailableZone ?? false,
 				seats: g.seats,
-				availableCount: g.isUnavailableZone ? 0 : g.seats.length,
+				availableCount: g.isUnavailableZone ? 0 : g.seats.length - g.reservedCount,
 				totalCount: g.seats.length,
 				loops,
 				pathData,
@@ -510,7 +521,7 @@
 								{#if isUnavailable}
 									<span class="text-rose-400/80">{zone.totalCount} ที่นั่ง</span>
 								{:else}
-									<span class={isSelected ? 'text-indigo-600' : 'text-emerald-400'}>
+									<span class={zone.availableCount === 0 ? 'text-red-600' : (isSelected ? 'text-indigo-600' : 'text-emerald-400')}>
 										ว่าง {zone.availableCount}/{zone.totalCount} ที่
 									</span>
 								{/if}
