@@ -42,7 +42,7 @@
       let allSeat = [];
       for (let i = 0; i < selectedSeats.length; i++) {
           let seatId = getSeatId(selectedSeats[i])
-          try {
+        try {
           let {reservation} = await reserveSeat(data.event.eventId, seatId);
           allSeat.push(reservation.seatId);
         }
@@ -53,8 +53,6 @@
         }
       }
       seat = allSeat.join(', ')
-      showSidebar = false;
-      status = "confirm";
   }
 
   onMount(async () => {
@@ -96,142 +94,15 @@
           reservationMap={reservationMap}
           onBack={() => {
             status = "zone";
-            showSidebar = false;
           }}
           onConfirm={(seats) => {
             selectedSeats = seats;
-            showSidebar = true;
+            status = "confirm"
+            seat = seats.map((o) => getSeatId(o)).join(', ');
           }}
         ></ZoneSeatPicker>
       </div>
     </div>
-
-    <!-- ================= FIXED RIGHT SIDEBAR ================= -->
-    {#if showSidebar}
-      <!-- Backdrop Overlay -->
-      <div
-        class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 transition-opacity"
-        onclick={() => (showSidebar = false)}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === 'Escape' && (showSidebar = false)}
-      ></div>
-
-      <!-- Slide-Over Sidebar Panel -->
-      <aside class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300">
-
-        <!-- Sidebar Header -->
-        <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
-          <div>
-            <h2 class="font-bold text-slate-800 text-base sm:text-lg">สรุปการเลือกที่นั่ง</h2>
-            <p class="text-xs text-slate-500">
-              Zone <span class="font-semibold text-slate-700">{zone}</span> • เลือก {selectedSeats.length} ที่นั่ง
-            </p>
-          </div>
-
-          <button
-            onclick={() => (showSidebar = false)}
-            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
-            aria-label="Close Sidebar"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Scrollable Vertical Seat List with Metadata -->
-        <div class="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-3">
-          {#if selectedSeats.length === 0}
-            <div class="text-center py-12 text-slate-400 text-sm">
-              ไม่มีที่นั่งที่ถูกเลือก
-            </div>
-          {:else}
-            {#each selectedSeats as s (s.id)}
-              <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-2.5 shadow-xs transition hover:border-indigo-300">
-
-                <!-- Seat Card Header -->
-                <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                  <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                    <span class="font-bold text-slate-800 text-sm">
-                      ที่นั่ง: {s.metadata?.label || s.metadata?.seatNo || s.id.replace('seat_', '')}
-                    </span>
-                  </div>
-
-                  {#if s.metadata?.status}
-                    <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                      {s.metadata.status}
-                    </span>
-                  {/if}
-                </div>
-
-                <!-- Seat Detailed Metadata -->
-                <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                  <div class="flex justify-between">
-                    <span class="text-slate-400">โซน (Zone):</span>
-                    <span class="font-semibold text-slate-700">{s.metadata?.zone || zone}</span>
-                  </div>
-
-                  {#if s.metadata?.row}
-                    <div class="flex justify-between">
-                      <span class="text-slate-400">แถว (Row):</span>
-                      <span class="font-semibold text-slate-700">{s.metadata.row}</span>
-                    </div>
-                  {/if}
-
-                  {#if s.metadata?.type}
-                    <div class="flex justify-between">
-                      <span class="text-slate-400">ประเภท (Type):</span>
-                      <span class="font-semibold text-slate-700">{s.metadata.type}</span>
-                    </div>
-                  {/if}
-
-                  {#if s.metadata?.price !== undefined}
-                    <div class="flex justify-between col-span-2 pt-1 mt-1 border-t border-slate-200/60">
-                      <span class="text-slate-500 font-medium">ราคา (Price):</span>
-                      <span class="font-bold text-indigo-700">฿{Number(s.metadata.price).toLocaleString()}</span>
-                    </div>
-                  {/if}
-
-                  <!-- Render any other custom metadata properties -->
-                  {#each Object.entries(s.metadata || {}) as [key, val]}
-                    {#if !['label', 'seatNo', 'status', 'row', 'zone', 'type', 'price'].includes(key) && typeof val !== 'object'}
-                      <div class="flex justify-between col-span-2">
-                        <span class="text-slate-400 capitalize">{key}:</span>
-                        <span class="font-medium text-slate-700">{String(val)}</span>
-                      </div>
-                    {/if}
-                  {/each}
-                </div>
-
-              </div>
-            {/each}
-          {/if}
-        </div>
-
-        <!-- Sidebar Footer Action Section -->
-        <div class="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 shrink-0">
-          {#if totalPrice > 0}
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-slate-500 font-medium">ราคารวมทั้งสิ้น:</span>
-              <span class="text-lg font-bold text-indigo-600">฿{totalPrice.toLocaleString()}</span>
-            </div>
-          {/if}
-
-          <button
-            onclick={handleBooking}
-            class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>ดำเนินการจองที่นั่ง ({selectedSeats.length})</span>
-            <svg class="w-4 h-4 fill-none stroke-current stroke-[2]" viewBox="0 0 24 24">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </button>
-        </div>
-
-      </aside>
-    {/if}
 
   {:else}
     <!-- Summary View -->
@@ -271,7 +142,7 @@
           </svg>
         </div>
       </div>
-      <a href="/event-info/{data.event.eventId}" class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer text-center">
+      <a href="/event-info/{data.event.eventId}" onclick={handleBooking} class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer text-center">
         Confirm
       </a>
     </div>
