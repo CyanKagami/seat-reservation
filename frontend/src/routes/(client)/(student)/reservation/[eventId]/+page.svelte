@@ -25,7 +25,7 @@
   let totalPrice = $derived(
     selectedSeats.reduce((sum, s) => sum + Number(s.metadata?.price ?? 0), 0)
   );
-  
+
   async function pollForSeats(){
     try {
       reservationMap = await getSeatMap(data.event.eventId);
@@ -36,8 +36,8 @@
       }
     }
   }
-  
-  
+
+
   async function handleBooking(){
       let allSeat = [];
       for (let i = 0; i < selectedSeats.length; i++) {
@@ -70,14 +70,14 @@
 
   {#if status === "zone"}
     <div class="w-full max-w-3xl bg-gray-200 h-auto py-10 self-center mt-4 flex flex-col gap-5 px-6 sm:px-10 rounded-xl">
-      <ReservationZonePicker 
-        objects={data.seatState.objects} 
-        zone={data.seatState.zones} 
+      <ReservationZonePicker
+        objects={data.seatState.objects}
+        zone={data.seatState.zones}
         gridWidth={data.seatState.gridWidth}
         gridHeight={data.seatState.gridHeight}
         reservedId={reservedId}
         onZoneSelect={(zoneId) => {
-          zone = zoneId; 
+          zone = zoneId;
           status = "seat";
           showSidebar = false;
         }}
@@ -88,9 +88,9 @@
     <div class="w-full max-w-5xl mt-4">
       <!-- Main Seat Picker Canvas -->
       <div class="w-full bg-gray-200 p-4 sm:p-6 rounded-xl shadow-sm">
-        <ZoneSeatPicker 
-          zoneName={zone} 
-          selectedZoneId={zone} 
+        <ZoneSeatPicker
+          zoneName={zone}
+          selectedZoneId={zone}
           maxSeats={1}
           objects={data.seatState.objects}
           reservationMap={reservationMap}
@@ -109,7 +109,7 @@
     <!-- ================= FIXED RIGHT SIDEBAR ================= -->
     {#if showSidebar}
       <!-- Backdrop Overlay -->
-      <div 
+      <div
         class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 transition-opacity"
         onclick={() => (showSidebar = false)}
         role="button"
@@ -119,7 +119,7 @@
 
       <!-- Slide-Over Sidebar Panel -->
       <aside class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300">
-        
+
         <!-- Sidebar Header -->
         <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
           <div>
@@ -129,7 +129,7 @@
             </p>
           </div>
 
-          <button 
+          <button
             onclick={() => (showSidebar = false)}
             class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
             aria-label="Close Sidebar"
@@ -149,7 +149,7 @@
           {:else}
             {#each selectedSeats as s (s.id)}
               <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-2.5 shadow-xs transition hover:border-indigo-300">
-                
+
                 <!-- Seat Card Header -->
                 <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
                   <div class="flex items-center gap-2">
@@ -158,7 +158,7 @@
                       ที่นั่ง: {s.metadata?.label || s.metadata?.seatNo || s.id.replace('seat_', '')}
                     </span>
                   </div>
-                  
+
                   {#if s.metadata?.status}
                     <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
                       {s.metadata.status}
@@ -219,7 +219,7 @@
             </div>
           {/if}
 
-          <button 
+          <button
             onclick={handleBooking}
             class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -271,7 +271,7 @@
           </svg>
         </div>
       </div>
-      <a href="/event-info/{data.event.eventId}" class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer">
+      <a href="/event-info/{data.event.eventId}" class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer text-center">
         Confirm
       </a>
     </div>
