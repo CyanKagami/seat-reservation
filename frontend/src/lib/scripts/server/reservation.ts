@@ -13,7 +13,7 @@ import {
 // NOTE: add `export` to `const docClient` in $lib/scripts/dynamo.ts
 import { docClient } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
-import type { Reservation } from '$lib/type/reservation';
+import type { EventSummary, Reservation } from '$lib/type/reservation';
 
 const TABLE = 'reservations';
 
@@ -203,6 +203,30 @@ export async function listUserReservations(googleId: string): Promise<Reservatio
   return (items as Reservation[]).sort((a, b) => b.reservedAt.localeCompare(a.reservedAt));
 }
 
+
+// BatchGet that retries unprocessed keys. DynamoDB caps one call at 100 keys.
+async function batchGet(
+  table: string,
+  keys: Record<string, any>[],
+  projection: { ProjectionExpression: string; ExpressionAttributeNames: Record<string, string> }
+) {
+  const items: Record<string, any>[] = [];
+ 
+  for (let i = 0; i < keys.length; i += 100) {
+    let pending: Record<string, any>[] | undefined = keys.slice(i, i + 100);
+ 
+    for (let attempt = 0; pending && pending.length > 0 && attempt < 3; attempt++) {
+      const res: BatchGetCommandOutput = await docClient.send(
+        new BatchGetCommand({ RequestItems: { [table]: { Keys: pending, ...projection } } })
+      );
+      items.push(...(res.Responses?.[table] ?? []));
+      pending = res.UnprocessedKeys?.[table]?.Keys;
+    }
+  }
+ 
+  return items;
+}
+
 // Reservations only store googleId, so admin/organizer views look names up here.
 export async function fetchUserSummaries(googleIds: string[]) {
   const unique = [...new Set(googleIds)];
@@ -232,3 +256,22 @@ export async function fetchUserSummaries(googleIds: string[]) {
 
   return result;
 }
+// Reservations only store eventId. "My bookings" looks the event up at read time, so it is
+// always current - a copy inside every reservation would go stale whenever an event is edited.
+export async function fetchEventSummaries(eventIds: string[]) {
+  const unique = [...new Set(eventIds)];
+  const items = await batchGet(
+    'events',
+    unique.map((eventId) => ({ eventId })),
+    {
+      // name and date are reserved words; #n is reused for place.name
+      ProjectionExpression: 'eventId, #n, #d, #pic, #p.placeId, #p.#n',
+      ExpressionAttributeNames: { '#n': 'name', '#d': 'date', '#pic': 'picture', '#p': 'place' }
+    }
+  );
+ 
+  return new Map<string, EventSummary>(
+    items.map((e): [string, EventSummary] => [e.eventId, { name: e.name, date: e.date, picture: e.picture ?? null, place: e.place ?? null }])
+  );
+}
+ 
