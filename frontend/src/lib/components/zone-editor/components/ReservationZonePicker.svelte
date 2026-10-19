@@ -254,6 +254,7 @@
 				color: string;
 				reservedCount:number,
 				isUnavailableZone?: boolean;
+				isNoZone?: boolean;
 				seats: CanvasObject[];
 			}
 		> = {};
@@ -292,6 +293,20 @@
 					if (isReserved) {
 						groups[zId].reservedCount += 1;
 					}
+				} else {
+					// Available seat with no zone assigned
+					const noZoneId = "zone-no-zone";
+					if (!groups[noZoneId]) {
+						groups[noZoneId] = {
+							id: noZoneId,
+							name: "ไม่มีโซน / No Zone",
+							color: "#9ca3af",
+							reservedCount: 0,
+							isNoZone: true,
+							seats: []
+						};
+					}
+					groups[noZoneId].seats.push(obj);
 				}
 			}
 		});
@@ -306,8 +321,9 @@
 				name: g.name,
 				color: g.color,
 				isUnavailableZone: g.isUnavailableZone ?? false,
+				isNoZone: g.isNoZone ?? false,
 				seats: g.seats,
-				availableCount: g.isUnavailableZone ? 0 : g.seats.length - g.reservedCount,
+				availableCount: (g.isUnavailableZone || g.isNoZone) ? 0 : g.seats.length - g.reservedCount,
 				totalCount: g.seats.length,
 				loops,
 				pathData,
@@ -475,16 +491,18 @@
 			{#each zones as zone (zone.id)}
 				{@const isSelected = selectedZoneId === zone.id}
 				{@const isUnavailable = zone.isUnavailableZone}
+				{@const isNoZone = zone.isNoZone}
+				{@const isInactive = isUnavailable || isNoZone}
 
 				<path
 					d={zone.pathData}
-					style="fill: {isUnavailable ? '#090d16' : zone.color}; stroke: {isUnavailable ? '#1e293b' : isSelected ? '#ffffff' : zone.color};"
+					style="fill: {isUnavailable ? '#090d16' : isNoZone ? '#9ca3af' : zone.color}; stroke: {isInactive ? (isNoZone ? '#6b7280' : '#1e293b') : isSelected ? '#ffffff' : zone.color};"
 					class="transition-all duration-200 outline-0 rounded-sm
-						{isUnavailable ? 'cursor-not-allowed fill-opacity-90 stroke-1' : 'cursor-pointer'}
-						{!isUnavailable && isSelected 
+						{isInactive ? 'cursor-not-allowed fill-opacity-90 stroke-1' : 'cursor-pointer'}
+						{!isInactive && isSelected 
 							? 'fill-opacity-50 stroke-[3px] filter drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]' 
-							: !isUnavailable ? 'fill-opacity-25 stroke-[1.5px] hover:fill-opacity-40 hover:stroke-white' : ''}"
-					onclick={() => !isUnavailable && handleZoneClick(zone.id, zone.seats)}
+							: !isInactive ? 'fill-opacity-25 stroke-[1.5px] hover:fill-opacity-40 hover:stroke-white' : ''}"
+					onclick={() => !isInactive && handleZoneClick(zone.id, zone.seats)}
 					role="button"
 					tabindex="0"
 				/>
@@ -496,6 +514,8 @@
 			{#each zones as zone (zone.id)}
 				{@const isSelected = selectedZoneId === zone.id}
 				{@const isUnavailable = zone.isUnavailableZone}
+				{@const isNoZone = zone.isNoZone}
+				{@const isInactive = isUnavailable || isNoZone}
 
 				<foreignObject
 					x={zone.centerX - 65}
@@ -509,9 +529,11 @@
 							class="px-2.5 py-1 rounded-md text-center shadow-md border transition-transform
 								{isUnavailable 
 									? 'bg-slate-950/90 text-slate-400 border-slate-800' 
-									: isSelected 
-										? 'bg-white text-slate-900 border-white ring-2 ring-indigo-500 scale-105' 
-										: 'bg-slate-900/90 text-white border-slate-700'}"
+									: isNoZone
+										? 'bg-gray-500/90 text-gray-100 border-gray-600'
+										: isSelected 
+											? 'bg-white text-slate-900 border-white ring-2 ring-indigo-500 scale-105' 
+											: 'bg-slate-900/90 text-white border-slate-700'}"
 						>
 							<div class="text-[11px] font-bold leading-tight whitespace-nowrap">
 								{zone.name}
@@ -520,6 +542,8 @@
 							<div class="text-[9px] mt-0.5 font-medium flex items-center justify-center gap-1">
 								{#if isUnavailable}
 									<span class="text-rose-400/80">{zone.totalCount} ที่นั่ง</span>
+								{:else if isNoZone}
+									<span class="text-gray-200/80">{zone.totalCount} ที่นั่ง</span>
 								{:else}
 									<span class={zone.availableCount === 0 ? 'text-red-600' : (isSelected ? 'text-indigo-600' : 'text-emerald-400')}>
 										ว่าง {zone.availableCount}/{zone.totalCount} ที่

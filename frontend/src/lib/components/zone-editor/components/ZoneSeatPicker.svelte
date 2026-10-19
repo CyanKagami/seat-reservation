@@ -201,7 +201,7 @@
 							? (isSelected ? 'fill-stone-900 stroke-stone-900 ring-2 ring-indigo-400' : 'fill-stone-700 stroke-stone-600')
 							: isReserved
 								? (isSelected ? 'fill-amber-300 stroke-amber-600 ring-2 ring-indigo-400' : 'fill-amber-200 stroke-amber-500 hover:fill-amber-300')
-								: (isSelected ? 'fill-[#e35205] stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-[#e35205]/25 stroke-indigo-500 hover:fill-indigo-300')}
+								: (isSelected ? 'fill-indigo-500 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
 
 					<g 
 						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
