@@ -8,19 +8,17 @@ import { fetchEventSummaries, listUserReservations } from '$lib/scripts/server/r
 export const GET: RequestHandler = async (event) => {
   const user = await guard(event);
   if (user instanceof Response) return user;
- 
+
   try {
     const reservations = await listUserReservations(user.googleId);
     const events = await fetchEventSummaries(reservations.map((r) => r.eventId));
- 
+
     return json({
-      body: {
-        reservations: reservations.map((r) => ({ ...r, event: events.get(r.eventId) ?? null }))
-      }
+      body:
+        reservations.map((r) => ({ ...r, event: events.get(r.eventId) ?? null }))
     });
   } catch (error) {
     console.error('Error fetching reservations:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 };
- 

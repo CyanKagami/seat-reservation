@@ -15,8 +15,7 @@ export interface EventSummary {
   picture?: string | null; // image URL, null if the event has none
   place?: { placeId?: string; name?: string } | null;
 }
- 
+
 export interface ReservationWithEvent extends Reservation {
   event: EventSummary | null; // null if the event was deleted
 }
- 
