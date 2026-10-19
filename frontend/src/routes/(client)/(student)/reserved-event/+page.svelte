@@ -35,7 +35,7 @@
         </div>
         {/if}
         {#each events as event }
-            <ReservedEventBox event={event.event} seat={event.seatId} eventId={event.eventId}></ReservedEventBox>
+            <ReservedEventBox event={event.event} seat={event.seat} eventId={event.eventId}></ReservedEventBox>
         {/each}
         </div>
     </div>

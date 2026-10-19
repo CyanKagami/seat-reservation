@@ -8,6 +8,9 @@
   import { onMount } from "svelte";
   import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
   import type { Reservation } from "$lib/type/reservation.js";
+  import AlertModal from "$lib/components/AlertModal.svelte";
+  import { alertModal } from "$lib/store/alert.svelte.js";
+  import { goto } from "$app/navigation";
 
   let { data } = $props();
 
@@ -16,15 +19,19 @@
   let zone = $state("");
   let seat = $state("");
   let reservationMap:SeatMap = $state({myReservation:null, reservations:[]})
-  let reservedId:Set<string> = $derived(new Set(reservationMap.reservations.map(r => r.seatId)))
+  let reservedId: Record<string, Set<string>> = $derived.by(() => {
+    let group = Object.groupBy(reservationMap.reservations, (s) => s.zone);
+    let newGroup: Record<string, Set<string>> = {}
+    for (var key in group) {
+      let reservations = group[key];
+      if (reservations) {
+        newGroup[key] = new Set(reservations.map((s) => s.seat));
+      }
+    }
+    return newGroup;
+  })
   // State for right fixed sidebar and selected seats
   let selectedSeats = $state<CanvasObject[]>([]);
-  let showSidebar = $state(false);
-
-  // Derived total price calculation from seat metadata
-  let totalPrice = $derived(
-    selectedSeats.reduce((sum, s) => sum + Number(s.metadata?.price ?? 0), 0)
-  );
 
   async function pollForSeats(){
     try {
@@ -43,12 +50,22 @@
       for (let i = 0; i < selectedSeats.length; i++) {
           let seatId = getSeatId(selectedSeats[i])
         try {
-          let {reservation} = await reserveSeat(data.event.eventId, seatId);
+          let {reservation} = await reserveSeat(data.event.eventId, seatId, zone);
           allSeat.push(reservation.seatId);
+          alertModal.success("การจองสำเร็จ", "", () => {
+              goto(`/event-info/${data.event.eventId}`)
+          })
         }
         catch(err){
           if (err instanceof BookingApiError) {
-            console.log(err.message);
+            alertModal.failure("การจองล้มเหลว", err.message, () => {
+              if (err.message === "ท่านมีที่นั่งอยู่แล้วในกิจกรรมนี้"){
+                goto(`/event-info/${data.event.eventId}`)
+              }
+              else{
+                status = "seat";
+              }
+            })
           }
         }
       }
@@ -59,7 +76,6 @@
     await pollForSeats();
     setInterval(() => {pollForSeats().catch(console.error)}, 10000)
   })
-  $effect(() => {console.log(reservedId)})
 </script>
 
 <div class="items-center flex flex-col gap-2 mt-10 px-4 pb-12">
@@ -73,11 +89,10 @@
         zone={data.seatState.zones}
         gridWidth={data.seatState.gridWidth}
         gridHeight={data.seatState.gridHeight}
-        reservedId={reservedId}
+        reservedIds={reservedId}
         onZoneSelect={(zoneId) => {
           zone = zoneId;
           status = "seat";
-          showSidebar = false;
         }}
       ></ReservationZonePicker>
     </div>
@@ -91,7 +106,7 @@
           selectedZoneId={zone}
           maxSeats={1}
           objects={data.seatState.objects}
-          reservationMap={reservationMap}
+          reservedIds={reservedId[zone]}
           onBack={() => {
             status = "zone";
           }}
@@ -142,9 +157,9 @@
           </svg>
         </div>
       </div>
-      <a href="/event-info/{data.event.eventId}" onclick={handleBooking} class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer text-center">
+      <button onclick={handleBooking} class="w-full sm:w-70 p-3 bg-accent font-semibold text-white rounded-lg hover:opacity-95 transition cursor-pointer text-center">
         Confirm
-      </a>
+      </button>
     </div>
   {/if}
 </div>

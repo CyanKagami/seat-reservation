@@ -2,7 +2,8 @@
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
     import {formatThaiDateTime, formatThaiDateTimeShort} from "$lib/scripts/formatTime"
-  import { apiFetch } from "$lib/scripts/api.js";
+    import { apiFetch } from "$lib/scripts/api.js";
+    import {registrationOpen} from '$lib/scripts/booking.js'
 
     let {params} = $props()
     //fetch event
@@ -35,9 +36,14 @@
             <p class="text-xl text-gray-400">By {event.host || ""}</p>
         </div>
         <!--register button-->
-        <a href="/reservation/{params.eventId}">
-            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-xl hover:cursor-pointer">Register</button>
-        </a>
+        {#if registrationOpen(event)}
+            <a href="/reservation/{params.eventId}">
+                <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-xl hover:cursor-pointer">ลงทะเบียน</button>
+            </a>
+        {:else}
+            <button class="bg-stone-600 w-full py-2 rounded-xl text-white font-semibold mt-3 text-xl">ไม่อยู่ในช่วงเวลาลงทะเบียน</button>
+        {/if}
+        
     </div>
 </div>
 <div class="bg-secondary w-full h-20 flex items-end pl-20 gap-3">

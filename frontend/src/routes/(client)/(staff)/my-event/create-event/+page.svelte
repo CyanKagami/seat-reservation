@@ -1,7 +1,7 @@
 <script lang="ts">
   import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
   import { apiFetch } from "$lib/scripts/api";
-import { userStore } from "$lib/store/auth.svelte";
+  import { userStore } from "$lib/store/auth.svelte";
   import type { Daytable } from "$lib/type/event";
   import type { Place } from "$lib/type/place";
   import { onMount } from "svelte";
@@ -396,3 +396,4 @@ function addDate() {
     </div>
   </form>
 </div>
+

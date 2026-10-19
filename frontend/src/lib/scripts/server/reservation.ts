@@ -14,10 +14,17 @@ import {
 import { docClient } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
 import type { EventSummary, Reservation } from '$lib/type/reservation';
+import { isValidSeatId, parseSeatId, type SeatParts } from '$lib/scripts/seat';
+
+// re-exported so routes can keep importing it from here
+export { isValidSeatId };
 
 const TABLE = 'reservations';
 
 // Table layout: partition key = eventId, sort key = seatId.
+// seatId is "<zone>-<seat>" (see $lib/seat.ts), so the zone lives in the key itself.
+// begins_with(seatId, "<zone>-") narrows a query to one zone, but zones may contain "-"
+// ("A" vs "A-B"), so confirm each hit with parseSeatId(seatId).zone === zone.
 //
 // Seat items are the Reservation records. Next to them every user gets one
 // "user slot" item per event (seatId = "USER#<googleId>", no `status` field) that
@@ -55,12 +62,6 @@ export function bookingErrorResponse(error: unknown) {
   return json({ error: 'Internal server error' }, { status: 500 });
 }
 
-// '#' is not allowed, so a client can never pass a seatId that collides with a user slot.
-// Widen the character set if your layout's seat ids use other characters.
-export function isValidSeatId(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value);
-}
-
 // Reads { eventId, seatId } from a JSON body, or returns a ready-made 400 Response.
 export async function readSeatRequest(request: Request): Promise<{ eventId: string; seatId: string } | Response> {
   let payload: { eventId?: unknown; seatId?: unknown };
@@ -71,9 +72,15 @@ export async function readSeatRequest(request: Request): Promise<{ eventId: stri
   }
   const { eventId, seatId } = payload;
   if (typeof eventId !== 'string' || !eventId || !isValidSeatId(seatId)) {
-    return json({ error: 'eventId and a valid seatId are required' }, { status: 400 });
+    return json({ error: 'eventId and seatId are required' }, { status: 400 });
   }
   return { eventId, seatId };
+}
+
+// Adds the zone and seat extracted from seatId to anything that carries a seatId.
+export function withSeatParts<T extends { seatId: string }>(record: T): T & SeatParts {
+  const parts = parseSeatId(record.seatId) ?? { zone: '', seat: record.seatId };
+  return { ...record, ...parts };
 }
 
 export async function reserveSeat(eventId: string, seatId: string, user: Pick<User, 'googleId'>): Promise<Reservation> {
@@ -104,10 +111,10 @@ export async function reserveSeat(eventId: string, seatId: string, user: Pick<Us
     if (error.name === 'TransactionCanceledException') {
       const reasons = error.CancellationReasons ?? [];
       if (reasons[0]?.Code === 'ConditionalCheckFailed') {
-        throw new BookingError('SEAT_TAKEN', 'This seat is already taken');
+        throw new BookingError('SEAT_TAKEN', 'ที่นั่งที่ท่านเลือกถูกจองไว้แล้ว');
       }
       if (reasons[1]?.Code === 'ConditionalCheckFailed') {
-        throw new BookingError('ALREADY_BOOKED', 'You already have a seat for this event');
+        throw new BookingError('ALREADY_BOOKED', 'ท่านมีที่นั่งอยู่แล้วในกิจกรรมนี้');
       }
     }
     throw error;
@@ -124,13 +131,13 @@ export async function cancelSeat(eventId: string, seatId: string, requester: Pic
   );
 
   if (!Item || Item.status === undefined) {
-    throw new BookingError('NOT_FOUND', 'Reservation not found');
+    throw new BookingError('NOT_FOUND', 'ไม่พบการจอง');
   }
   if (Item.googleId !== requester.googleId && requester.role !== 'admin') {
-    throw new BookingError('FORBIDDEN', 'You can only cancel your own reservation');
+    throw new BookingError('FORBIDDEN', 'ไม่พบการจอง');
   }
   if (Item.status === 'checked-in') {
-    throw new BookingError('CONFLICT', 'A checked-in reservation cannot be cancelled');
+    throw new BookingError('CONFLICT', 'ไม่สามารถยกเลิกการจองที่เช็กอินแล้วได้');
   }
 
   try {
@@ -153,7 +160,7 @@ export async function cancelSeat(eventId: string, seatId: string, requester: Pic
     );
   } catch (error: any) {
     if (error.name === 'TransactionCanceledException') {
-      throw new BookingError('CONFLICT', 'The reservation changed while cancelling, please retry');
+      throw new BookingError('CONFLICT', 'การจองถูกแก้ไขระหว่างการยกเลิก โปรดลองอีกครั้ง');
     }
     throw error;
   }
@@ -182,6 +189,7 @@ export async function listReservations(eventId: string): Promise<Reservation[]> 
 }
 
 // One user's reservations across events. Uses a Scan - fine at campus scale;
+// add a GSI on googleId if the table ever grows large.
 export async function listUserReservations(googleId: string): Promise<Reservation[]> {
   const items: Record<string, any>[] = [];
   let startKey: Record<string, any> | undefined;
@@ -203,7 +211,6 @@ export async function listUserReservations(googleId: string): Promise<Reservatio
   return (items as Reservation[]).sort((a, b) => b.reservedAt.localeCompare(a.reservedAt));
 }
 
-
 // BatchGet that retries unprocessed keys. DynamoDB caps one call at 100 keys.
 async function batchGet(
   table: string,
@@ -211,10 +218,10 @@ async function batchGet(
   projection: { ProjectionExpression: string; ExpressionAttributeNames: Record<string, string> }
 ) {
   const items: Record<string, any>[] = [];
- 
+
   for (let i = 0; i < keys.length; i += 100) {
     let pending: Record<string, any>[] | undefined = keys.slice(i, i + 100);
- 
+
     for (let attempt = 0; pending && pending.length > 0 && attempt < 3; attempt++) {
       const res: BatchGetCommandOutput = await docClient.send(
         new BatchGetCommand({ RequestItems: { [table]: { Keys: pending, ...projection } } })
@@ -223,39 +230,24 @@ async function batchGet(
       pending = res.UnprocessedKeys?.[table]?.Keys;
     }
   }
- 
+
   return items;
 }
 
 // Reservations only store googleId, so admin/organizer views look names up here.
 export async function fetchUserSummaries(googleIds: string[]) {
   const unique = [...new Set(googleIds)];
-  const result = new Map<string, { name: string; email: string }>();
+  const items = await batchGet(
+    'users',
+    unique.map((googleId) => ({ googleId })),
+    { ProjectionExpression: 'googleId, #n, email', ExpressionAttributeNames: { '#n': 'name' } }
+  );
 
-  for (let i = 0; i < unique.length; i += 100) {
-    let keys: Record<string, any>[] | undefined = unique.slice(i, i + 100).map((googleId) => ({ googleId }));
-
-    for (let attempt = 0; keys && keys.length > 0 && attempt < 3; attempt++) {
-      const res: BatchGetCommandOutput = await docClient.send(
-        new BatchGetCommand({
-          RequestItems: {
-            users: {
-              Keys: keys,
-              ProjectionExpression: 'googleId, #n, email',
-              ExpressionAttributeNames: { '#n': 'name' }
-            }
-          }
-        })
-      );
-      for (const u of res.Responses?.users ?? []) {
-        result.set(u.googleId, { name: u.name, email: u.email });
-      }
-      keys = res.UnprocessedKeys?.users?.Keys;
-    }
-  }
-
-  return result;
+  return new Map<string, { name: string; email: string }>(
+    items.map((u): [string, { name: string; email: string }] => [u.googleId, { name: u.name, email: u.email }])
+  );
 }
+
 // Reservations only store eventId. "My bookings" looks the event up at read time, so it is
 // always current - a copy inside every reservation would go stale whenever an event is edited.
 export async function fetchEventSummaries(eventIds: string[]) {
@@ -269,9 +261,8 @@ export async function fetchEventSummaries(eventIds: string[]) {
       ExpressionAttributeNames: { '#n': 'name', '#d': 'date', '#pic': 'picture', '#p': 'place' }
     }
   );
- 
+
   return new Map<string, EventSummary>(
     items.map((e): [string, EventSummary] => [e.eventId, { name: e.name, date: e.date, picture: e.picture ?? null, place: e.place ?? null }])
   );
 }
- 

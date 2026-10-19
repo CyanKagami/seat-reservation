@@ -3,16 +3,30 @@
 // apiFetch (src/lib/api.ts) prefixes PUBLIC_API_URL (which ends in /api), adds the
 // Bearer token, and redirects to /login on a 401.
 import { apiFetch } from '$lib/scripts/api';
-import type { Reservation } from '$lib/type/reservation';
+import type { Event } from '$lib/type/event';
+import type { ReservationView, ReservationWithEvent } from '$lib/type/reservation';
 
-// Everyone gets seatId + mine. Admin/organizer also get the full record and the booker.
-export type SeatEntry = { seatId: string; mine: boolean } & Partial<Omit<Reservation, 'seatId'>> & {
+// Registration window = event['register-date'].start / .end.
+// Caveat: a value without a timezone (e.g. "2026-10-20T09:00" from a datetime-local
+// input) is read in the SERVER's timezone, so store ISO strings with an offset.
+export function registrationOpen(ev: Event, now = new Date()) {
+  const start = ev['register-date']?.start;
+  const end = ev['register-date']?.end;
+  if (start && now < new Date(start)) return false;
+  if (end && now > new Date(end)) return false;
+  return true;
+}
+
+// Everyone gets seatId, zone, seat and mine. Admin/organizer also get the full record and the booker.
+export type SeatEntry = { seatId: string; zone: string; seat: string; mine: boolean } & Partial<
+  Omit<ReservationView, 'seatId' | 'zone' | 'seat'>
+> & {
     user?: { name: string; email: string } | null;
   };
 
 export interface SeatMap {
   reservations: SeatEntry[];
-  myReservation: Reservation | null;
+  myReservation: ReservationView | null;
 }
 
 // Thrown for any non-2xx answer; `code` is one of
@@ -40,24 +54,26 @@ export async function getSeatMap(eventId: string): Promise<SeatMap> {
   return unwrap(await apiFetch(`/booking?eventId=${encodeURIComponent(eventId)}`));
 }
 
-export async function reserveSeat(eventId: string, seatId: string): Promise<{ reservation: Reservation }> {
+// seatId is "<zone>-<seat>", e.g. "Front-A5" (build it with makeSeatId from $lib/seat).
+export async function reserveSeat(eventId: string, seatId: string, zone:string): Promise<{ reservation: ReservationView }> {
   return unwrap(
     await apiFetch('/booking', {
       method: 'POST',
-      body: JSON.stringify({ eventId, seatId })
+      body: JSON.stringify({ eventId, seatId: `${zone}-${seatId}` })
     })
   );
 }
 
-export async function cancelSeat(eventId: string, seatId: string): Promise<{ message: string }> {
+export async function cancelSeat(eventId: string, seatId: string, zone:string): Promise<{ message: string }> {
   return unwrap(
     await apiFetch(
-      `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(seatId)}`,
+      `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
       { method: 'DELETE' }
     )
   );
 }
 
-export async function getMyReservations(): Promise<{ reservations: Reservation[] }> {
+// Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
+export async function getMyReservations(): Promise<{ reservations: ReservationWithEvent[] }> {
   return unwrap(await apiFetch('/booking/mine'));
 }

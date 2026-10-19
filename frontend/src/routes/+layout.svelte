@@ -2,6 +2,8 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
   	import { navigating } from '$app/state';
+	import AlertModal from '$lib/components/AlertModal.svelte';
+	import { alertModal } from '$lib/store/alert.svelte';
 
 	let { children } = $props();
 </script>
@@ -13,6 +15,18 @@
 		</div>
 	{:then _} 
 		{@render children()}
+		<!-- Global Alert Modal Singleton Instance -->
+		<AlertModal 
+		bind:isOpen={alertModal.isOpen}
+		type={alertModal.type}
+		title={alertModal.title}
+		message={alertModal.message}
+		confirmText={alertModal.confirmText}
+		cancelText={alertModal.cancelText}
+		showCancel={alertModal.showCancel}
+		onconfirm={alertModal.onconfirm}
+		oncancel={alertModal.oncancel}
+		/>
 	{/await}
 </div>
 
