@@ -18,8 +18,8 @@
         <h1 class="text-2xl font-semibold truncate">{event.name}</h1>
         <p class="text-sm font-semibold truncate">{formatThaiDateTimeShort(start_date, end_date)}:{event.place.name}@{event.place.location.name}</p>
         <p class="text-sm text-gray-400">{event.host}</p>
-        <a href="/my-event/update-event/{event.eventId}">
-            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200">แก้ไขกิจกรรม</button>
+        <a href={`/my-event/event-info/${event.eventId}`}>
+            <button class="bg-accent w-full py-2 rounded-xl text-white font-semibold mt-3 text-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200">ข้อมูลกิจกรรม</button>
         </a>
 
     </div>
