@@ -9,7 +9,7 @@ export const GET: RequestHandler = async (event) => {
     if (user instanceof Response) return user;
 
     try {
-        const data = await fetchEventFromHost(user.googleId);
+        const data = await fetchEventFromHost(user.email);
         return json({ body: data });
     } catch (error) {
         console.error('Error fetching events for host:', error);

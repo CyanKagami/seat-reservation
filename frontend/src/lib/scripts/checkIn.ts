@@ -11,12 +11,15 @@ const pattern = /^(?<eightDigits>\d{8})$|^(?<hyphenated>[^#\-_]+-[^#\-_]+)$|^(?<
 export function classifyIdentifier(str: string) : {type: 'StudentId' | 'SeatId' | 'Other text', value: string} {
     const match = str.match(pattern);
     
-    if (match && match.groups.eightDigits) {
+    if (match && match.groups && match.groups.eightDigits) {
         return { type: 'StudentId', value: match.groups.eightDigits };
-    } else if (match && match.groups.hyphenated) {
+    } else if (match && match.groups && match.groups.hyphenated) {
         return { type: 'SeatId', value: match.groups.hyphenated };
-    } else {
+    } else if (match && match.groups){
         return { type: 'Other text', value: match.groups.other };
+    }
+    else {
+        return { type: 'Other text', value:'' };
     }
 }
 

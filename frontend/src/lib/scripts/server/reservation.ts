@@ -101,17 +101,19 @@ export function withSeatParts<T extends { seatId: string }>(record: T): T & Seat
   return { ...record, ...parts };
 }
 
-export async function reserveSeat(eventId: string, seatId: string, user: Pick<User, 'googleId'>): Promise<Reservation> {
+export async function reserveSeat(eventId: string, seatId: string, user: Pick<User, 'email' | 'googleId'>): Promise<Reservation> {
   const seat: Reservation = {
     eventId,
     seatId,
+    email: user.email,
     googleId: user.googleId,
     status: 'reserved',
     reservedAt: new Date().toISOString()
   };
   const slot = {
     eventId,
-    seatId: SLOT_PREFIX + user.googleId,
+    seatId: SLOT_PREFIX + (user.email || user.googleId),
+    email: user.email,
     googleId: user.googleId,
     reservedSeatId: seatId
   };
@@ -143,7 +145,7 @@ export async function reserveSeat(eventId: string, seatId: string, user: Pick<Us
 
 // Cancel a reservation: the item is deleted (there is no "cancelled" status).
 // Owners can cancel their own seat; admins can cancel anyone's. Checked-in seats stay.
-export async function cancelSeat(eventId: string, seatId: string, requester: Pick<User, 'googleId' | 'role'>) {
+export async function cancelSeat(eventId: string, seatId: string, requester: Pick<User, 'email' | 'role' | 'googleId'>) {
   const { Item } = await docClient.send(
     new GetCommand({ TableName: TABLE, Key: { eventId, seatId }, ConsistentRead: true })
   );
@@ -151,12 +153,16 @@ export async function cancelSeat(eventId: string, seatId: string, requester: Pic
   if (!Item || Item.status === undefined) {
     throw new BookingError('NOT_FOUND', 'ไม่พบการจอง');
   }
-  if (Item.googleId !== requester.googleId && requester.role !== 'admin') {
+  const isOwner = (Item.email && Item.email === requester.email) || (Item.googleId && Item.googleId === requester.googleId);
+  if (!isOwner && requester.role !== 'admin') {
     throw new BookingError('FORBIDDEN', 'ไม่พบการจอง');
   }
   if (Item.status === 'checked-in') {
     throw new BookingError('CONFLICT', 'ไม่สามารถยกเลิกการจองที่เช็กอินแล้วได้');
   }
+
+  const slotUser = Item.email || Item.googleId;
+  const conditionExpr = Item.email ? 'email = :u AND #status = :reserved' : 'googleId = :u AND #status = :reserved';
 
   try {
     await docClient.send(
@@ -167,12 +173,12 @@ export async function cancelSeat(eventId: string, seatId: string, requester: Pic
               TableName: TABLE,
               Key: { eventId, seatId },
               // guards against the record changing between the read above and this delete
-              ConditionExpression: 'googleId = :g AND #status = :reserved',
+              ConditionExpression: conditionExpr,
               ExpressionAttributeNames: STATUS_NAME,
-              ExpressionAttributeValues: { ':g': Item.googleId, ':reserved': 'reserved' }
+              ExpressionAttributeValues: { ':u': slotUser, ':reserved': 'reserved' }
             }
           },
-          { Delete: { TableName: TABLE, Key: { eventId, seatId: SLOT_PREFIX + Item.googleId } } }
+          { Delete: { TableName: TABLE, Key: { eventId, seatId: SLOT_PREFIX + slotUser } } }
         ]
       })
     );
@@ -208,17 +214,25 @@ export async function listReservations(eventId: string): Promise<Reservation[]> 
 
 // One user's reservations across events. Uses a Scan - fine at campus scale;
 // add a GSI on googleId if the table ever grows large.
-export async function listUserReservations(googleId: string): Promise<Reservation[]> {
+export async function listUserReservations(email: string, googleId?: string): Promise<Reservation[]> {
   const items: Record<string, any>[] = [];
   let startKey: Record<string, any> | undefined;
+
+  const exprValues: Record<string, any> = { ':e': email };
+  let filterExpr = 'email = :e';
+  if (googleId) {
+    exprValues[':g'] = googleId;
+    filterExpr = '(email = :e OR googleId = :g)';
+  }
+  filterExpr += ' AND attribute_exists(#status)';
 
   do {
     const res: ScanCommandOutput = await docClient.send(
       new ScanCommand({
         TableName: TABLE,
-        FilterExpression: 'googleId = :g AND attribute_exists(#status)',
+        FilterExpression: filterExpr,
         ExpressionAttributeNames: STATUS_NAME,
-        ExpressionAttributeValues: { ':g': googleId },
+        ExpressionAttributeValues: exprValues,
         ExclusiveStartKey: startKey
       })
     );
@@ -254,7 +268,7 @@ async function batchGet(
 
 export async function checkInWithSeatId(eventId: string, seatId: string): Promise<Reservation> {
   try {
-    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: seatId}, {status: 'check-in'}) as Reservation;
+    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: seatId}, {status: 'checked-in'}) as Reservation;
     return edited;
   } catch (error: any) {
     throw error;
@@ -263,8 +277,8 @@ export async function checkInWithSeatId(eventId: string, seatId: string): Promis
 
 export async function checkInWithStudentId(eventId: string, studentId: string): Promise<Reservation> {
   try {
-    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: SLOT_PREFIX + studentId}) as Reservation;
-    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: userReservation.reservedSeatId}, {status: 'check-in'}) as Reservation;
+    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: SLOT_PREFIX + studentId + '@kmitl.ac.th'}) as Reservation;
+    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: userReservation.reservedSeatId}, {status: 'checked-in'}) as Reservation;
     return edited;
   } catch (error: any) {
     throw error;
@@ -273,18 +287,52 @@ export async function checkInWithStudentId(eventId: string, studentId: string): 
 
 
 
-// Reservations only store googleId, so admin/organizer views look names up here.
-export async function fetchUserSummaries(googleIds: string[]) {
-  const unique = [...new Set(googleIds)];
-  const items = await batchGet(
-    'users',
-    unique.map((googleId) => ({ googleId })),
-    { ProjectionExpression: 'googleId, #n, email', ExpressionAttributeNames: { '#n': 'name' } }
-  );
+// Admin/organizer views look up user names here by email (or legacy googleId).
+export async function fetchUserSummaries(identifiers: string[]) {
+  const unique = [...new Set(identifiers.filter(Boolean))];
+  if (unique.length === 0) return new Map<string, { name: string; email: string }>();
 
-  return new Map<string, { name: string; email: string }>(
-    items.map((u): [string, { name: string; email: string }] => [u.googleId, { name: u.name, email: u.email }])
-  );
+  const emailCandidates = unique.filter((id) => id.includes('@'));
+  const resultMap = new Map<string, { name: string; email: string }>();
+
+  if (emailCandidates.length > 0) {
+    const items = await batchGet(
+      'users',
+      emailCandidates.map((email) => ({ email })),
+      { ProjectionExpression: 'googleId, #n, email', ExpressionAttributeNames: { '#n': 'name' } }
+    );
+    for (const u of items) {
+      if (u.email) resultMap.set(u.email, { name: u.name, email: u.email });
+      if (u.googleId) resultMap.set(u.googleId, { name: u.name, email: u.email });
+    }
+  }
+
+  const remaining = unique.filter((id) => !resultMap.has(id));
+  if (remaining.length > 0) {
+    const remSet = new Set(remaining);
+    let exclusiveStartKey: Record<string, any> | undefined;
+    do {
+      const res: ScanCommandOutput = await docClient.send(
+        new ScanCommand({
+          TableName: 'users',
+          ProjectionExpression: 'googleId, #n, email',
+          ExpressionAttributeNames: { '#n': 'name' },
+          ExclusiveStartKey: exclusiveStartKey
+        })
+      );
+      if (res.Items) {
+        for (const u of res.Items) {
+          if (remSet.has(u.googleId) || remSet.has(u.email)) {
+            if (u.email) resultMap.set(u.email, { name: u.name, email: u.email });
+            if (u.googleId) resultMap.set(u.googleId, { name: u.name, email: u.email });
+          }
+        }
+      }
+      exclusiveStartKey = res.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+  }
+
+  return resultMap;
 }
 
 
@@ -310,11 +358,11 @@ export async function fetchEventSummaries(eventIds: string[]) {
 
 // "Has this user already registered for this event?" - one consistent read of the user's
 // slot item, no query or scan. Returns the seat they hold, or null.
-export async function getUserSeat(eventId: string, googleId: string) {
+export async function getUserSeat(eventId: string, userIdentifier: string) {
   const { Item } = await docClient.send(
     new GetCommand({
       TableName: TABLE,
-      Key: { eventId, seatId: SLOT_PREFIX + googleId },
+      Key: { eventId, seatId: SLOT_PREFIX + userIdentifier },
       ConsistentRead: true // a user who just booked must see true straight away
     })
   );

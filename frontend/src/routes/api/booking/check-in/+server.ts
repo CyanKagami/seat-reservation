@@ -41,7 +41,7 @@ function registrationOngoing(ev: Event, now = new Date()) {
 
 // POST /api/booking/check-in  { eventId, identifier }  (identifier = "<zone>-<seat>" || "xxxxxxxx") - check-in a reserved seat
 export const POST: RequestHandler = async (event) => {
-  const user = await guard(event, ['organizer']);
+  const user = await guard(event, ['organizer', 'admin']);
   if (user instanceof Response) return user;
 
   const input = await readCheckInRequest(event.request);

@@ -73,7 +73,7 @@ export const POST: RequestHandler = async (event) => {
     }
     delete data.img;
 
-    processData = { ...processData, ...(await formatData(data, user.googleId)) };
+    processData = { ...processData, ...(await formatData(data, user.email)) };
     await addDataUniqueId('events', processData, 'eventId');
 
     return json({ body: { message: 'OK' } });

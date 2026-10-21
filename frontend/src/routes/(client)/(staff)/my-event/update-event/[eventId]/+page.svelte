@@ -182,7 +182,7 @@
       formData.append("register-date-end", registerDate.end.toISOString());
       if (imageFile) formData.append("img", imageFile, imageFile?.name)
       formData.append("timetable",JSON.stringify(timetable))
-      formData.append("creatorId", userStore.currentUser?.googleId ? userStore.currentUser?.googleId : "")
+      formData.append("creatorId", userStore.currentUser?.email ? userStore.currentUser?.email : "")
       formData.append("eventId", params.eventId)
       data = formData
     }

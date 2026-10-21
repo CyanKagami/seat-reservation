@@ -3,8 +3,8 @@ import { fetchUser } from "./dynamo";
 
 
 export async function verifyAccess(user:User, intendedRole:string[]): Promise<boolean> {
-    let { googleId } = user;
-    const fetchedUser = await fetchUser(googleId);
+    let { email } = user;
+    const fetchedUser = await fetchUser(email);
     if (!fetchedUser) {
         return false;
     }

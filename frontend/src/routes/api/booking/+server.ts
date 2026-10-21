@@ -38,16 +38,17 @@ export const GET: RequestHandler = async (event) => {
   try {
     const all = await listReservations(eventId);
     const privileged = user.role === 'admin' || user.role === 'organizer';
-    const people = privileged ? await fetchUserSummaries(all.map((r) => r.googleId)) : null;
+    const people = privileged ? await fetchUserSummaries(all.map((r) => r.email ?? r.googleId ?? '')) : null;
 
     const reservations = all.map((r) => {
-      const mine = r.googleId === user.googleId;
+      const bookerId = r.email ?? r.googleId ?? '';
+      const mine = (r.email && r.email === user.email) || (r.googleId && r.googleId === user.googleId);
       return withSeatParts(
-        people ? { ...r, mine, user: people.get(r.googleId) ?? null } : { seatId: r.seatId, mine }
+        people ? { ...r, mine, user: people.get(bookerId) ?? null } : { seatId: r.seatId, mine }
       );
     });
 
-    const found = all.find((r) => r.googleId === user.googleId);
+    const found = all.find((r) => (r.email && r.email === user.email) || (r.googleId && r.googleId === user.googleId));
     const myReservation = found ? withSeatParts(found) : null;
 
     return json({ body: { reservations, myReservation } });

@@ -1,4 +1,5 @@
 <script lang='ts'>
+  import { invalidate, refreshAll } from '$app/navigation';
   import { checkInSeat } from '$lib/scripts/booking.js';
 
     const {data, params} = $props();
@@ -8,7 +9,8 @@
     let identifier: string = $state('');
 
     async function handleSubmit() {
-        await checkInSeat(params.eventId, identifier);
+        let result = await checkInSeat(params.eventId, identifier);
+        invalidate(`/booking?eventId=${encodeURIComponent(params.eventId)}`)
     }
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
@@ -50,6 +52,6 @@
         <p class="text-4xl font-semibold mb-5">ตรวจบัตรเข้าร่วมงาน</p>
         <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่งเพื่อตรวจบัตรเข้างาน</p>
         <input bind:value={identifier} class="w-108 rounded-lg">
-        <button onclick={() => } class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
+        <button onclick={handleSubmit} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
 </div>

@@ -13,7 +13,7 @@ export const GET: RequestHandler = async (event) => {
   if (!eventId) return json({ error: 'Missing eventId' }, { status: 400 });
 
   try {
-    const seat = await getUserSeat(eventId, user.googleId);
+    const seat = (await getUserSeat(eventId, user.email)) ?? (user.googleId ? await getUserSeat(eventId, user.googleId) : null);
     return json({ body: seat ? { registered: true, ...seat } : { registered: false } });
   } catch (error) {
     return bookingErrorResponse(error);

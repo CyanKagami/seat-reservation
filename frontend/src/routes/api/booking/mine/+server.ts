@@ -10,7 +10,7 @@ export const GET: RequestHandler = async (event) => {
   if (user instanceof Response) return user;
 
   try {
-    const reservations = await listUserReservations(user.googleId);
+    const reservations = await listUserReservations(user.email, user.googleId);
     const events = await fetchEventSummaries(reservations.map((r) => r.eventId));
 
     return json({

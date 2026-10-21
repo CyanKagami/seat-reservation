@@ -50,39 +50,40 @@ async function unwrap<T>(res: Response): Promise<T> {
   return data.body as T;
 }
 
-export async function getSeatMap(eventId: string): Promise<SeatMap> {
-  return unwrap(await apiFetch(`/booking?eventId=${encodeURIComponent(eventId)}`));
+export async function getSeatMap(eventId: string, fetchFunc: typeof fetch = fetch): Promise<SeatMap> {
+  return unwrap(await apiFetch(`/booking?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
 }
 
 // seatId is "<zone>-<seat>", e.g. "Front-A5" (build it with makeSeatId from $lib/seat).
-export async function reserveSeat(eventId: string, seatId: string, zone:string): Promise<{ reservation: ReservationView }> {
+export async function reserveSeat(eventId: string, seatId: string, zone:string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
   return unwrap(
     await apiFetch('/booking', {
       method: 'POST',
       body: JSON.stringify({ eventId, seatId: `${zone}-${seatId}` })
-    })
+    }, fetchFunc)
   );
 }
 
-export async function checkInSeat(eventId: string, identifier: string){
+export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch){
   return unwrap(
-    await apiFetch('/check-in',{
+    await apiFetch('/booking/check-in',{
       method: 'POST',
       body: JSON.stringify({ eventId, identifier })
-    })
+    }, fetchFunc)
   )
 }
 
-export async function cancelSeat(eventId: string, seatId: string, zone:string): Promise<{ message: string }> {
+export async function cancelSeat(eventId: string, seatId: string, zone:string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
   return unwrap(
     await apiFetch(
       `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
-      { method: 'DELETE' }
+      { method: 'DELETE' },
+      fetchFunc
     )
   );
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
-export async function getMyReservations(): Promise<{ reservations: ReservationWithEvent[] }> {
-  return unwrap(await apiFetch('/booking/mine'));
+export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promise<{ reservations: ReservationWithEvent[] }> {
+  return unwrap(await apiFetch('/booking/mine', {}, fetchFunc));
 }

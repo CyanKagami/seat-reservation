@@ -227,13 +227,13 @@ export async function fetchAllData(
   }
 }
 
-export async function fetchEventFromHost(googleId:string) {
+export async function fetchEventFromHost(creatorId:string) {
   const paginatorConfig = { client: docClient, pageSize: 25 };
   const scanParams = {
     TableName: "events",
-    FilterExpression: "creatorId = :googleId",
+    FilterExpression: "creatorId = :creatorId",
     ExpressionAttributeValues: {
-      ":googleId": googleId
+      ":creatorId": creatorId
     }
   };
 
@@ -318,7 +318,7 @@ export async function addUser(user:Object) {
   const params:PutCommandInput = {
     TableName: 'users',
     Item: user,
-    ConditionExpression: 'attribute_not_exists(googleId)'
+    ConditionExpression: 'attribute_not_exists(email)'
   };
 
   try {
@@ -334,12 +334,12 @@ export async function addUser(user:Object) {
   }
 }
 
-export async function fetchUser(googleId:string) {
+export async function fetchUser(email:string) {
   const params = {
     TableName: 'users',
     // Define the exact primary key match
     Key: {
-      googleId: googleId, // Partition Key (HASH)
+      email: email, // Partition Key (HASH)
     },
   };
   console.log("Fetching user with params:", params);

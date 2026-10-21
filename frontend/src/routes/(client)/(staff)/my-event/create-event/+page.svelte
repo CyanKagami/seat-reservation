@@ -204,7 +204,7 @@ function addDate() {
       formData.append("timetable", JSON.stringify(timetable));
       formData.append(
         "creatorId",
-        userStore.currentUser?.googleId ? userStore.currentUser?.googleId : "",
+        userStore.currentUser?.email ? userStore.currentUser?.email : "",
       );
       data = formData;
     }

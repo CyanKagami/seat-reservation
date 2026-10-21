@@ -1,10 +1,9 @@
 import type { PageLoad } from './$types';
-import { apiFetch } from '$lib/scripts/api';
 import { BookingApiError, getSeatMap } from '$lib/scripts/booking';
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageLoad = async ({ fetch, params }) => {
     try {
-        const eventSeatMap = await getSeatMap(params.eventId);
+        const eventSeatMap = await getSeatMap(params.eventId, fetch);
         return {
             eventSeatMap
         };
