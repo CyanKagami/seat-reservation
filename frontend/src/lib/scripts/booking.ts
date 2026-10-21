@@ -64,6 +64,15 @@ export async function reserveSeat(eventId: string, seatId: string, zone:string):
   );
 }
 
+export async function checkInSeat(eventId: string, identifier: string){
+  return unwrap(
+    await apiFetch('/check-in',{
+      method: 'POST',
+      body: JSON.stringify({ eventId, identifier })
+    })
+  )
+}
+
 export async function cancelSeat(eventId: string, seatId: string, zone:string): Promise<{ message: string }> {
   return unwrap(
     await apiFetch(

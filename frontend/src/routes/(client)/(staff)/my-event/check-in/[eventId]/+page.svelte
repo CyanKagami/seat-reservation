@@ -1,8 +1,18 @@
 <script lang='ts'>
-    const percentage = (120 / 350) * 100
+  import { checkInSeat } from '$lib/scripts/booking.js';
+
+    const {data, params} = $props();
+    let checkInCount = $derived(data.eventSeatMap.reservations.reduce((p, res) => {return (res.status === 'checked-in') ? p + 1 : p}, 0))
+    let totalCount = $derived(data.eventSeatMap.reservations.length)
+    const percentage = $derived((checkInCount / totalCount) * 100)
+    let identifier: string = $state('');
+
+    async function handleSubmit() {
+        await checkInSeat(params.eventId, identifier);
+    }
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
-    <h1 class="text-4xl font-semibold mb-10">Ticket</h1>
+    <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
     <div class="w-full bg-gray-200 rounded-lg h-52 grid grid-cols-3 p-10 gap-5">
         <div class="col-span-2 bg-white rounded-lg border border-accent h-full w-ful flex gap-3">
             <div class="bg-accent px-7 h-full rounded-l-lg flex items-center justify-center w-fit">
@@ -10,12 +20,12 @@
             </div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">เข้าร่วมงานแล้ว</p>
-                <p class="text-4xl">{120} คน</p>
+                <p class="text-4xl">{checkInCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">จาก</p>
-                <p class="text-4xl">{350} คน</p>
+                <p class="text-4xl">{totalCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
@@ -30,8 +40,8 @@
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
                 <p class="text-base">ยังไม่เข้าร่วม</p>
                 <div class="flex items-end">
-                    <p class="text-4xl">{350} คน</p>
-                    <p class="ml-3 text-sm font-semibold">({percentage.toFixed(2)} %)</p>
+                    <p class="text-4xl">{totalCount - checkInCount} คน</p>
+                    <p class="ml-3 text-sm font-semibold">({(100 - percentage).toFixed(2)} %)</p>
                 </div>
             </div>
         </div>
@@ -39,7 +49,7 @@
     <div class="w-full bg-gray-200 rounded-lg h-92 p-10 flex flex-col gap-3 mt-20 items-center justify-center">
         <p class="text-4xl font-semibold mb-5">ตรวจบัตรเข้าร่วมงาน</p>
         <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่งเพื่อตรวจบัตรเข้างาน</p>
-        <input class="w-108 rounded-lg">
-        <button class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
+        <input bind:value={identifier} class="w-108 rounded-lg">
+        <button onclick={() => } class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
 </div>

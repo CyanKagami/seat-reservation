@@ -11,10 +11,12 @@ import {
   type ScanCommandOutput
 } from '@aws-sdk/lib-dynamodb';
 // NOTE: add `export` to `const docClient` in $lib/scripts/dynamo.ts
-import { docClient } from '$lib/scripts/server/dynamo';
+import { docClient, fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
 import type { EventSummary, Reservation } from '$lib/type/reservation';
 import { isValidSeatId, parseSeatId, type SeatParts } from '$lib/scripts/seat';
+import { classifyIdentifier } from '../checkIn';
+import { PutItemCommand } from '@aws-sdk/client-dynamodb';
 
 // re-exported so routes can keep importing it from here
 export { isValidSeatId };
@@ -75,6 +77,22 @@ export async function readSeatRequest(request: Request): Promise<{ eventId: stri
     return json({ error: 'eventId and seatId are required' }, { status: 400 });
   }
   return { eventId, seatId };
+}
+
+// Reads { eventId, seatId } from a JSON body, or returns a ready-made 400 Response.
+export async function readCheckInRequest(request: Request): Promise<{ eventId: string; identifier: string, identifierType: "StudentId" | "SeatId" } | Response> {
+  let payload: { eventId?: unknown; identifier?: unknown };
+  try {
+    payload = (await request.json()) ?? {};
+  } catch {
+    return json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+  const { eventId, identifier } = payload;
+  const identifierType = classifyIdentifier((typeof identifier === 'string') ? identifier : '');
+  if (typeof eventId !== 'string' || !eventId || typeof identifier !== 'string' || !identifier || identifierType.type === 'Other text') {
+    return json({ error: 'eventId and identifier are required' }, { status: 400 });
+  }
+  return { eventId, identifier, identifierType: identifierType.type };
 }
 
 // Adds the zone and seat extracted from seatId to anything that carries a seatId.
@@ -234,6 +252,27 @@ async function batchGet(
   return items;
 }
 
+export async function checkInWithSeatId(eventId: string, seatId: string): Promise<Reservation> {
+  try {
+    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: seatId}, {status: 'check-in'}) as Reservation;
+    return edited;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+export async function checkInWithStudentId(eventId: string, studentId: string): Promise<Reservation> {
+  try {
+    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: SLOT_PREFIX + studentId}) as Reservation;
+    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: userReservation.reservedSeatId}, {status: 'check-in'}) as Reservation;
+    return edited;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+
+
 // Reservations only store googleId, so admin/organizer views look names up here.
 export async function fetchUserSummaries(googleIds: string[]) {
   const unique = [...new Set(googleIds)];
@@ -247,6 +286,8 @@ export async function fetchUserSummaries(googleIds: string[]) {
     items.map((u): [string, { name: string; email: string }] => [u.googleId, { name: u.name, email: u.email }])
   );
 }
+
+
 
 // Reservations only store eventId. "My bookings" looks the event up at read time, so it is
 // always current - a copy inside every reservation would go stale whenever an event is edited.
@@ -266,3 +307,18 @@ export async function fetchEventSummaries(eventIds: string[]) {
     items.map((e): [string, EventSummary] => [e.eventId, { name: e.name, date: e.date, picture: e.picture ?? null, place: e.place ?? null }])
   );
 }
+
+// "Has this user already registered for this event?" - one consistent read of the user's
+// slot item, no query or scan. Returns the seat they hold, or null.
+export async function getUserSeat(eventId: string, googleId: string) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE,
+      Key: { eventId, seatId: SLOT_PREFIX + googleId },
+      ConsistentRead: true // a user who just booked must see true straight away
+    })
+  );
+  if (!Item) return null;
+  return withSeatParts({ seatId: Item.reservedSeatId as string });
+}
+ 

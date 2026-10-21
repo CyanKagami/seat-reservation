@@ -1,30 +1,24 @@
 import type { PageLoad } from './$types';
 import { apiFetch } from '$lib/scripts/api';
+import { BookingApiError, getSeatMap } from '$lib/scripts/booking';
 
-export const load: PageLoad = async ({ fetch, params }) => {
-    const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
-            method: "GET",
-            credentials: 'include'
-        }, fetch)
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-    if (!event.timetable) {
-        event.timetable = [];
+export const load: PageLoad = async ({ params }) => {
+    try {
+        const eventSeatMap = await getSeatMap(params.eventId);
+        return {
+            eventSeatMap
+        };
     }
-    if (!event.picture) {
-        event.picture = null;
+    catch (err) {
+        if (err instanceof BookingApiError){
+            console.error(err.message)
+        }
+        return {
+            eventSeatMap: {
+                reservations: [],
+                MyReservation: null
+            }
+        };
     }
-    const places = await apiFetch('/place', {
-        method:"GET",
-        credentials:'include'
-      }, fetch)
-      .then((response) => response.json())
-      .then((data) => {
-        return data.body.data;
-      })
-    return {
-        event,
-        places
-    };
+    
 };

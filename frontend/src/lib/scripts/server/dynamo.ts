@@ -292,7 +292,6 @@ export async function updateAllAttributes(tableName:string, primaryKey:Key, attr
     expressionAttributeValues[valuePlaceholder] = value;
   }
 
-  console.log(updateParts.join(", "))
   // If no attributes are left to update, exit
   if (updateParts.length === 0) return;
 
@@ -324,7 +323,6 @@ export async function addUser(user:Object) {
 
   try {
     const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
   } catch (error:any) {
     if (error.name === 'ConditionalCheckFailedException') {
       console.warn('User already exists, not overwriting.');

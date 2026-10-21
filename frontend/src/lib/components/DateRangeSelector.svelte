@@ -99,10 +99,10 @@
 
   // Range logic
   function handleDayClick(dayDate: Date) {
-    if (!selectedStart || (selectedStart && selectedEnd)) {
+    if (!selectedStart || (selectedStart !== selectedEnd)) {
       selectedStart = dayDate;
-      selectedEnd = null;
-    } else if (selectedStart && !selectedEnd) {
+      selectedEnd = dayDate;
+    } else if (selectedStart === selectedEnd) {
       if (dayDate < selectedStart) {
         selectedStart = dayDate;
       } else {

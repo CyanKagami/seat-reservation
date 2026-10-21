@@ -8,6 +8,7 @@ export interface Reservation {
   googleId: string;
   status: ReservationStatus;
   reservedAt: string; // ISO date string
+  reservedSeatId?: string;
 }
 
 // What the API returns: the stored record plus zone/seat extracted from seatId by the server.
