@@ -55,7 +55,7 @@ export const POST: RequestHandler = async (event) => {
       return json({ error: 'กิจกรรมนี้ไม่ได้กำลังดำเนินการอยู่' }, { status: 403 });
     }
     const reservation = await (input.identifierType === "SeatId" ? checkInWithSeatId(ev.eventId, input.identifier) : checkInWithStudentId(ev.eventId, input.identifier))
-    return json({ body: { message: 'Check-in completed', reservation: withSeatParts(reservation) } }, { status: 201 });
+    return json({ message: 'Check-in completed', reservation: withSeatParts(reservation)  }, { status: 201 });
   } catch (error) {
     return json({}, {status:500});
   }

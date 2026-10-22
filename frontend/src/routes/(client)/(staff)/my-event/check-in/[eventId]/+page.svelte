@@ -1,21 +1,44 @@
 <script lang='ts'>
   import { invalidate, refreshAll } from '$app/navigation';
-  import { checkInSeat } from '$lib/scripts/booking.js';
+  import { ApiError, checkInSeat, getReservation } from '$lib/scripts/booking.js';
+  import type { SeatParts } from '$lib/scripts/seat.js';
+  import type { Reservation } from '$lib/type/reservation.js';
 
     const {data, params} = $props();
-    let checkInCount = $derived(data.eventSeatMap.reservations.reduce((p, res) => {return (res.status === 'checked-in') ? p + 1 : p}, 0))
-    let totalCount = $derived(data.eventSeatMap.reservations.length)
-    const percentage = $derived((checkInCount / totalCount) * 100)
+    const percentage = $derived((data.checkInCount / (data.totalCount || 1)) * 100)
     let identifier: string = $state('');
+    let reservationData: Reservation & SeatParts | null = $state(null);
 
-    async function handleSubmit() {
-        let result = await checkInSeat(params.eventId, identifier);
-        invalidate(`/booking?eventId=${encodeURIComponent(params.eventId)}`)
+    async function handleLoadData() {
+        try{
+            reservationData = await getReservation(params.eventId, identifier);
+            status = "success";
+            isShow = true;
+        } catch (err){
+            if (err instanceof ApiError) {
+                switch (err.message) {
+                    case 'ALREADY_CHECKED_IN':
+                        status = "replicated";
+                    case 'NOT_FOUND':
+                        status = "not_found";
+                }
+            }
+            console.log(err)
+        }
+        
     }
 
-    $effect(()=> {
-        console.log(data.eventSeatMap)
-    })
+    async function handleSubmit() {
+        try{
+            await checkInSeat(params.eventId, identifier);
+            await invalidate(`increase:count`);
+            isShow = false
+            reservationData = null;
+        } catch (err){
+            console.log(err)
+        }
+        
+    }
 
     let isShow = $state(false)
     let status = $state("already_check")
@@ -29,12 +52,12 @@
             </div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">เข้าร่วมงานแล้ว</p>
-                <p class="text-4xl">{checkInCount} คน</p>
+                <p class="text-4xl">{data.checkInCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">จาก</p>
-                <p class="text-4xl">{totalCount} คน</p>
+                <p class="text-4xl">{data.totalCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
@@ -49,7 +72,7 @@
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
                 <p class="text-base">ยังไม่เข้าร่วม</p>
                 <div class="flex items-end">
-                    <p class="text-4xl">{totalCount - checkInCount} คน</p>
+                    <p class="text-4xl">{data.totalCount - data.checkInCount} คน</p>
                     <p class="ml-3 text-sm font-semibold">({(100 - percentage).toFixed(2)} %)</p>
                 </div>
             </div>
@@ -59,25 +82,25 @@
         <p class="text-4xl font-semibold mb-5">ตรวจบัตรเข้าร่วมงาน</p>
         <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่งเพื่อตรวจบัตรเข้างาน</p>
         <input bind:value={identifier} class="w-108 rounded-lg">
-        <button onclick={handleSubmit} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
+        <button onclick={handleLoadData} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
 
     {#if isShow}
         <div class="w-full h-full z-10 flex justify-center items-center fixed top-0 left-0">
-        {#if status === "success"}
+        {#if reservationData && status === "success"}
             <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
                 <p class="text-xl font-semibold">สรุปข้อมูล</p>
                 <hr class="w-full mt-3">
-                <p class="my-5 font-semibold">{67070094}</p>
+                <p class="my-5 font-semibold">{reservationData.email}</p>
                 <div class="flex gap-3 text-2xl font-bold">
                     <p>Zone</p>
-                    <p class="text-orange-600">{"B1"}</p>
+                    <p class="text-orange-600">{reservationData.zone}</p>
                 </div>
                 <div class="flex gap-3 text-2xl font-bold">
                     <p>Seat</p>
-                    <p class="text-orange-600">{"B1"}</p>
+                    <p class="text-orange-600">{reservationData.seat}</p>
                 </div>
-                <button class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
+                <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
                 <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
             </div>
             {:else if status === "not_found"}
@@ -86,7 +109,7 @@
 
                 <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
             </div>
-            {:else}
+            {:else if status === "replicated"}
             <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
                 <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้ทำการ Check in แล้ว</p>
 

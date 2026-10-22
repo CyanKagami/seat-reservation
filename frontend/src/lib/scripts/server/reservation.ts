@@ -16,7 +16,6 @@ import type { User } from '$lib/type/user';
 import type { EventSummary, Reservation } from '$lib/type/reservation';
 import { isValidSeatId, parseSeatId, type SeatParts } from '$lib/scripts/seat';
 import { classifyIdentifier } from '../checkIn';
-import { PutItemCommand } from '@aws-sdk/client-dynamodb';
 
 // re-exported so routes can keep importing it from here
 export { isValidSeatId };
@@ -33,7 +32,7 @@ const TABLE = 'reservations';
 // records which seat the user has. Seat item and slot are always written in ONE
 // transaction, which makes "no double-booked seat" and "one seat per user per
 // event" atomic, even when two requests arrive at the same instant.
-const SLOT_PREFIX = 'USER#';
+export const SLOT_PREFIX = 'USER#';
 
 // `status` is a DynamoDB reserved word, so expressions use #status.
 const STATUS_NAME = { '#status': 'status' };
@@ -48,7 +47,7 @@ export class BookingError extends Error {
   }
 }
 
-const HTTP_STATUS: Record<BookingErrorCode, number> = {
+const BOOKING_HTTP_STATUS: Record<BookingErrorCode, number> = {
   SEAT_TAKEN: 409,
   ALREADY_BOOKED: 409,
   CONFLICT: 409,
@@ -58,9 +57,33 @@ const HTTP_STATUS: Record<BookingErrorCode, number> = {
 
 export function bookingErrorResponse(error: unknown) {
   if (error instanceof BookingError) {
-    return json({ error: error.message, code: error.code }, { status: HTTP_STATUS[error.code] });
+    return json({ error: error.message, code: error.code }, { status: BOOKING_HTTP_STATUS[error.code] });
   }
   console.error('Booking error:', error);
+  return json({ error: 'Internal server error' }, { status: 500 });
+}
+
+export type CheckInErrorCode = 'ALREADY_CHECKED_IN' | 'NOT_FOUND' | 'FORBIDDEN';
+
+export class CheckInError extends Error {
+  code: CheckInErrorCode;
+  constructor(code: CheckInErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+const CHECK_IN_HTTP_STATUS: Record<CheckInErrorCode, number> = {
+  ALREADY_CHECKED_IN: 409,
+  FORBIDDEN:403,
+  NOT_FOUND:404
+};
+
+export function checkInErrorResponse(error: unknown) {
+  if (error instanceof CheckInError) {
+    return json({ error: error.message, code: error.code }, { status: CHECK_IN_HTTP_STATUS[error.code] });
+  }
+  console.error('check-in error:', error);
   return json({ error: 'Internal server error' }, { status: 500 });
 }
 

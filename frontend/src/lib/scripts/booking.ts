@@ -4,7 +4,8 @@
 // Bearer token, and redirects to /login on a 401.
 import { apiFetch } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
-import type { ReservationView, ReservationWithEvent } from '$lib/type/reservation';
+import type { Reservation, ReservationView, ReservationWithEvent } from '$lib/type/reservation';
+import type { SeatParts } from './seat';
 
 // Registration window = event['register-date'].start / .end.
 // Caveat: a value without a timezone (e.g. "2026-10-20T09:00" from a datetime-local
@@ -31,7 +32,7 @@ export interface SeatMap {
 
 // Thrown for any non-2xx answer; `code` is one of
 // SEAT_TAKEN | ALREADY_BOOKED | NOT_FOUND | FORBIDDEN | CONFLICT (when the server sent one).
-export class BookingApiError extends Error {
+export class ApiError extends Error {
   status: number;
   code?: string;
   constructor(message: string, status: number, code?: string) {
@@ -41,11 +42,12 @@ export class BookingApiError extends Error {
   }
 }
 
+
 // Success bodies look like { body: ... }, errors like { error, code? }.
 async function unwrap<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new BookingApiError(data.error ?? 'Request failed', res.status, data.code);
+    throw new ApiError(data.error ?? 'Request failed', res.status, data.code);
   }
   return data.body as T;
 }
@@ -64,7 +66,7 @@ export async function reserveSeat(eventId: string, seatId: string, zone:string, 
   );
 }
 
-export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch){
+export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<Reservation & SeatParts>{
   return unwrap(
     await apiFetch('/booking/check-in',{
       method: 'POST',
@@ -89,6 +91,11 @@ export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promis
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
-export async function getReservations(fetchFunc: typeof fetch = fetch): Promise<{ reservations: ReservationWithEvent[] }> {
-  return unwrap(await apiFetch('/booking/mine', {}, fetchFunc));
+export async function getEventAttendance(eventId:string ,fetchFunc: typeof fetch = fetch): Promise<{ checkInCount:number, totalCount:number }> {
+  return unwrap(await apiFetch(`/booking/statistic/attendance?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
+}
+
+// Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
+export async function getReservation(eventId:string, identifier:string ,fetchFunc: typeof fetch = fetch):Promise<(Reservation & SeatParts)> {
+  return unwrap(await apiFetch(`/booking/registered?eventId=${encodeURIComponent(eventId)}&identifier=${encodeURIComponent(identifier)}`, {}, fetchFunc));
 }

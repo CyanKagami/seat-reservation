@@ -3,6 +3,7 @@
 // so the split is at the LAST hyphen: "Zone-B-12" -> zone "Zone-B", seat "12".
 // Pure functions with no server imports, so the same code runs in the browser and on the server.
 
+
 // Letters (any script, Thai included), combining marks, digits and "_". '#' is never allowed,
 // so a client can't forge a key that collides with the internal "USER#..." items.
 // Updated pattern: restricts components from containing hyphens, underscores, or hashes
@@ -22,4 +23,3 @@ export function classifyIdentifier(str: string) : {type: 'StudentId' | 'SeatId' 
         return { type: 'Other text', value:'' };
     }
 }
-

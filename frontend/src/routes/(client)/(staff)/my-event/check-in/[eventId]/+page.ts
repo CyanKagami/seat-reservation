@@ -1,22 +1,23 @@
 import type { PageLoad } from './$types';
-import { BookingApiError, getSeatMap } from '$lib/scripts/booking';
+import { ApiError, getEventAttendance } from '$lib/scripts/booking';
+import { apiFetch } from '$lib/scripts/api';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params, depends }) => {
+    depends('increase:count')
     try {
-        const eventSeatMap = await getSeatMap(params.eventId, fetch);
+        let count = await getEventAttendance(params.eventId, fetch);
         return {
-            eventSeatMap
+            checkInCount:count.checkInCount,
+            totalCount:count.totalCount
         };
     }
     catch (err) {
-        if (err instanceof BookingApiError){
+        if (err instanceof ApiError){
             console.error(err.message)
         }
         return {
-            eventSeatMap: {
-                reservations: [],
-                MyReservation: null
-            }
+            checkInCount:0,
+            totalCount:0
         };
     }
     
