@@ -16,6 +16,9 @@
     $effect(()=> {
         console.log(data.eventSeatMap)
     })
+
+    let isShow = $state(false)
+    let status = $state("already_check")
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
@@ -58,4 +61,38 @@
         <input bind:value={identifier} class="w-108 rounded-lg">
         <button onclick={handleSubmit} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
+
+    {#if isShow}
+        <div class="w-full h-full z-10 flex justify-center items-center fixed top-0 left-0">
+        {#if status === "success"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">สรุปข้อมูล</p>
+                <hr class="w-full mt-3">
+                <p class="my-5 font-semibold">{67070094}</p>
+                <div class="flex gap-3 text-2xl font-bold">
+                    <p>Zone</p>
+                    <p class="text-orange-600">{"B1"}</p>
+                </div>
+                <div class="flex gap-3 text-2xl font-bold">
+                    <p>Seat</p>
+                    <p class="text-orange-600">{"B1"}</p>
+                </div>
+                <button class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
+                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
+            </div>
+            {:else if status === "not_found"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">ไม่พบข้อมูลในระบบ</p>
+
+                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {:else}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้ทำการ Check in แล้ว</p>
+
+                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {/if}
+        </div>
+    {/if}
 </div>
