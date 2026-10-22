@@ -12,6 +12,10 @@
         let result = await checkInSeat(params.eventId, identifier);
         invalidate(`/booking?eventId=${encodeURIComponent(params.eventId)}`)
     }
+
+    $effect(()=> {
+        console.log(data.eventSeatMap)
+    })
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>

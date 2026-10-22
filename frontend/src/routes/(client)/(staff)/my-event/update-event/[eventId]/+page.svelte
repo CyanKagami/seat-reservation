@@ -349,6 +349,8 @@
         </div>
         {/each}
     </div>
+    <a href="/my-event/update-event/{event.eventId}/seatmap" class="bg-secondary hover:bg-secondary-hover rounded-md p-3 text-white cursor-pointer">
+    แก้ไขแผนผังที่นั่ง</a>
 </div>
 
         <div class="flex w-full justify-end mt-5">
