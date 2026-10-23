@@ -1,9 +1,11 @@
 <script lang='ts'>
     import StaffEventBox from "$lib/components/staff/StaffEventBox.svelte";
-  import { apiFetch } from "$lib/scripts/api";
+    import { apiFetch } from "$lib/scripts/api";
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
-    let events:Event[] = $state([])
+
+    let events: Event[] = $state([])
+
     onMount(async () => {
         events = await apiFetch('/event/getFromHost', {
             method: "GET",
@@ -12,154 +14,47 @@
             return (await response.json()).body
         })
     })
-
-     // placeholder
-//   const events:Event[] = [
-//     {
-//   "condition": "เป็นนักศึกษา IT",
-//   "date": {
-//     "end": "2026-09-03T19:21",
-//     "start": "2026-09-03T18:21"
-//   },
-//   "detail": "ชั่งน้ำหนักกระต่ายรายปี",
-//   "eventId": "08344717-c540-4376-9e0c-b648f36c26a2",
-//   "host": "67070094@kmitl.ac.th",
-//   "name": "ชั่งน้ำหนักกระต่าย",
-//   "picture": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//   "place": "Auditorium IT",
-//   "register-date": {
-//     "end": "2026-08-31T21:21",
-//     "start": "2026-08-31T19:21"
-//   },
-//   "timetable": [
-//     {
-//       "activity": [
-//         {
-//           "activity": "ชั่งน้ำหนักกระต่าย",
-//           "end": "19:21",
-//           "start": "18:21"
-//         }
-//       ],
-//       "date": "2026-09-03"
-//     }
-//   ]
-// },
-//     {
-//   "condition": "เป็นนักศึกษา IT",
-//   "date": {
-//     "end": "2026-09-03T19:21",
-//     "start": "2026-09-03T18:21"
-//   },
-//   "detail": "ชั่งน้ำหนักกระต่ายรายปี",
-//   "eventId": "08344717-c540-4376-9e0c-b648f36c26a2",
-//   "host": "67070094@kmitl.ac.th",
-//   "name": "ชั่งน้ำหนักกระต่าย",
-//   "picture": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//   "place": "Auditorium IT",
-//   "register-date": {
-//     "end": "2026-08-31T21:21",
-//     "start": "2026-08-31T19:21"
-//   },
-//   "timetable": [
-//     {
-//       "activity": [
-//         {
-//           "activity": "ชั่งน้ำหนักกระต่าย",
-//           "end": "19:21",
-//           "start": "18:21"
-//         }
-//       ],
-//       "date": "2026-09-03"
-//     }
-//   ]
-// },
-//     {
-//   "condition": "เป็นนักศึกษา IT",
-//   "date": {
-//     "end": "2026-09-03T19:21",
-//     "start": "2026-09-03T18:21"
-//   },
-//   "detail": "ชั่งน้ำหนักกระต่ายรายปี",
-//   "eventId": "08344717-c540-4376-9e0c-b648f36c26a2",
-//   "host": "67070094@kmitl.ac.th",
-//   "name": "ชั่งน้ำหนักกระต่าย",
-//   "picture": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//   "place": "Auditorium IT",
-//   "register-date": {
-//     "end": "2026-08-31T21:21",
-//     "start": "2026-08-31T19:21"
-//   },
-//   "timetable": [
-//     {
-//       "activity": [
-//         {
-//           "activity": "ชั่งน้ำหนักกระต่าย",
-//           "end": "19:21",
-//           "start": "18:21"
-//         }
-//       ],
-//       "date": "2026-09-03"
-//     }
-//   ]
-// },
-//     {
-//   "condition": "เป็นนักศึกษา IT",
-//   "date": {
-//     "end": "2026-09-03T19:21",
-//     "start": "2026-09-03T18:21"
-//   },
-//   "detail": "ชั่งน้ำหนักกระต่ายรายปี",
-//   "eventId": "08344717-c540-4376-9e0c-b648f36c26a2",
-//   "host": "67070094@kmitl.ac.th",
-//   "name": "ชั่งน้ำหนักกระต่าย",
-//   "picture": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-//   "place": "Auditorium IT",
-//   "register-date": {
-//     "end": "2026-08-31T21:21",
-//     "start": "2026-08-31T19:21"
-//   },
-//   "timetable": [
-//     {
-//       "activity": [
-//         {
-//           "activity": "ชั่งน้ำหนักกระต่าย",
-//           "end": "19:21",
-//           "start": "18:21"
-//         }
-//       ],
-//       "date": "2026-09-03"
-//     }
-//   ]
-// }
-//   ]
-
-
-
 </script>
-<div class="mt-10 flex flex-col items-center">
-    <h1 class="text-4xl font-semibold">กิจกรรมของฉัน</h1>
 
-    <div class="pt-8 w-full px-20 flex flex-col gap-10">
+<div class="mt-24 sm:mt-32 flex flex-col items-center w-full pb-10">
+    <!-- Header -->
+    <h1 class="text-2xl sm:text-4xl font-semibold text-gray-800">กิจกรรมของฉัน</h1>
 
-        <!--Search bar-->
-        <div class="flex justify-between">
-            <div>
-                <p class="text-sm font-semibold">Search</p>
-                <input class="rounded-lg w-96">
+    <div class="pt-6 sm:pt-8 w-full px-4 sm:px-10 lg:px-20 flex flex-col gap-8 sm:gap-10">
+
+        <!-- Search Bar & Action Button Container -->
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 w-full">
+            <!-- Search Input -->
+            <div class="w-full sm:w-80 md:w-96">
+                <label class="text-xs sm:text-sm font-semibold text-gray-700 block mb-1">Search</label>
+                <input
+                    type="text"
+                    placeholder="ค้นหากิจกรรม..."
+                    class="rounded-lg w-full border-gray-300 focus:border-accent focus:ring-accent p-2.5 text-sm sm:text-base shadow-sm"
+                >
             </div>
-            <a href="/my-event/create-event" class="bg-secondary px-5 flex items-center h-10 text-white rounded-lg hover:bg-secondary-hover hover:cursor-pointer">+ สร้างกิจกรรม</a>
+
+            <!-- Create Event Button -->
+            <a
+                href="/my-event/create-event"
+                class="bg-secondary hover:bg-secondary-hover transition-colors px-5 flex items-center justify-center h-11 text-white font-medium rounded-lg shadow cursor-pointer text-sm sm:text-base whitespace-nowrap shrink-0"
+            >
+                + สร้างกิจกรรม
+            </a>
         </div>
 
-        <!--Event Registration-->
-        <div class="w-full flex flex-wrap gap-15 gap-y-10">
-        {#if events.length === 0}
-        <div class="flex justify-center items-center w-full">
-            <p class="text-gray-400 text-xl">คุณยังไม่มีกิจกรรม</p>
+        <!-- Event List Grid -->
+        <div class="w-full flex flex-wrap justify-center sm:justify-start gap-6 sm:gap-10 lg:gap-12 gap-y-8">
+            {#if events.length === 0}
+                <div class="flex justify-center items-center w-full py-16">
+                    <p class="text-gray-400 text-base sm:text-xl font-medium">คุณยังไม่มีกิจกรรม</p>
+                </div>
+            {/if}
+
+            {#each events as event}
+                <StaffEventBox {event}></StaffEventBox>
+            {/each}
         </div>
-        {/if}
-        {#each events as event }
-            <StaffEventBox event={event}></StaffEventBox>
-        {/each}
-        </div>
+
     </div>
 </div>
