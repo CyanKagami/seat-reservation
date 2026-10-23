@@ -22,8 +22,8 @@ export function registrationOpen(ev: Event, now = new Date()) {
 export type SeatEntry = { seatId: string; zone: string; seat: string; mine: boolean } & Partial<
   Omit<ReservationView, 'seatId' | 'zone' | 'seat'>
 > & {
-    user?: { name: string; email: string } | null;
-  };
+  user?: { name: string; email: string } | null;
+};
 
 export interface SeatMap {
   reservations: SeatEntry[];
@@ -57,7 +57,7 @@ export async function getSeatMap(eventId: string, fetchFunc: typeof fetch = fetc
 }
 
 // seatId is "<zone>-<seat>", e.g. "Front-A5" (build it with makeSeatId from $lib/seat).
-export async function reserveSeat(eventId: string, seatId: string, zone:string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
+export async function reserveSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
   return unwrap(
     await apiFetch('/booking', {
       method: 'POST',
@@ -66,16 +66,16 @@ export async function reserveSeat(eventId: string, seatId: string, zone:string, 
   );
 }
 
-export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<Reservation & SeatParts>{
+export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<Reservation & SeatParts> {
   return unwrap(
-    await apiFetch('/booking/check-in',{
+    await apiFetch('/booking/check-in', {
       method: 'POST',
       body: JSON.stringify({ eventId, identifier })
     }, fetchFunc)
   )
 }
 
-export async function cancelSeat(eventId: string, seatId: string, zone:string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
+export async function cancelSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
   return unwrap(
     await apiFetch(
       `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
@@ -91,11 +91,34 @@ export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promis
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
-export async function getEventAttendance(eventId:string ,fetchFunc: typeof fetch = fetch): Promise<{ checkInCount:number, totalCount:number }> {
+export async function getEventAttendance(eventId: string, fetchFunc: typeof fetch = fetch): Promise<{ checkInCount: number, totalCount: number }> {
   return unwrap(await apiFetch(`/booking/statistic/attendance?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
-export async function getReservation(eventId:string, identifier:string ,fetchFunc: typeof fetch = fetch):Promise<(Reservation & SeatParts)> {
+export async function getReservation(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<(Reservation & SeatParts)> {
   return unwrap(await apiFetch(`/booking/registered?eventId=${encodeURIComponent(eventId)}&identifier=${encodeURIComponent(identifier)}`, {}, fetchFunc));
+}
+
+// Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
+export async function getReservationStatistic(eventId: string, fetchFunc: typeof fetch = fetch): Promise<({
+  zoneData: Record<
+    string,
+    {
+      id: string,
+      name: string
+      capacity: number;
+      takenCount: number;
+      isUnavailableZone?: boolean;
+      isNoZone?: boolean;
+    }
+  >,
+  totalReservation:number,
+  checkedInCount:number,
+  demographic: {
+    mostParticipatedFaculty: {name: string, count:number},
+    mostParticipatedYear: {name: string, count:number}
+  }
+})> {
+  return unwrap(await apiFetch(`/booking/statistic/seating?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
 }

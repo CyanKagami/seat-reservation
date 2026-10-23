@@ -5,7 +5,7 @@ export type ReservationStatus = 'reserved' | 'checked-in';
 export interface Reservation {
   eventId: string;
   seatId: string;
-  email?: string;
+  email: string;
   googleId?: string;
   status: ReservationStatus;
   reservedAt: string; // ISO date string

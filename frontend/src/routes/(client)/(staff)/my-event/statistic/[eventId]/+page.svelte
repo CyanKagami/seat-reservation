@@ -1,5 +1,6 @@
 <script lang='ts'>
-    const percentage = (120 / 350) * 100
+    const {data} = $props();
+    const percentage = $derived(data.checkedInCount / (data.totalReservation ?? 1) * 100)
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">สถิติการเข้าร่วม</h1>
@@ -10,14 +11,14 @@
             </div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">สมัครเข้าร่วมงาน</p>
-                <p class="text-4xl">{350} คน</p>
+                <p class="text-4xl">{data.totalReservation} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base font-semibold">คณะที่เข้าร่วมมากที่สุด</p>
-                <p class="text-base">{"คณะเทคโนโลยีสารสนเทศ"} ({25} %)</p>
+                <p class="text-base">{data.demographic.mostParticipatedFaculty?.name} ({(data.demographic.mostParticipatedFaculty?.count ?? 0) / (data.totalReservation ?? 1) * 100} %)</p>
                 <p class="text-base font-semibold">ชั้นปีที่เข้าร่วมมากที่สุด</p>
-                <p class="text-base">ชั้นปีที่ {3} ({40} %)</p>
+                <p class="text-base">ชั้นปีที่ {data.demographic.mostParticipatedYear?.name} ({(data.demographic.mostParticipatedYear?.count ?? 0) / (data.totalReservation ?? 1) * 100} %)</p>
             </div>
         </div>
         <div class="bg-white rounded-lg border border-secondary h-full w-ful flex gap-3">
@@ -27,7 +28,7 @@
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
                 <p class="text-base">เข้าร่วมงานแล้ว</p>
                 <div class="flex items-end">
-                    <p class="text-4xl">{350} คน</p>
+                    <p class="text-4xl">{data.checkedInCount} คน</p>
                     <p class="ml-3 text-sm font-semibold">({percentage.toFixed(2)} %)</p>
                 </div>
             </div>

@@ -266,7 +266,6 @@ export class ZoneEditorState {
 	loadFromMessagePack(buffer: ArrayBuffer) {
 		try {
 			const data = decode(buffer) as any;
-			console.log(data)
 			if (data.canvas) {
 				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
 				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
