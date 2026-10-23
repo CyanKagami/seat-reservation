@@ -35,34 +35,38 @@
   startAutoPlay();
 </script>
 
-<section class="relative w-full overflow-hidden">
-  <div class="w-full flex justify-center gap-10 h-96 items-center">
-    <!--Previos Button-->
+<section class="relative w-full overflow-hidden my-4">
+  <!-- เปลี่ยนโครงสร้างให้รองรับ Responsive (ปุ่มทับบนมือถือ และอยู่ข้างนอกบนจอใหญ่) -->
+  <div class="relative w-full max-w-4xl mx-auto flex items-center justify-center h-72 sm:h-96 px-0 sm:px-12">
+
+    <!-- Previous Button (Absolute บนมือถือ, Relative ตั้งแต่ sm ขึ้นไป) -->
     <button
       onclick={prevSlide}
-      class=" bg-black/50 text-white p-2 rounded-full"
+      class="absolute left-2 sm:left-2 z-10 bg-black/50 hover:bg-black/70 text-white p-2.5 sm:p-3 rounded-full transition-colors cursor-pointer"
+      aria-label="Previous Slide"
     >
       ❮
     </button>
-    <div class="relative w-full max-w-4xl overflow-hidden rounded-xl h-96">
-      <!--Slide Tracks-->
+
+    <!-- Slider Track Container -->
+    <div class="relative w-full overflow-hidden rounded-xl h-72 sm:h-96 shadow-lg">
       <div
-        class="flex transition-transform duration-500 ease-out"
+        class="flex transition-transform duration-500 ease-out h-full"
         style="transform: translateX(-{currentIndex * 100}%);"
       >
         {#each slides as slide}
-          <div class="w-full shrink-0">
-            <img src={slide.image} alt={slide.title} class="w-full h-auto" />
+          <div class="w-full h-full shrink-0">
+            <img src={slide.image} alt={slide.title || "Slide Image"} class="w-full h-full object-cover" />
           </div>
         {/each}
       </div>
 
-      <!--Dot Track-->
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+      <!-- Dot Track -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
         {#each slides as _, i}
           <button
             onclick={() => goToSlide(i)}
-            class="h-2 rounded-full transition-all {currentIndex === i
+            class="h-2 rounded-full transition-all cursor-pointer {currentIndex === i
               ? 'w-8 bg-white'
               : 'w-2 bg-white/50'}"
             aria-label="slide-{i}"
@@ -71,10 +75,11 @@
       </div>
     </div>
 
-    <!-- Next Button -->
+    <!-- Next Button (Absolute บนมือถือ, Relative ตั้งแต่ sm ขึ้นไป) -->
     <button
       onclick={nextSlide}
-      class=" bg-black/50 text-white p-2 rounded-full"
+      class="absolute right-2 sm:right-2 z-10 bg-black/50 hover:bg-black/70 text-white p-2.5 sm:p-3 rounded-full transition-colors cursor-pointer"
+      aria-label="Next Slide"
     >
       ❯
     </button>

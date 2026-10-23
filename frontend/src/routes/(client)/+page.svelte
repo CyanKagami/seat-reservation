@@ -36,30 +36,37 @@
     })
 </script>
 <Carousel slides={mySlides} />
-<div>
-    <div class="bg-secondary w-full h-20 flex items-end pl-20 gap-3">
-        <div class="bg-white w-fit px-10 py-2 rounded-t-2xl">
-            <p class="font-semibold text-xl">All Events</p>
+
+<div class="w-full">
+    <!-- Tabs Header -->
+    <div class="bg-secondary w-full h-16 sm:h-20 flex items-end px-4 sm:px-10 lg:px-20 gap-2 sm:gap-3 overflow-x-auto">
+        <div class="bg-white w-fit px-6 sm:px-10 py-2 rounded-t-2xl shadow-sm cursor-pointer">
+            <p class="font-semibold text-sm sm:text-xl text-gray-800">All Events</p>
         </div>
-        <div class="bg-dark-secondary w-fit px-10 py-2 rounded-t-2xl">
-            <p class="font-semibold text-xl text-white">Coming Soon</p>
+        <div class="bg-dark-secondary w-fit px-6 sm:px-10 py-2 rounded-t-2xl shadow-sm cursor-pointer">
+            <p class="font-semibold text-sm sm:text-xl text-white">Coming Soon</p>
         </div>
     </div>
 
-    <!--content-->
-    <div class="pt-8 w-full px-20 flex flex-col gap-10">
+    <!-- Content Area -->
+    <div class="pt-6 sm:pt-8 w-full px-4 sm:px-10 lg:px-20 flex flex-col gap-8 sm:gap-10">
 
-        <!--Search bar-->
-        <div>
-            <p class="text-sm font-semibold">Search</p>
-            <input class="rounded-lg w-96">
+        <!-- Search bar -->
+        <div class="w-full max-w-md">
+            <label class="text-xs sm:text-sm font-semibold text-gray-700 block mb-1">Search</label>
+            <input
+                type="text"
+                placeholder="Search events..."
+                class="rounded-lg w-full border-gray-300 focus:border-accent focus:ring-accent p-2.5 text-sm sm:text-base shadow-sm"
+            >
         </div>
 
-        <!--Event Registration-->
-        <div class="w-full flex flex-wrap gap-15 gap-y-10">
-        {#each events as event }
-            <EventBox event={event}></EventBox>
-        {/each}
+        <!-- Event Registration Grid / List -->
+        <div class="w-full flex flex-wrap justify-center sm:justify-start gap-6 sm:gap-10 gap-y-8 sm:gap-y-10">
+            {#each events as event}
+                <EventBox {event}></EventBox>
+            {/each}
         </div>
+
     </div>
 </div>
