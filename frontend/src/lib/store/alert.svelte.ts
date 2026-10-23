@@ -48,8 +48,8 @@ class AlertStore {
     this.show({ title, message, type: 'warning', ...options });
   }
 
-  information(title: string, message: string, onconfirm?: () => void) {
-    this.show({ title, message, type: 'information', onconfirm });
+  information(title: string, message: string, options?: Omit<AlertOptions, 'title' | 'message' | 'type'>) {
+    this.show({ title, message, type: 'information', ...options });
   }
 }
 

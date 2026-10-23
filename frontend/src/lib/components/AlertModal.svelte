@@ -79,7 +79,7 @@
 {#if isOpen}
   <!-- Backdrop -->
   <div 
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs p-4"
     onclick={handleCancel}
     onkeydown={handleKeydown}
     role="button"
@@ -116,7 +116,7 @@
         {#if showCancel}
           <button
             type="button"
-            class="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+            class="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer "
             onclick={handleCancel}
           >
             {cancelText}
@@ -124,7 +124,7 @@
         {/if}
         <button
           type="button"
-          class="rounded-xl px-5 py-2 text-sm font-medium shadow-sm transition-colors {currentConfig.buttonBg}"
+          class="rounded-xl px-5 py-2 text-sm font-medium shadow-sm transition-colors cursor-pointer {currentConfig.buttonBg}"
           onclick={handleConfirm}
         >
           {confirmText}

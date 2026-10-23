@@ -291,6 +291,10 @@ async function batchGet(
 
 export async function checkInWithSeatId(eventId: string, seatId: string): Promise<Reservation> {
   try {
+    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: seatId}) as Reservation;
+    if (userReservation.status === "checked-in"){
+      throw new CheckInError('ALREADY_CHECKED_IN', "ผู้ใช้หรือที่นั่งนี้ทำการ Check in ไปแล้ว")
+    }
     let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: seatId}, {status: 'checked-in'}) as Reservation;
     return edited;
   } catch (error: any) {
@@ -300,8 +304,12 @@ export async function checkInWithSeatId(eventId: string, seatId: string): Promis
 
 export async function checkInWithStudentId(eventId: string, studentId: string): Promise<Reservation> {
   try {
-    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: SLOT_PREFIX + studentId + '@kmitl.ac.th'}) as Reservation;
-    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: userReservation.reservedSeatId}, {status: 'checked-in'}) as Reservation;
+    let userSlot = await fetchData('reservations',  {eventId: eventId, seatId: SLOT_PREFIX + studentId + '@kmitl.ac.th'}) as Reservation;
+    let userReservation = await fetchData('reservations',  {eventId: eventId, seatId: userSlot.reservedSeatId}) as Reservation;
+    if (userReservation.status === "checked-in"){
+      throw new CheckInError('ALREADY_CHECKED_IN', "ผู้ใช้หรือที่นั่งนี้ทำการ Check in ไปแล้ว")
+    }
+    let edited = await updateAllAttributes('reservations', {eventId: eventId, seatId: userReservation.seatId}, {status: 'checked-in'}) as Reservation;
     return edited;
   } catch (error: any) {
     throw error;

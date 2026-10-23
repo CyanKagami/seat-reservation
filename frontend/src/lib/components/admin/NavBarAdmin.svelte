@@ -1,12 +1,18 @@
 <script lang='ts'>
-  import { goto } from "$app/navigation";
-  import { page } from "$app/state";
+    import { goto } from "$app/navigation";
+    import { page } from "$app/state";
     import { userStore } from "$lib/store/auth.svelte";
+    import { alertModal } from "$lib/store/alert.svelte.js";
     const user = $derived(userStore.currentUser);
 
     function handleLogout() {
-        userStore.logout();
-        goto("/login", { replaceState: true });
+        alertModal.information("คุณกำลังจะออกจากระบบ", "คุณแน่ใจหรือไม่?", {
+            onconfirm: () => {
+                userStore.logout();
+                goto("/login", { replaceState: true });
+            },
+            showCancel:true,
+        })
     }
 </script>
 <div class="w-full h-20 py-5 px-10 bg-pale flex justify-between fixed top-0 z-50">

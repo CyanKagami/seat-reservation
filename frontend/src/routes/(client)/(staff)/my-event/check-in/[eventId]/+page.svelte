@@ -12,36 +12,44 @@
     async function handleLoadData() {
         try{
             reservationData = await getReservation(params.eventId, identifier);
+            identifier = ''
             status = "success";
-            isShow = true;
         } catch (err){
             if (err instanceof ApiError) {
-                switch (err.message) {
-                    case 'ALREADY_CHECKED_IN':
-                        status = "replicated";
-                    case 'NOT_FOUND':
-                        status = "not_found";
-                }
+                if (err.code === 'NOT_FOUND') status = "not_found";
+                else if (err.status === 400) status = "not_found";
             }
-            console.log(err)
         }
         
     }
 
     async function handleSubmit() {
         try{
-            await checkInSeat(params.eventId, identifier);
+            if (!reservationData){
+                status = 'client_error';
+                return
+            }
+            await checkInSeat(params.eventId, reservationData.seatId);
             await invalidate(`increase:count`);
-            isShow = false
             reservationData = null;
+            identifier = ''
+            status = 'initial'
         } catch (err){
-            console.log(err)
+            if (err instanceof ApiError) {
+                switch (err.code) {
+                    case 'ALREADY_CHECKED_IN':
+                        status = "replicated";
+                        break;
+                    case 'NOT_FOUND':
+                        status = "not_found";
+                        break;
+                }
+            }
         }
         
     }
 
-    let isShow = $state(false)
-    let status = $state("already_check")
+    let status = $state("initial")
 </script>
 <div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
@@ -85,7 +93,11 @@
         <button onclick={handleLoadData} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
 
-    {#if isShow}
+    {#if status !== 'initial'}
+     <div 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-xs p-4"
+        tabindex="-1"
+    >
         <div class="w-full h-full z-10 flex justify-center items-center fixed top-0 left-0">
         {#if reservationData && status === "success"}
             <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
@@ -101,21 +113,28 @@
                     <p class="text-orange-600">{reservationData.seat}</p>
                 </div>
                 <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
-                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
             </div>
             {:else if status === "not_found"}
             <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
                 <p class="text-xl font-semibold">ไม่พบข้อมูลในระบบ</p>
 
-                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {:else if status === "client_error"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">เกิดข้อผิดพลาดในการส่งข้อมูล</p>
+
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
             </div>
             {:else if status === "replicated"}
             <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
                 <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้ทำการ Check in แล้ว</p>
 
-                <button class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
             </div>
             {/if}
+        </div>
         </div>
     {/if}
 </div>

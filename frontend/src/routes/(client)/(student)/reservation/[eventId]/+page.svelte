@@ -4,11 +4,9 @@
   import ReservationZonePicker from "$lib/components/zone-editor/components/ReservationZonePicker.svelte";
   import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
   import type { CanvasObject } from "$lib/components/canvas-shared/types";
-  import { BookingApiError, getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
+  import { ApiError, getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
   import { onMount } from "svelte";
   import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
-  import type { Reservation } from "$lib/type/reservation.js";
-  import AlertModal from "$lib/components/AlertModal.svelte";
   import { alertModal } from "$lib/store/alert.svelte.js";
   import { goto } from "$app/navigation";
 
@@ -38,7 +36,7 @@
       reservationMap = await getSeatMap(data.event.eventId);
     }
     catch (err) {
-      if (err instanceof BookingApiError) {
+      if (err instanceof ApiError) {
         console.log(err.message);
       }
     }
@@ -57,7 +55,7 @@
           })
         }
         catch(err){
-          if (err instanceof BookingApiError) {
+          if (err instanceof ApiError) {
             alertModal.failure("การจองล้มเหลว", err.message, () => {
               if (err.message === "ท่านมีที่นั่งอยู่แล้วในกิจกรรมนี้"){
                 goto(`/event-info/${data.event.eventId}`)
