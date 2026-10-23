@@ -35,7 +35,7 @@
   startAutoPlay();
 </script>
 
-<section class="relative w-full overflow-hidden my-4">
+<section class="relative w-full overflow-hidden mt-20">
   <!-- เปลี่ยนโครงสร้างให้รองรับ Responsive (ปุ่มทับบนมือถือ และอยู่ข้างนอกบนจอใหญ่) -->
   <div class="relative w-full max-w-4xl mx-auto flex items-center justify-center h-72 sm:h-96 px-0 sm:px-12">
 
@@ -49,7 +49,7 @@
     </button>
 
     <!-- Slider Track Container -->
-    <div class="relative w-full overflow-hidden rounded-xl h-72 sm:h-96 shadow-lg">
+    <div class="relative w-full overflow-hidden sm:rounded-xl h-72 sm:h-96 shadow-lg">
       <div
         class="flex transition-transform duration-500 ease-out h-full"
         style="transform: translateX(-{currentIndex * 100}%);"
