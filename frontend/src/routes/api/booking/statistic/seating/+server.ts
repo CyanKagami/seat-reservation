@@ -139,7 +139,7 @@ export const GET: RequestHandler = async (event) => {
 
   try {
     const reservations = await listReservations(eventId);
-    const usedSeatId = new Set(reservations.filter((s) => s.status === 'checked-in' || s.status === 'reserved').map((s) => s.seatId));
+    const usedSeatId: Set<string> = new Set();
     let checkedInCount = 0;
     let departmentCount:Record<string, number> = {};
     let yearCount:Record<string, number> = {};
@@ -156,23 +156,24 @@ export const GET: RequestHandler = async (event) => {
         usedSeatId.add(s.seatId);
       }
     }
-
     let mostParticipatedFaculty = Object.keys(departmentCount).reduce((a, b) => departmentCount[a] > departmentCount[b] ? a : b)
     let mostParticipatedYear = Object.keys(yearCount).reduce((a, b) => yearCount[a] > yearCount[b] ? a : b)
     let layout = await readFileAsByteArray(`layouts/event`, `${eventId}.msgpack`);
-    let layoutMetadata = GetZoneMetaData(decode(layout).objects as CanvasObject[], usedSeatId);
-    
+    let layoutMetadata = GetZoneMetaData((decode(layout) as any).objects as CanvasObject[], usedSeatId);
+    let totalCapacity = Object.values(layoutMetadata).reduce((a, z)=> a + z.capacity, 0);
     return json({
       body: {
         zoneData: layoutMetadata,
-        totalReservation:reservations.length,
-        checkedInCount:checkedInCount,
+        totalReservation: reservations.length,
+        totalCapacity,
+        remainingCapacity: totalCapacity - reservations.length,
+        checkedInCount,
         demographic: {
           mostParticipatedFaculty: {name: mostParticipatedFaculty, count:departmentCount[mostParticipatedFaculty]},
           mostParticipatedYear: {name: mostParticipatedYear, count:yearCount[mostParticipatedYear]}
         }
       }});
   } catch (error) {
-    return bookingErrorResponse(error);
+    return json({ error: 'Internal server error' }, { status: 500 });
   }
 };

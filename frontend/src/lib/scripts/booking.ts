@@ -114,6 +114,8 @@ export async function getReservationStatistic(eventId: string, fetchFunc: typeof
     }
   >,
   totalReservation:number,
+  totalCapacity:number,
+  remainingCapacity: number,
   checkedInCount:number,
   demographic: {
     mostParticipatedFaculty: {name: string, count:number},

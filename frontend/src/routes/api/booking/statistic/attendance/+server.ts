@@ -24,6 +24,6 @@ export const GET: RequestHandler = async (event) => {
     let totalCount = all.length
     return json({body:{ checkInCount, totalCount}});
   } catch (error) {
-    return bookingErrorResponse(error);
+    return json({ error: 'Internal server error' }, { status: 500 });
   }
 };

@@ -20,7 +20,6 @@
 
 	function handleZoneSelect(zoneId: string, seats: CanvasObject[]) {
 		selectedSeatsInZone = seats;
-		console.log(`Selected Zone ${zoneId} with ${seats.length} seats.`);
 	}
 
 	function onZonePopupToggle(){

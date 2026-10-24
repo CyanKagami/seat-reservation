@@ -62,7 +62,7 @@
             <!-- Dropdown Menu (แสดงผลเมื่อ isDropdownOpen เป็น true) -->
             {#if isDropdownOpen}
                 <div class="absolute right-0 top-full pt-2 w-64 z-50">
-                    <div class="bg-white border-2 border-black rounded-lg shadow-xl p-4 flex flex-col gap-2">
+                    <div class="bg-white border-2 border-black/20 rounded-lg shadow-xl p-4 flex flex-col gap-2">
                         <p class="font-semibold underline text-sm sm:text-lg truncate">{user?.email}</p>
                         <p class="font-light text-xs sm:text-sm text-gray-600 truncate">{user?.name}</p>
 

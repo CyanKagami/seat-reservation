@@ -12,8 +12,10 @@ export const load: PageLoad = async ({ fetch, params, depends }) => {
             console.error(err.message)
         }
         return {
-            zoneData: null,
+            zoneData: {},
             totalReservation:0,
+            totalCapacity:0,
+            remainingCapacity:0,
             checkedInCount:0,
             demographic: {
             mostParticipatedFaculty: null,

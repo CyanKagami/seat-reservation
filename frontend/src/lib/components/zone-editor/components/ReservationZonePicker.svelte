@@ -29,7 +29,7 @@
 		padding?: number;
 		width?: string;
 		height?: string;
-		reservedIds:Record<string, Set<string>>;
+		reservedIds?:Record<string, Set<string>>;
 		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
 	} = $props();
