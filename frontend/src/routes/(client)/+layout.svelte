@@ -1,7 +1,5 @@
 <script lang="ts">
-  import NavBarAdmin from '$lib/components/admin/NavBarAdmin.svelte';
   import NavBar from '$lib/components/NavBar.svelte';
-  import { userStore } from '$lib/store/auth.svelte';
 
 	let { children } = $props();
 </script>

@@ -76,7 +76,7 @@
   })
 </script>
 
-<div class="items-center flex flex-col gap-2 mt-10 px-4 pb-12">
+<div class="items-center flex flex-col gap-2 mt-24 sm:mt-32 px-4 pb-12">
   <h1 class="text-3xl font-semibold">{data.event.name}</h1>
   <ProgressBar status={status}></ProgressBar>
 

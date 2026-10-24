@@ -39,7 +39,7 @@
 
     <!-- Right Menu -->
     <div class="flex gap-4 sm:gap-10 items-center">
-        <a href="/my-event" class="font-semibold text-sm sm:text-xl hover:text-accent hover:cursor-pointer transition-colors">
+        <a href={user && user.role === 'guest' ? '/reserved-event' : "/my-event"} class="font-semibold text-sm sm:text-xl hover:text-accent hover:cursor-pointer transition-colors">
             My Events
         </a>
 

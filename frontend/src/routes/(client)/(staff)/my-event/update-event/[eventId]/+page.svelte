@@ -206,7 +206,7 @@
     }
   }
 </script>
-<div class="flex flex-col items-center mt-5 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12">
+<div class="flex flex-col items-center mt-24 sm:mt-32 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-bold">แก้ไขกิจกรรม</h1>
     <form class="flex flex-col gap-5" onsubmit={handleSubmit} enctype="multipart/form-data">
         <label for="picture" class="text-xl font-bold">รูปภาพหน้าปก</label>

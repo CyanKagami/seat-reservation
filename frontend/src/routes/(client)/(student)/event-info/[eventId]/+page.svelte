@@ -29,7 +29,7 @@
 
 <!-- Hero Section: รูปภาพและข้อมูลเบื้องต้น -->
 <div class="w-full grid grid-cols-1 md:grid-cols-2 mt-20">
-    <img src={event.picture ? event.picture : ""} alt='event' class="object-cover h-64 sm:h-80 md:h-96 w-full">
+    <img src={event.picture ? event.picture : "/image/defaultEvent.png"} alt='event' class="object-cover h-64 sm:h-80 md:h-96 w-full">
     <div class="w-full p-6 sm:p-10 flex flex-col justify-between">
         <div>
             <p class="font-semibold text-sm sm:text-xl text-gray-700">

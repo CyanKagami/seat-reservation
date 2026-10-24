@@ -1,16 +1,19 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import DateRangeSelector from "$lib/components/DateRangeSelector.svelte";
   import { apiFetch } from "$lib/scripts/api";
   import { userStore } from "$lib/store/auth.svelte";
+  import { alertModal } from "$lib/store/alert.svelte";
   import type { Daytable } from "$lib/type/event";
-  import type { Place } from "$lib/type/place";
-  import { onMount } from "svelte";
+  import type { PageData } from "./$types";
+
+  // Receive loaded page data from +page.ts
+  let { data }: { data: PageData } = $props();
 
   interface ValidationResult {
     isValid: boolean;
     errors: string[];
   }
-  let places:Place[] = $state([])
   
   interface DateTimeRange {
     start: Date;
@@ -26,34 +29,52 @@
     end: new Date(Date.now() + 86400000 * 3)
   });
 
-  onMount(()=> {
-    apiFetch('/place', {
-      method:"GET",
-    })
-    .then((response) => response.json())
-    .then((data) => {
-      places = data.body.data;
-    })
-  })
-
-  let timetable: Daytable[] = $state([
-    {
-      date: "",
-      activity: [
-        {
-          start: "",
-          end: "",
-          activity: ""
-        }
-      ]
-    }
-  ]);
+  let timetable: Daytable[] = $state([]);
   let isSubmitting = $state(false);
 
-  // ฟังก์ชันเพิ่มแถว
-function addDate() {
+  // Helper to generate list of YYYY-MM-DD date strings between start and end date
+  function getDatesInRange(start: Date, end: Date): string[] {
+    const dates: string[] = [];
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return dates;
+
+    const current = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+    while (current <= last) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, "0");
+      const day = String(current.getDate()).padStart(2, "0");
+      dates.push(`${year}-${month}-${day}`);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  }
+
+  // Derived: All dates available within the current eventDate range
+  let availableDates = $derived(getDatesInRange(eventDate.start, eventDate.end));
+
+  // Derived: Dates in the range that don't have a timetable yet
+  let unusedDates = $derived(
+    availableDates.filter((dateStr) => !timetable.some((item) => item.date === dateStr))
+  );
+
+  // Effect: Remove timetables whose dates fall outside the active range when eventDate changes
+  $effect(() => {
+    const activeDates = availableDates;
+    untrack(() => {
+      const filtered = timetable.filter((item) => activeDates.includes(item.date));
+      if (filtered.length !== timetable.length) {
+        timetable = filtered;
+      }
+    });
+  });
+
+  // Add timetable for a specific date
+  function addTimetableForDate(dateStr: string) {
+    if (!dateStr || timetable.some((t) => t.date === dateStr)) return;
+
     timetable.push({
-      date: "",
+      date: dateStr,
       activity: [
         {
           start: "",
@@ -61,7 +82,9 @@ function addDate() {
           activity: ""
         }
       ]
-    })
+    });
+
+    timetable.sort((a, b) => a.date.localeCompare(b.date));
   }
 
   function addActivity(index: number) {
@@ -99,11 +122,13 @@ function addDate() {
     // 1. Client-side Validation
     if (!ALLOWED_TYPES.includes(file.type)) {
       errorMessage = "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP เท่านั้น";
+      alertModal.warning("ไฟล์ไม่ถูกต้อง", errorMessage);
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
       errorMessage = "ขนาดไฟล์ต้องไม่เกิน 5MB";
+      alertModal.warning("ไฟล์ขนาดใหญ่เกินไป", errorMessage);
       return;
     }
 
@@ -114,7 +139,6 @@ function addDate() {
   function validateTimetable(days: Daytable[]): ValidationResult {
     const errors: string[] = [];
 
-    // 1. ตรวจสอบว่าต้องมีอย่างน้อย 1 วัน
     if (!Array.isArray(days) || days.length === 0) {
       return { isValid: true, errors: [] };
     }
@@ -186,9 +210,9 @@ function addDate() {
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
 
-    // Validation เบื้องต้น
-    if (!validateTimetable(timetable).isValid) {
-      alert(validateTimetable(timetable).errors);
+    const validation = validateTimetable(timetable);
+    if (!validation.isValid) {
+      alertModal.warning("ข้อมูลตารางกิจกรรมไม่ถูกต้อง", validation.errors.join("\n"));
       return;
     }
 
@@ -216,13 +240,13 @@ function addDate() {
       });
 
       if (res.ok) {
-        alert("บันทึกลง DynamoDB เรียบร้อย!");
+        alertModal.success("สำเร็จ", "บันทึกลง DynamoDB เรียบร้อย!");
       } else {
         const err = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${err.error}`);
+        alertModal.failure("เกิดข้อผิดพลาด", err.error || "ไม่สามารถบันทึกข้อมูลได้");
       }
     } catch (err) {
-      alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+      alertModal.failure("เกิดข้อผิดพลาด", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
     } finally {
       isSubmitting = false;
     }
@@ -230,7 +254,7 @@ function addDate() {
 </script>
 
 <div
-  class="flex flex-col items-center mt-5 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12"
+  class="flex flex-col items-center mt-24 sm:mt-32 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12"
 >
   <h1 class="text-4xl font-bold">เพิ่มกิจกรรม</h1>
   <form
@@ -257,143 +281,156 @@ function addDate() {
         ></div>
       {/if}
 
-      <!-- Input Field -->
-      <input
-        type="file"
-        accept="image/png, image/jpeg, image/webp"
-        onchange={handleFileSelect}
-        class="block w-fit text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer self-start"
-      />
+      <!-- Input Field & Info Label -->
+      <div class="flex flex-col gap-1.5 self-start">
+        <input
+          type="file"
+          accept="image/png, image/jpeg, image/webp"
+          onchange={handleFileSelect}
+          class="block w-fit text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer"
+        />
+        <span class="text-xs text-gray-500">รองรับไฟล์ JPG, PNG และ WEBP (ขนาดไม่เกิน 5MB)</span>
+      </div>
     </div>
-
-    <div class="flex w-full gap-3 justify-between">
-      <label for="name">ชื่อกิจกรรม</label>
-      <input name="name" class="w-100 rounded-sm" required />
-    </div>
-    <div class="flex w-full gap-3 justify-between">
-      <label for="host">ชื่อผู้จัด</label>
-      <input name="host" class="w-100 rounded-sm" required />
-    </div>
-    <div class="flex w-full gap-3 justify-between">
-      <label for="place">สถานที่จัด</label>
-      <select name="place" class="w-100 rounded-lg">
-          {#each places as place}
-              <option value={place.placeId}>{place.name} ({place.location.name})</option>
-          {/each} 
-      </select>
-    </div>
-    <div class="flex w-full gap-3 justify-between">
-      <label for="detail">รายละเอียด</label>
-      <textarea name="detail" class="resize-none w-100 h-30 rounded-sm"
-      ></textarea>
-    </div>
-    <div class="flex w-full gap-3 justify-between">
-      <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
-      <input name="condition" class="w-100 rounded-sm" />
-    </div>
-    
 
     <div class="flex w-full gap-3 justify-between items-center">
-      <label>ช่วงเวลาจัดกิจกรรม</label>
+      <label for="name">ชื่อกิจกรรม</label>
+      <input name="name" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+    </div>
+    <div class="flex w-full gap-3 justify-between items-center">
+      <label for="host">ชื่อผู้จัด</label>
+      <input name="host" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+    </div>
+    <div class="flex w-full gap-3 justify-between items-center">
+      <label for="place">สถานที่จัด</label>
+      <select name="place" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+        {#each data.places as place}
+          <option value={place.placeId}>{place.name} ({place.location.name})</option>
+        {/each} 
+      </select>
+    </div>
+    <div class="flex w-full gap-3 justify-between items-start">
+      <label for="detail" class="mt-2">รายละเอียด</label>
+      <textarea name="detail" class="resize-none w-100 h-30 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      ></textarea>
+    </div>
+    <div class="flex w-full gap-3 justify-between items-center">
+      <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
+      <input name="condition" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+    </div>
+
+    <div class="flex w-full gap-3 justify-between items-center">
+      <label for="event-date">ช่วงเวลาจัดกิจกรรม</label>
       <div class="flex w-100 justify-between items-center">
         <DateRangeSelector bind:value={eventDate}></DateRangeSelector>
       </div>
     </div>
     <div class="flex w-full gap-3 justify-between items-center">
-      <label>เวลาเปิดลงทะเบียน</label>
+      <label for="register-date">เวลาเปิดลงทะเบียน</label>
       <div class="w-100 flex justify-between items-center">
         <DateRangeSelector bind:value={registerDate}></DateRangeSelector>
       </div>
     </div>
 
-<div class="my-10">
-    <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
+    <div class="my-10">
+      <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
 
-    <div class="flex flex-col gap-8">
+      <!-- Date selector chips -->
+      {#if unusedDates.length > 0}
+        <div class="flex flex-col gap-2 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <span class="text-sm font-semibold text-gray-700">เลือกวันที่ต้องการเพิ่มตารางกิจกรรม:</span>
+          <div class="flex flex-wrap gap-2">
+            {#each unusedDates as dateStr}
+              <button
+                type="button"
+                onclick={() => addTimetableForDate(dateStr)}
+                class="px-3 py-1.5 bg-accent/10 text-accent font-medium hover:bg-accent hover:text-white rounded-lg text-sm transition-colors border border-accent/30 flex items-center gap-1 cursor-pointer"
+              >
+                <span>+</span>
+                <span>{dateStr}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      {:else if availableDates.length > 0 && timetable.length === availableDates.length}
+        <p class="text-sm text-gray-500 mb-6 italic">เพิ่มตารางกิจกรรมครบทุกวันในช่วงเวลานี้แล้ว</p>
+      {/if}
+
+      <!-- Timetables list -->
+      <div class="flex flex-col gap-8">
         {#each timetable as table, dayIndex}
-        <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-3 p-4 border border-gray-200 rounded-xl bg-white shadow-xs">
             <div class="flex items-center justify-between">
-                <input
-                    type="date"
-                    class="w-45 rounded-lg border border-gray-300 px-3 py-2"
-                    bind:value={table.date}
-                />
-                {#if dayIndex === 0}
-                <button
-                    type="button"
-                    onclick={addDate}
-                    class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 "
-                >
-                    เพิ่มวัน
-                </button>
-                {/if}
+              <span class="font-bold text-lg text-slate-800">{table.date}</span>
             </div>
 
             {#if table.activity.length > 0}
-            <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+              <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
-                    <tr class="bg-white border-b border-gray-200">
-                        <th class="py-3 px-4 text-center font-normal text-gray-700">เริ่มกิจกรรม</th>
-                        <th class="py-3 px-4 text-center font-normal text-gray-700">สิ้นสุดกิจกรรม</th>
-                        <th class="py-3 px-4 text-center font-normal text-gray-700">กิจกรรม</th>
-                        <th class="py-3 px-4 text-center font-normal text-gray-700">ลบ</th>
-                    </tr>
+                  <tr class="bg-gray-50 border-b border-gray-200">
+                    <th class="py-3 px-4 text-center font-normal text-gray-700">เริ่มกิจกรรม</th>
+                    <th class="py-3 px-4 text-center font-normal text-gray-700">สิ้นสุดกิจกรรม</th>
+                    <th class="py-3 px-4 text-center font-normal text-gray-700">กิจกรรม</th>
+                    <th class="py-3 px-4 text-center font-normal text-gray-700">ลบ</th>
+                  </tr>
                 </thead>
                 <tbody>
-                    {#each table.activity as activity, activityIndex}
-                    <tr class={activityIndex % 2 === 1 ? "bg-gray-100" : "bg-white"}>
-                        <td class="py-3 px-4 text-center">
-                            <input type="time" class="rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.start} />
-                        </td>
-                        <td class="py-3 px-4 text-center">
-                            <input type="time" class="rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.end} />
-                        </td>
-                        <td class="py-3 px-4 text-center">
-                            <input type="text" class="w-full rounded-sm border border-gray-300 px-2 py-1 text-center" bind:value={activity.activity} />
-                        </td>
-                        <td class="py-3 px-4 text-center">
-                            <button
-                                type="button"
-                                onclick={() => deleteActivity(dayIndex, activityIndex)}
-                                disabled={table.activity.length === 1}
-                                class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors duration-200"
-                            >
-                                ลบ
-                            </button>
-                        </td>
+                  {#each table.activity as activity, activityIndex}
+                    <tr class={activityIndex % 2 === 1 ? "bg-gray-50" : "bg-white"}>
+                      <td class="py-3 px-4 text-center">
+                        <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.start} />
+                      </td>
+                      <td class="py-3 px-4 text-center">
+                        <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.end} />
+                      </td>
+                      <td class="py-3 px-4 text-center">
+                        <input type="text" class="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.activity} />
+                      </td>
+                      <td class="py-3 px-4 text-center">
+                        <button
+                          type="button"
+                          onclick={() => deleteActivity(dayIndex, activityIndex)}
+                          disabled={table.activity.length === 1}
+                          class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition-colors duration-200"
+                        >
+                          ลบ
+                        </button>
+                      </td>
                     </tr>
-                    {/each}
+                  {/each}
                 </tbody>
-            </table>
+              </table>
             {/if}
 
-            <div class="flex justify-end gap-3">
-                <button
-                    type="button"
-                    onclick={() => deleteDay(dayIndex)}
-                    disabled={timetable.length === 1}
-                    class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed" 
-                >
-                    ลบวัน
-                </button>
-                <button
-                    type="button"
-                    onclick={() => addActivity(dayIndex)}
-                    class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
-                >
-                    เพิ่มกิจกรรม
-                </button>
+            <div class="flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onclick={() => deleteDay(dayIndex)}
+                class="bg-red-500 px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-red-600 transition-colors duration-200" 
+              >
+                ลบวัน
+              </button>
+              <button
+                type="button"
+                onclick={() => addActivity(dayIndex)}
+                class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
+              >
+                เพิ่มกิจกรรม
+              </button>
             </div>
-        </div>
+          </div>
         {/each}
+      </div>
     </div>
-</div>
 
     <div class="flex w-full justify-end mt-5">
-      <button type="submit" class="bg-gray-300 py-3 px-5 cursor-pointer"
-        >สร้าง</button
+      <button 
+        type="submit" 
+        disabled={isSubmitting} 
+        class="bg-gray-300 py-3 px-5 cursor-pointer disabled:opacity-50"
       >
+        {isSubmitting ? "กำลังบันทึก..." : "สร้าง"}
+      </button>
     </div>
   </form>
 </div>
-
