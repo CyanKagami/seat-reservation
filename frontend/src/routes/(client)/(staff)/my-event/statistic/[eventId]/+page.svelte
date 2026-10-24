@@ -1,6 +1,6 @@
 <script lang='ts'>
     const {data} = $props();
-    const percentage = $derived(data.checkedInCount / (data.totalReservation ?? 1) * 100);
+    const percentage = $derived(data.checkedInCount / (data.totalReservation || 1) * 100);
 
 </script>
 <div class="flex flex-col items-center mt-24 sm:mt-32 w-3/4 self-center p-5 pt-12">
@@ -17,9 +17,21 @@
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base font-semibold">คณะที่เข้าร่วมมากที่สุด</p>
-                <p class="text-base">{data.demographic.mostParticipatedFaculty?.name} ({(data.demographic.mostParticipatedFaculty?.count ?? 0) / (data.totalReservation ?? 1) * 100} %)</p>
+                <p class="text-base">
+                {
+                    data.demographic.mostParticipatedFaculty?.name
+                    ? `${data.demographic.mostParticipatedFaculty?.name} (${(data.demographic.mostParticipatedFaculty?.count || 0) / (data.totalReservation || 1) * 100} %)`
+                    : "ยังไม่มีข้อมูล"
+                } 
+                </p>
                 <p class="text-base font-semibold">ชั้นปีที่เข้าร่วมมากที่สุด</p>
-                <p class="text-base">นักศึกษาที่เข้าศึกษาในปี {data.demographic.mostParticipatedYear?.name} ({(data.demographic.mostParticipatedYear?.count ?? 0) / (data.totalReservation ?? 1) * 100} %)</p>
+                <p class="text-base">
+                {
+                    data.demographic.mostParticipatedYear?.name
+                    ? `นักศึกษาที่เข้าศึกษาในปี ${data.demographic.mostParticipatedYear?.name} (${(data.demographic.mostParticipatedYear?.count || 0) / (data.totalReservation || 1) * 100} %)`
+                    : "ยังไม่มีข้อมูล"
+                }
+                </p>
             </div>
         </div>
         <div class="bg-white rounded-lg border border-secondary drop-shadow-md h-full w-ful flex gap-3">

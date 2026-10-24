@@ -51,7 +51,7 @@
 
     let status = $state("initial")
 </script>
-<div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
+<div class="flex flex-col items-center mt-24 w-3/4 self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
     <div class="w-full bg-gray-200 rounded-lg h-52 grid grid-cols-3 p-10 gap-5">
         <div class="col-span-2 bg-white rounded-lg border border-accent h-full w-ful flex gap-3">
@@ -88,7 +88,7 @@
     </div>
     <div class="w-full bg-gray-200 rounded-lg h-92 p-10 flex flex-col gap-3 mt-20 items-center justify-center">
         <p class="text-4xl font-semibold mb-5">ตรวจบัตรเข้าร่วมงาน</p>
-        <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่งเพื่อตรวจบัตรเข้างาน</p>
+        <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่ง (ชื่อโซน-ที่นั่ง) เพื่อตรวจบัตรเข้างาน</p>
         <input bind:value={identifier} class="w-108 rounded-lg">
         <button onclick={handleLoadData} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>

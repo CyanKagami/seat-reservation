@@ -12,7 +12,7 @@
 
 <div class="w-96 h-84 border border-gray-400 rounded-lg">
     <div class="w-full h-40">
-        <img class="object-cover w-full h-full" src={event.picture} alt={event.name}>
+        <img class="object-cover w-full h-full" src={event.picture ? event.picture : '/image/defaultEvent.png'} alt={event.name}>
     </div>
     <div class="p-5">
         <h1 class="text-2xl font-semibold truncate">{event.name}</h1>
