@@ -6,6 +6,7 @@
   import { alertModal } from "$lib/store/alert.svelte";
   import type { Daytable } from "$lib/type/event";
   import type { PageData } from "./$types";
+  import { goto } from "$app/navigation";
 
   // Receive loaded page data from +page.ts
   let { data }: { data: PageData } = $props();
@@ -20,17 +21,27 @@
     end: Date;
   }
   
-  let eventDate : DateTimeRange = $state({
+  let eventDate: DateTimeRange = $state({
     start: new Date(),
     end: new Date(Date.now() + 86400000 * 3)
   });
-  let registerDate : DateTimeRange = $state({
+
+  let registerDate: DateTimeRange = $state({
     start: new Date(),
     end: new Date(Date.now() + 86400000 * 3)
   });
 
   let timetable: Daytable[] = $state([]);
+
+  let previewUrl = $state<string | null>(null);
+  let imageFile = $state<File | null>(null);
   let isSubmitting = $state(false);
+  let isUploading = $state<boolean>(false);
+  let errorMessage = $state<string | null>(null);
+
+  // จำกัดขนาดไฟล์ที่ 5MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   // Helper to generate list of YYYY-MM-DD date strings between start and end date
   function getDatesInRange(start: Date, end: Date): string[] {
@@ -102,15 +113,6 @@
   function deleteActivity(dayIndex: number, activityIndex: number) {
     timetable[dayIndex].activity.splice(activityIndex, 1);
   }
-
-  let imageFile = $state<File | null>(null);
-  let previewUrl = $state<string | null>(null);
-  let isUploading = $state<boolean>(false);
-  let errorMessage = $state<string | null>(null);
-
-  // จำกัดขนาดไฟล์ที่ 5MB
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
-  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   function handleFileSelect(e: Event): void {
     const target = e.target as HTMLInputElement;
@@ -240,7 +242,7 @@
       });
 
       if (res.ok) {
-        alertModal.success("สำเร็จ", "บันทึกลง DynamoDB เรียบร้อย!");
+        alertModal.success("สำเร็จ", "สร้างกิจกรรมสำเร็จ", () => {goto('/my-event')});
       } else {
         const err = await res.json();
         alertModal.failure("เกิดข้อผิดพลาด", err.error || "ไม่สามารถบันทึกข้อมูลได้");
@@ -254,80 +256,85 @@
 </script>
 
 <div
-  class="flex flex-col items-center mt-24 sm:mt-32 border-5 rounded-2xl border-secondary w-2/4 self-center p-5 pt-12"
+  class="flex flex-col items-center mt-24 sm:mt-32 rounded-3xl sm:shadow-xl bg-white sm:border-2 sm:border-black/20 w-full max-w-2xl sm:max-w-3xl self-center p-5 sm:p-8 pt-12 mx-4"
 >
-  <h1 class="text-4xl font-bold">เพิ่มกิจกรรม</h1>
+  <h1 class="text-4xl font-bold mb-12">เพิ่มกิจกรรม</h1>
   <form
-    class="flex flex-col gap-5"
+    class="flex flex-col gap-5 w-full"
     onsubmit={handleSubmit}
     enctype="multipart/form-data"
   >
-    <label for="picture" class="text-xl font-bold">รูปภาพหน้าปก</label>
-    <div class="flex flex-col items-center gap-4 border-b pb-5 border-dashed">
-      <!-- Preview Box -->
-      {#if previewUrl}
-        <div
-          class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
-        >
-          <img
-            src={previewUrl}
-            alt="Preview"
-            class="w-full h-full object-cover"
-          />
+    <!-- Picture Segment -->
+    <div class="flex flex-col gap-2 border-b border-slate-100 pb-6">
+      <label for="picture" class="text-lg font-bold text-slate-800">รูปภาพหน้าปก</label>
+      <div class="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+        <!-- Preview Box -->
+        <div class="relative w-full sm:w-64 h-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner flex items-center justify-center shrink-0">
+          {#if previewUrl}
+            <img src={previewUrl} alt="Preview" class="w-full h-full object-cover" />
+          {:else}
+            <div class="flex flex-col items-center gap-1 text-slate-700">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-xs">ไม่มีรูปภาพ</span>
+            </div>
+          {/if}
         </div>
-      {:else}
-        <div
-          class="relative w-64 h-40 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
-        ></div>
-      {/if}
 
-      <!-- Input Field & Info Label -->
-      <div class="flex flex-col gap-1.5 self-start">
-        <input
-          type="file"
-          accept="image/png, image/jpeg, image/webp"
-          onchange={handleFileSelect}
-          class="block w-fit text-sm text-dark file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:text-sm file:font-semibold file:border-accent hover:file:bg-accent-hover hover:file:text-white hover:cursor-pointer"
-        />
-        <span class="text-xs text-gray-500">รองรับไฟล์ JPG, PNG และ WEBP (ขนาดไม่เกิน 5MB)</span>
+        <!-- Input Field & Label -->
+        <div class="flex flex-col gap-2 w-full sm:w-auto">
+          <input
+            type="file"
+            accept="image/png, image/jpeg, image/webp"
+            onchange={handleFileSelect}
+            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-secondary hover:file:bg-indigo-100 hover:cursor-pointer transition-colors"
+          />
+          <p class="text-xs text-slate-700">รองรับไฟล์ JPG, PNG และ WEBP (ขนาดไม่เกิน 5MB)</p>
+        </div>
       </div>
     </div>
 
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="name">ชื่อกิจกรรม</label>
-      <input name="name" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="name" class="shrink-0">ชื่อกิจกรรม</label>
+      <input name="name" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
     </div>
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="host">ชื่อผู้จัด</label>
-      <input name="host" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="host" class="shrink-0">ชื่อผู้จัด</label>
+      <input name="host" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
     </div>
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="place">สถานที่จัด</label>
-      <select name="place" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="place" class="shrink-0">สถานที่จัด</label>
+      <select name="place" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
         {#each data.places as place}
           <option value={place.placeId}>{place.name} ({place.location.name})</option>
         {/each} 
       </select>
     </div>
-    <div class="flex w-full gap-3 justify-between items-start">
-      <label for="detail" class="mt-2">รายละเอียด</label>
-      <textarea name="detail" class="resize-none w-100 h-30 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-start">
+      <label for="detail" class="shrink-0 sm:mt-2">รายละเอียด</label>
+      <textarea name="detail" class="resize-none w-full sm:w-80 md:w-96 h-30 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
       ></textarea>
     </div>
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="condition">เงื่อนไขการเข้าร่วมกิจกรรม</label>
-      <input name="condition" class="w-100 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="condition" class="shrink-0">เงื่อนไขการเข้าร่วมกิจกรรม</label>
+      <input name="condition" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
     </div>
 
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="event-date">ช่วงเวลาจัดกิจกรรม</label>
-      <div class="flex w-100 justify-between items-center">
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="event-date" class="shrink-0">ช่วงเวลาจัดกิจกรรม</label>
+      <div class="w-full sm:w-80 md:w-96">
         <DateRangeSelector bind:value={eventDate}></DateRangeSelector>
       </div>
     </div>
-    <div class="flex w-full gap-3 justify-between items-center">
-      <label for="register-date">เวลาเปิดลงทะเบียน</label>
-      <div class="w-100 flex justify-between items-center">
+
+    <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
+      <label for="register-date" class="shrink-0">เวลาเปิดลงทะเบียน</label>
+      <div class="w-full sm:w-80 md:w-96">
         <DateRangeSelector bind:value={registerDate}></DateRangeSelector>
       </div>
     </div>
@@ -365,41 +372,79 @@
             </div>
 
             {#if table.activity.length > 0}
-              <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
-                <thead>
-                  <tr class="bg-gray-50 border-b border-gray-200">
-                    <th class="py-3 px-4 text-center font-normal text-gray-700">เริ่มกิจกรรม</th>
-                    <th class="py-3 px-4 text-center font-normal text-gray-700">สิ้นสุดกิจกรรม</th>
-                    <th class="py-3 px-4 text-center font-normal text-gray-700">กิจกรรม</th>
-                    <th class="py-3 px-4 text-center font-normal text-gray-700">ลบ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each table.activity as activity, activityIndex}
-                    <tr class={activityIndex % 2 === 1 ? "bg-gray-50" : "bg-white"}>
-                      <td class="py-3 px-4 text-center">
-                        <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.start} />
-                      </td>
-                      <td class="py-3 px-4 text-center">
-                        <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.end} />
-                      </td>
-                      <td class="py-3 px-4 text-center">
-                        <input type="text" class="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.activity} />
-                      </td>
-                      <td class="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onclick={() => deleteActivity(dayIndex, activityIndex)}
-                          disabled={table.activity.length === 1}
-                          class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition-colors duration-200"
-                        >
-                          ลบ
-                        </button>
-                      </td>
+              <!-- Desktop Table View -->
+              <div class="hidden sm:block overflow-x-auto w-full border border-gray-200 rounded-lg touch-pan-x">
+                <table class="w-full min-w-[500px]">
+                  <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                      <th class="py-3 px-4 text-center font-normal text-gray-700">เริ่มกิจกรรม</th>
+                      <th class="py-3 px-4 text-center font-normal text-gray-700">สิ้นสุดกิจกรรม</th>
+                      <th class="py-3 px-4 text-center font-normal text-gray-700">กิจกรรม</th>
+                      <th class="py-3 px-4 text-center font-normal text-gray-700">ลบ</th>
                     </tr>
-                  {/each}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {#each table.activity as activity, activityIndex}
+                      <tr class={activityIndex % 2 === 1 ? "bg-gray-50" : "bg-white"}>
+                        <td class="py-3 px-4 text-center">
+                          <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.start} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                          <input type="time" class="rounded-lg border border-slate-200 px-2.5 py-1 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.end} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                          <input type="text" class="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.activity} />
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onclick={() => deleteActivity(dayIndex, activityIndex)}
+                            disabled={table.activity.length === 1}
+                            class="bg-red-500 text-white px-4 py-1.5 rounded-lg hover:cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-red-600 transition-colors duration-200"
+                          >
+                            ลบ
+                          </button>
+                        </td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Mobile Card Stack View -->
+              <div class="flex flex-col gap-3 sm:hidden">
+                {#each table.activity as activity, activityIndex}
+                  <div class="flex flex-col gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-500">
+                      <span>กิจกรรมที่ {activityIndex + 1}</span>
+                      <button
+                        type="button"
+                        onclick={() => deleteActivity(dayIndex, activityIndex)}
+                        disabled={table.activity.length === 1}
+                        class="text-red-500 hover:text-red-600 disabled:text-slate-300 text-xs font-semibold cursor-pointer"
+                      >
+                        ลบกิจกรรม
+                      </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                      <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-slate-600">เริ่มกิจกรรม</label>
+                        <input type="time" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.start} />
+                      </div>
+                      <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-slate-600">สิ้นสุดกิจกรรม</label>
+                        <input type="time" class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.end} />
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                      <label class="text-xs font-medium text-slate-600">กิจกรรม</label>
+                      <input type="text" placeholder="ระบุกิจกรรม" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" bind:value={activity.activity} />
+                    </div>
+                  </div>
+                {/each}
+              </div>
             {/if}
 
             <div class="flex justify-end gap-3 mt-2">
@@ -423,11 +468,18 @@
       </div>
     </div>
 
-    <div class="flex w-full justify-end mt-5">
+    <!-- Action Buttons -->
+    <div class="flex flex-col-reverse sm:flex-row w-full justify-end gap-3">
+      <a 
+        href="/my-event" 
+        class="text-slate-700 bg-slate-200 hover:bg-slate-300 w-full sm:w-auto py-3 px-7 cursor-pointer rounded-md text-center font-medium transition-colors"
+      >
+        ยกเลิก
+      </a>
       <button 
         type="submit" 
         disabled={isSubmitting} 
-        class="bg-gray-300 py-3 px-5 cursor-pointer disabled:opacity-50"
+        class="text-white bg-accent hover:bg-accent-hover w-full sm:w-auto py-3 px-7 cursor-pointer rounded-md disabled:opacity-50"
       >
         {isSubmitting ? "กำลังบันทึก..." : "สร้าง"}
       </button>

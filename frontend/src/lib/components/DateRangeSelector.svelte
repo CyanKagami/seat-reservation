@@ -26,6 +26,18 @@
   let startTime = $state(formatTime(value.start));
   let endTime = $state(formatTime(value.end));
 
+  $effect(() => {
+    if (isOpen) {
+      selectedStart = value.start;
+      selectedEnd = value.end;
+      startTime = formatTime(value.start);
+      endTime = formatTime(value.end);
+      if (value.start) {
+        viewDate = new Date(value.start);
+      }
+    }
+  });
+
   // Helpers
   function formatTime(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -146,101 +158,105 @@
   <button
     type="button"
     onclick={() => (isOpen = !isOpen)}
-    class="w-full flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+    class="w-full flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-secondary/20"
   >
-    <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
-    <span>{displayLabel}</span>
+    <span class="truncate">{displayLabel}</span>
   </button>
 
-  <!-- Calendar Popover -->
+  <!-- Calendar Popover (Mobile Fullscreen below h-20, Desktop absolute popup) -->
   {#if isOpen}
-    <div class="absolute left-0 z-50 mt-2 w-[340px] rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl ring-1 ring-black/5">
-      
-      <!-- Calendar Header -->
-      <div class="mb-3 flex items-center justify-between px-1">
-        <button
-          type="button"
-          onclick={() => changeMonth(-1)}
-          class="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <span class="font-semibold text-slate-800">
-          {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-        </span>
-        <button
-          type="button"
-          onclick={() => changeMonth(1)}
-          class="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-        >
-          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </button>
-      </div>
-
-      <!-- Weekday Labels -->
-      <div class="mb-1 grid grid-cols-7 text-center text-xs font-semibold text-slate-400">
-        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
-      </div>
-
-      <!-- Calendar Days Grid -->
-      <div class="grid grid-cols-7 gap-y-1">
-        {#each calendarDays as { date, isCurrentMonth }}
-          {@const isStart = isSameDay(date, selectedStart)}
-          {@const isEnd = isSameDay(date, effectiveEnd)}
-          {@const inRange = isWithinRange(date)}
-
-          <div
-            class="relative flex h-9 items-center justify-center
-            {inRange ? 'bg-indigo-50' : ''}
-            {isStart && effectiveEnd ? 'rounded-l-full bg-indigo-50' : ''}
-            {isEnd && selectedStart ? 'rounded-r-full bg-indigo-50' : ''}"
+    <div 
+      class="fixed inset-x-0 top-20 bottom-0 z-50 flex flex-col justify-between overflow-y-auto bg-white p-4 sm:p-5 shadow-2xl ring-1 ring-black/5 
+             sm:absolute sm:top-auto sm:bottom-auto sm:left-0 sm:right-auto sm:inset-x-auto sm:mt-2 sm:w-[340px] sm:h-auto sm:rounded-2xl sm:border sm:border-slate-100"
+    >
+      <div class="flex flex-col">
+        <!-- Calendar Header -->
+        <div class="mb-4 flex items-center justify-between px-1">
+          <button
+            type="button"
+            onclick={() => changeMonth(-1)}
+            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
           >
-            <button
-              type="button"
-              onclick={() => handleDayClick(date)}
-              onmouseenter={() => (hoverDate = date)}
-              onmouseleave={() => (hoverDate = null)}
-              class="h-8 w-8 rounded-full text-xs font-medium transition-all
-              {!isCurrentMonth ? 'text-slate-300' : 'text-slate-700'}
-              {isStart || isEnd ? '!bg-indigo-600 !text-white shadow-md' : 'hover:bg-slate-100'}
-              {inRange ? 'font-semibold text-indigo-700' : ''}"
-            >
-              {date.getDate()}
-            </button>
-          </div>
-        {/each}
-      </div>
+            <svg class="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="font-semibold text-slate-800 text-base sm:text-sm">
+            {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </span>
+          <button
+            type="button"
+            onclick={() => changeMonth(1)}
+            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+          >
+            <svg class="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
 
-      <!-- Time Pickers Section -->
-      <div class="mt-4 border-t border-slate-100 pt-3">
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <div class="flex flex-col gap-1">
-            <span class="font-medium text-slate-500">Start Time</span>
-            <input
-              type="time"
-              bind:value={startTime}
-              class="rounded-lg border border-slate-200 px-2 py-1 text-slate-800 focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <div class="flex flex-col gap-1">
-            <span class="font-medium text-slate-500">End Time</span>
-            <input
-              type="time"
-              bind:value={endTime}
-              class="rounded-lg border border-slate-200 px-2 py-1 text-slate-800 focus:border-indigo-500 focus:outline-none"
-            />
+        <!-- Weekday Labels -->
+        <div class="mb-2 grid grid-cols-7 text-center text-xs font-semibold text-slate-400">
+          <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+        </div>
+
+        <!-- Calendar Days Grid -->
+        <div class="grid grid-cols-7 gap-y-1">
+          {#each calendarDays as { date, isCurrentMonth }}
+            {@const isStart = isSameDay(date, selectedStart)}
+            {@const isEnd = isSameDay(date, effectiveEnd)}
+            {@const inRange = isWithinRange(date)}
+
+            <div
+              class="relative flex h-10 sm:h-9 items-center justify-center
+              {inRange ? 'bg-secondary/10' : ''}
+              {isStart && effectiveEnd ? 'rounded-l-full bg-secondary/10' : ''}
+              {isEnd && selectedStart ? 'rounded-r-full bg-secondary/10' : ''}"
+            >
+              <button
+                type="button"
+                onclick={() => handleDayClick(date)}
+                onmouseenter={() => (hoverDate = date)}
+                onmouseleave={() => (hoverDate = null)}
+                class="h-9 w-9 sm:h-8 sm:w-8 rounded-full text-xs font-medium transition-all
+                {!isCurrentMonth ? 'text-slate-300' : 'text-slate-700'}
+                {isStart || isEnd ? '!bg-secondary !text-white shadow-md' : 'hover:bg-slate-100'}
+                {inRange ? 'font-semibold text-secondary' : ''}"
+              >
+                {date.getDate()}
+              </button>
+            </div>
+          {/each}
+        </div>
+
+        <!-- Time Pickers Section -->
+        <div class="mt-4 border-t border-slate-100 pt-3">
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="flex flex-col gap-1">
+              <span class="font-medium text-slate-500">Start Time</span>
+              <input
+                type="time"
+                bind:value={startTime}
+                class="rounded-lg border border-slate-200 px-2 py-2 sm:py-1 text-slate-800 focus:border-secondary focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="font-medium text-slate-500">End Time</span>
+              <input
+                type="time"
+                bind:value={endTime}
+                class="rounded-lg border border-slate-200 px-2 py-2 sm:py-1 text-slate-800 focus:border-secondary focus:outline-none"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Footer Actions -->
-      <div class="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+      <div class="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3 border-t border-slate-100 pt-3">
         <button
           type="button"
           onclick={() => (isOpen = false)}
-          class="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+          class="w-full sm:w-auto rounded-xl sm:rounded-lg px-4 sm:px-3 py-3 sm:py-1.5 text-sm sm:text-xs font-semibold sm:font-medium text-slate-600 bg-slate-100 sm:bg-transparent hover:bg-slate-200 sm:hover:bg-slate-100 transition-colors cursor-pointer text-center"
         >
           Cancel
         </button>
@@ -248,7 +264,7 @@
           type="button"
           disabled={!selectedStart || !selectedEnd || !isRangeValid}
           onclick={handleApply}
-          class="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="w-full sm:w-auto rounded-xl sm:rounded-lg bg-secondary px-5 sm:px-3.5 py-3 sm:py-1.5 text-sm sm:text-xs font-semibold sm:font-medium text-white shadow-sm transition hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-center"
         >
           Apply
         </button>

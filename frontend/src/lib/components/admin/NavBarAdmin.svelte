@@ -15,7 +15,7 @@
 
     function handleLogout() {
         isDropdownOpen = false;
-        alertModal.information("คุณกำลังจะออกจากระบบ", "คุณแน่ใจหรือไม่?", {
+        alertModal.warning("คุณกำลังจะออกจากระบบ", "คุณแน่ใจหรือไม่?", {
             onconfirm: () => {
                 userStore.logout();
                 goto("/login", { replaceState: true });
