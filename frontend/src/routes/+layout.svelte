@@ -7,7 +7,10 @@
 
 	let { children } = $props();
 </script>
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<title>K-SEAT</title>
+</svelte:head>
 <div class="flex flex-col justify-center w-full font-inter">
 	{#await navigating.complete}
 		<div class="fixed top-0 left-0 w-screen h-screen flex items-center justify-center">

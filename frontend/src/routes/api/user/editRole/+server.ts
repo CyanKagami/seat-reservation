@@ -20,7 +20,7 @@ export const POST: RequestHandler = async (event) => {
     }
     try {
         const newAttributes = await updateAllAttributes('users', { email }, { role });
-        return json({ body: { message: 'User role updated successfully', newAttributes } });
+        return json({ body: { message: 'User role updated successfully', updatedUser:newAttributes } });
     } catch (error) {
         console.error('Error updating role:', error);
         return json({ error: 'Internal server error' }, { status: 500 });

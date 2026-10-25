@@ -44,7 +44,7 @@ export class ApiError extends Error {
 
 
 // Success bodies look like { body: ... }, errors like { error, code? }.
-async function unwrap<T>(res: Response): Promise<T> {
+export async function unwrap<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(data.error ?? 'Request failed', res.status, data.code);
