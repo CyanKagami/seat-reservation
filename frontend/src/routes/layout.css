@@ -3,13 +3,63 @@
 @plugin '@tailwindcss/forms';
 
 @theme {
-  --font-inter: "Inter", "Kanit";
+  --font-inter: "Inter", "Kanit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  /* Core brand identity (KMITL K-Seat) */
   --color-accent: #D33B52;
   --color-accent-hover: #A1162E;
+  --color-accent-subtle: #FDE8EB;
+  --color-accent-ink: #FFFFFF;
+  
   --color-dark: #091F26;
+  --color-dark-muted: #243E47;
+  --color-dark-soft: #4A636D;
+  
   --color-secondary: #1D738B;
   --color-secondary-hover: #114D5E;
-  --color-pale:#D0E0EF;
+  --color-secondary-subtle: #E2F1F5;
   --color-dark-secondary: #145061;
+  
+  --color-pale: #D0E0EF;
+  --color-pale-soft: #EBF3FA;
   --color-dim-gray: #ACACAC;
+  
+  --color-surface-base: #F8FAFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-subtle: #F1F5F9;
+  --color-border-subtle: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+}
+
+/* Base resets & Hallmark craft floor */
+html, body {
+  overflow-x: clip;
+  min-height: 100%;
+  font-family: var(--font-inter);
+  color: var(--color-dark);
+  background-color: var(--color-surface-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+/* Themed selection */
+::selection {
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

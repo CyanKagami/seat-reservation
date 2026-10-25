@@ -1,10 +1,12 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
   import AdminNavBar from '$lib/components/admin/NavBarAdmin.svelte';
 
-	let { children } = $props();
+  let { children } = $props();
 </script>
-<div class="flex flex-col justify-center w-full font-inter mt-20">
-<AdminNavBar></AdminNavBar>
-	{@render children()}
+
+<div class="min-h-screen flex flex-col bg-surface-base text-dark font-inter">
+  <AdminNavBar />
+  <main class="flex-1 w-full pb-16">
+    {@render children()}
+  </main>
 </div>

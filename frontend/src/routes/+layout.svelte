@@ -7,30 +7,32 @@
 
 	let { children } = $props();
 </script>
+
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>K-SEAT</title>
+	<title>K-SEAT · ระบบจองที่นั่งกิจกรรม KMITL</title>
+	<meta name="description" content="ระบบจองและจัดการที่นั่งกิจกรรม สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง (KMITL)" />
 </svelte:head>
-<div class="flex flex-col justify-center w-full font-inter">
+
+<div class="min-h-screen w-full flex flex-col font-inter">
 	{#await navigating.complete}
-		<div class="fixed top-0 left-0 w-screen h-screen flex items-center justify-center">
-			<p>กำลังโหลดข้อมูลผู้ใช้...</p>
+		<div class="fixed inset-0 bg-surface-base/90 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-50">
+			<div class="w-8 h-8 border-3 border-secondary/30 border-t-accent rounded-full animate-spin"></div>
+			<p class="text-sm font-medium text-dark-muted">กำลังโหลดข้อมูล...</p>
 		</div>
 	{:then _} 
 		{@render children()}
 		<!-- Global Alert Modal Singleton Instance -->
 		<AlertModal 
-		bind:isOpen={alertModal.isOpen}
-		type={alertModal.type}
-		title={alertModal.title}
-		message={alertModal.message}
-		confirmText={alertModal.confirmText}
-		cancelText={alertModal.cancelText}
-		showCancel={alertModal.showCancel}
-		onconfirm={alertModal.onconfirm}
-		oncancel={alertModal.oncancel}
+			bind:isOpen={alertModal.isOpen}
+			type={alertModal.type}
+			title={alertModal.title}
+			message={alertModal.message}
+			confirmText={alertModal.confirmText}
+			cancelText={alertModal.cancelText}
+			showCancel={alertModal.showCancel}
+			onconfirm={alertModal.onconfirm}
+			oncancel={alertModal.oncancel}
 		/>
 	{/await}
 </div>
-
-

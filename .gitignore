@@ -28,3 +28,6 @@ localstack
 .aws-sam
 
 dev-scripts
+AGENTS.md
+.agents
+la+.docx
