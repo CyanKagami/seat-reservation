@@ -1,8 +1,58 @@
 <script lang='ts'>
-    const percentage = (120 / 350) * 100
+  import { invalidate, refreshAll } from '$app/navigation';
+  import { ApiError, checkInSeat, getReservation } from '$lib/scripts/booking.js';
+  import type { SeatParts } from '$lib/scripts/seat.js';
+  import type { Reservation } from '$lib/type/reservation.js';
+
+    const {data, params} = $props();
+    const percentage = $derived((data.checkInCount / (data.totalCount || 1)) * 100)
+    let identifier: string = $state('');
+    let reservationData: Reservation & SeatParts | null = $state(null);
+
+    async function handleLoadData() {
+        try{
+            reservationData = await getReservation(params.eventId, identifier);
+            identifier = ''
+            status = "success";
+        } catch (err){
+            if (err instanceof ApiError) {
+                if (err.code === 'NOT_FOUND') status = "not_found";
+                else if (err.status === 400) status = "not_found";
+            }
+        }
+        
+    }
+
+    async function handleSubmit() {
+        try{
+            if (!reservationData){
+                status = 'client_error';
+                return
+            }
+            await checkInSeat(params.eventId, reservationData.seatId);
+            await invalidate(`increase:count`);
+            reservationData = null;
+            identifier = ''
+            status = 'initial'
+        } catch (err){
+            if (err instanceof ApiError) {
+                switch (err.code) {
+                    case 'ALREADY_CHECKED_IN':
+                        status = "replicated";
+                        break;
+                    case 'NOT_FOUND':
+                        status = "not_found";
+                        break;
+                }
+            }
+        }
+        
+    }
+
+    let status = $state("initial")
 </script>
-<div class="flex flex-col items-center mt-5 w-3/4 self-center p-5 pt-12">
-    <h1 class="text-4xl font-semibold mb-10">Ticket</h1>
+<div class="flex flex-col items-center mt-24 w-3/4 self-center p-5 pt-12">
+    <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
     <div class="w-full bg-gray-200 rounded-lg h-52 grid grid-cols-3 p-10 gap-5">
         <div class="col-span-2 bg-white rounded-lg border border-accent h-full w-ful flex gap-3">
             <div class="bg-accent px-7 h-full rounded-l-lg flex items-center justify-center w-fit">
@@ -10,12 +60,12 @@
             </div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">เข้าร่วมงานแล้ว</p>
-                <p class="text-4xl">{120} คน</p>
+                <p class="text-4xl">{data.checkInCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2">
                 <p class="text-base">จาก</p>
-                <p class="text-4xl">{350} คน</p>
+                <p class="text-4xl">{data.totalCount} คน</p>
             </div>
             <div class="w-0.5 bg-black my-5"></div>
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
@@ -30,16 +80,61 @@
             <div class="bg-white p-5 text-left flex flex-col gap-2 rounded-r-lg">
                 <p class="text-base">ยังไม่เข้าร่วม</p>
                 <div class="flex items-end">
-                    <p class="text-4xl">{350} คน</p>
-                    <p class="ml-3 text-sm font-semibold">({percentage.toFixed(2)} %)</p>
+                    <p class="text-4xl">{data.totalCount - data.checkInCount} คน</p>
+                    <p class="ml-3 text-sm font-semibold">({(100 - percentage).toFixed(2)} %)</p>
                 </div>
             </div>
         </div>
     </div>
     <div class="w-full bg-gray-200 rounded-lg h-92 p-10 flex flex-col gap-3 mt-20 items-center justify-center">
         <p class="text-4xl font-semibold mb-5">ตรวจบัตรเข้าร่วมงาน</p>
-        <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่งเพื่อตรวจบัตรเข้างาน</p>
-        <input class="w-108 rounded-lg">
-        <button class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
+        <p class="text-lg">กรอกรหัสนักศึกษาหรือโค้ดที่นั่ง (ชื่อโซน-ที่นั่ง) เพื่อตรวจบัตรเข้างาน</p>
+        <input bind:value={identifier} class="w-108 rounded-lg">
+        <button onclick={handleLoadData} class="w-108 py-3 rounded-lg text-white text-lg bg-accent hover:bg-accent-hover hover:cursor-pointer">Check in</button>
     </div>
+
+    {#if status !== 'initial'}
+     <div 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-xs p-4"
+        tabindex="-1"
+    >
+        <div class="w-full h-full z-10 flex justify-center items-center fixed top-0 left-0">
+        {#if reservationData && status === "success"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">สรุปข้อมูล</p>
+                <hr class="w-full mt-3">
+                <p class="my-5 font-semibold">{reservationData.email}</p>
+                <div class="flex gap-3 text-2xl font-bold">
+                    <p>Zone</p>
+                    <p class="text-orange-600">{reservationData.zone}</p>
+                </div>
+                <div class="flex gap-3 text-2xl font-bold">
+                    <p>Seat</p>
+                    <p class="text-orange-600">{reservationData.seat}</p>
+                </div>
+                <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
+            </div>
+            {:else if status === "not_found"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">ไม่พบข้อมูลในระบบ</p>
+
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {:else if status === "client_error"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">เกิดข้อผิดพลาดในการส่งข้อมูล</p>
+
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {:else if status === "replicated"}
+            <div class="bg-white drop-shadow-2xl rounded-2xl w-108 h-fit flex flex-col items-center p-5">
+                <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้ทำการ Check in แล้ว</p>
+
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+            </div>
+            {/if}
+        </div>
+        </div>
+    {/if}
 </div>

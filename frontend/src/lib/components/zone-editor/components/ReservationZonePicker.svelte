@@ -17,7 +17,7 @@
 		padding = 40,
 		width = "100%",
 		height = "100%",
-		reservedId = new Set(),
+		reservedIds = {},
 		className = "",
 		onZoneSelect
 	}: {
@@ -29,7 +29,7 @@
 		padding?: number;
 		width?: string;
 		height?: string;
-		reservedId:Set<string>;
+		reservedIds?:Record<string, Set<string>>;
 		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
 	} = $props();
@@ -277,8 +277,8 @@
 					}
 					groups[uId].seats.push(obj);
 				} else if (obj.metadata?.zone) {
-					const isReserved = reservedId.has(getSeatId(obj));
 					const zId = obj.metadata.zone;
+					const isReserved = reservedIds[zId] ? reservedIds[zId].has(getSeatId(obj)): false;
 					if (!groups[zId]) {
 						groups[zId] = {
 							id: zId,

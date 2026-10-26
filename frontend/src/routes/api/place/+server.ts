@@ -24,7 +24,7 @@ interface PlaceFormData {
 async function formatData(data:PlaceFormData, creator:User) {
     let place:Place = {
         placeId:data.placeId,
-        creatorId:creator.googleId,
+        creatorId:creator.email,
         creatorName: creator.name,
         description:data.description,
         name: data.name,
@@ -72,7 +72,7 @@ export const POST: RequestHandler = async (event) => {
         name: formData.get('name'),
         picture: pictureURL,
         location,
-        creatorId: user.googleId,
+        creatorId: user.email,
         creatorName: user.name
       },
       'placeId'

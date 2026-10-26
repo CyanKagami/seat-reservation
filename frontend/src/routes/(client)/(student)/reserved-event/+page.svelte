@@ -14,7 +14,7 @@
     })
 
 </script>
-<div class="mt-10 flex flex-col items-center">
+<div class="mt-24 sm:mt-32 flex flex-col items-center">
     <h1 class="text-4xl font-semibold">กิจกรรมของฉัน</h1>
 
     <div class="pt-8 w-full px-20 flex flex-col gap-10">
@@ -35,7 +35,7 @@
         </div>
         {/if}
         {#each events as event }
-            <ReservedEventBox event={event.event} seat={event.seatId} eventId={event.eventId}></ReservedEventBox>
+            <ReservedEventBox event={event.event} seat={event.seat} zone={event.zone} eventId={event.eventId}></ReservedEventBox>
         {/each}
         </div>
     </div>

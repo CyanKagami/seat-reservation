@@ -44,7 +44,7 @@ export const GET: RequestHandler = async ({ url }) => {
     if (!payload || !payload.email_verified) {
       destination = '/login?error=unverified_email';
     } else {
-      let user = (await fetchUser(payload.sub)) as User | null;
+      let user = (await fetchUser(payload.email!)) as User | null;
 
       if (!user) {
         user = {

@@ -1,30 +1,23 @@
 import type { PageLoad } from './$types';
-import { apiFetch } from '$lib/scripts/api';
+import { ApiError, getEventAttendance } from '$lib/scripts/booking';
 
-export const load: PageLoad = async ({ fetch, params }) => {
-    const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
-            method: "GET",
-            credentials: 'include'
-        }, fetch)
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-    if (!event.timetable) {
-        event.timetable = [];
+export const load: PageLoad = async ({ fetch, params, depends }) => {
+    depends('increase:count')
+    try {
+        let count = await getEventAttendance(params.eventId, fetch);
+        return {
+            checkInCount:count.checkInCount,
+            totalCount:count.totalCount
+        };
     }
-    if (!event.picture) {
-        event.picture = null;
+    catch (err) {
+        if (err instanceof ApiError){
+            console.error(err.message)
+        }
+        return {
+            checkInCount:0,
+            totalCount:0
+        };
     }
-    const places = await apiFetch('/place', {
-        method:"GET",
-        credentials:'include'
-      }, fetch)
-      .then((response) => response.json())
-      .then((data) => {
-        return data.body.data;
-      })
-    return {
-        event,
-        places
-    };
+    
 };

@@ -9,7 +9,7 @@
 		objects = [],
 		selectedSeatIds = $bindable([]),
 		maxSeats = 1,
-		reservationMap = {reservations: [], myReservation: null},
+		reservedIds = new Set(),
 		onBack,
 		onConfirm
 	}: {
@@ -18,7 +18,7 @@
 		objects: CanvasObject[];
 		selectedSeatIds?: string[];
 		maxSeats?: number;
-		reservationMap:SeatMap
+		reservedIds:Set<string>
 		onBack?: () => void;
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
@@ -116,7 +116,7 @@
 		const isZoneSeat = seat.metadata?.zone === selectedZoneId;
 		const status = seat.metadata?.status ?? "available";
 		const seatId = getSeatId(seat)
-		const isReserved = reservationMap.reservations.some((r) => (r.seatId === seatId));
+		const isReserved = reservedIds.has(seatId);
 
 		if (!isZoneSeat || status === "unavailable" || isReserved) return;
 
@@ -193,7 +193,7 @@
 					{@const isSelected = selectedSeatIds.includes(obj.id)}
 					{@const status = obj.metadata.status ?? 'available'}
 					{@const seatId = getSeatId(obj)}
-					{@const isReserved = reservationMap.reservations.some((r) => (r.seatId === seatId))}
+					{@const isReserved = reservedIds.has(seatId)}
 
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'

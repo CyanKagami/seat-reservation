@@ -44,150 +44,177 @@
     }
 </script>
 
-<div class="event-card">
-    <h1 class="mb-4 text-4xl font-bold">รายละเอียดกิจกรรม</h1>
+<div class="page-layout">
+    <div class="event-card">
+        <h1 class="mb-4 text-4xl font-bold">รายละเอียดกิจกรรม</h1>
 
-    <div class="event-layout">
-        <!-- ซ้าย: ข้อมูลกิจกรรม (แสดงอย่างเดียว) -->
-        <div class="flex min-w-0 flex-col gap-5">
-            <div class="cover">
-                {#if event.picture}
-                    <img
-                        src={event.picture}
-                        alt={event.name}
-                        class="h-full w-full object-cover"
-                    />
-                {/if}
-            </div>
+        <div class="event-layout">
+            <!-- ซ้าย: ข้อมูลกิจกรรม (แสดงอย่างเดียว) -->
+            <div class="flex min-w-0 flex-col gap-5">
+                <div class="cover">
+                    {#if event.picture}
+                        <img
+                            src={event.picture}
+                            alt={event.name}
+                            class="h-full w-full object-cover"
+                        />
+                    {/if}
+                </div>
 
-            <div class="flex flex-col gap-2">
-                <h2 class="text-3xl font-bold wrap-break-word">{event.name}</h2>
-                <p>
-                    <span class="font-bold">สถานที่จัดกิจกรรม:</span>
-                    {place ? `${place.name} (${place.location.name})` : "-"}
-                </p>
-                <p>
-                    <span class="font-bold">ผู้จัดกิจกรรม:</span>
-                    {event.host}
-                </p>
-            </div>
+                <div class="flex flex-col gap-2">
+                    <h2 class="text-3xl font-bold wrap-break-word">
+                        {event.name}
+                    </h2>
+                    <p>
+                        <span class="font-bold">สถานที่จัดกิจกรรม:</span>
+                        {place ? `${place.name} (${place.location.name})` : "-"}
+                    </p>
+                    <p>
+                        <span class="font-bold">ผู้จัดกิจกรรม:</span>
+                        {event.host}
+                    </p>
+                </div>
 
-            <section>
-                <h3 class="mb-1 font-bold">คำอธิบาย</h3>
-                <p class="whitespace-pre-line break-words text-sm">{event.detail || "-"}</p>
-            </section>
+                <section>
+                    <h3 class="mb-1 font-bold">คำอธิบาย</h3>
+                    <p class="whitespace-pre-line break-words text-sm">
+                        {event.detail || "-"}
+                    </p>
+                </section>
 
-            <section>
-                <h3 class="mb-1 font-bold">เงื่อนไขการเข้าร่วมกิจกรรม</h3>
-                <p class="text-sm break-words">{event.condition || "ไม่มี"}</p>
-            </section>
+                <section>
+                    <h3 class="mb-1 font-bold">เงื่อนไขการเข้าร่วมกิจกรรม</h3>
+                    <p class="text-sm break-words">
+                        {event.condition || "ไม่มี"}
+                    </p>
+                </section>
 
-            <section>
-                <h3 class="mb-1 font-bold">เวลาเปิดลงทะเบียน</h3>
-                <p class="text-sm text-red-500">
-                    {fmtRange(event["register-date"])}
-                </p>
-            </section>
+                <section>
+                    <h3 class="mb-1 font-bold">เวลาเปิดลงทะเบียน</h3>
+                    <p class="text-sm text-red-500">
+                        {fmtRange(event["register-date"])}
+                    </p>
+                </section>
 
-            <section>
-                <h3 class="mb-1 font-bold">ช่วงเวลาจัดกิจกรรม</h3>
-                <p class="text-sm text-red-500">{fmtRange(event.date)}</p>
-            </section>
+                <section>
+                    <h3 class="mb-1 font-bold">ช่วงเวลาจัดกิจกรรม</h3>
+                    <p class="text-sm text-red-500">{fmtRange(event.date)}</p>
+                </section>
 
-            <section class="flex flex-col gap-4">
-                <h3 class="font-bold">ตารางกิจกรรม</h3>
-                {#each timetable as day}
-                    <div class="flex flex-col gap-2">
-                        <p class="text-sm font-bold">{fmtDay(day.date)}</p>
-                        <div class="table-box">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-gray-200">
-                                        <th class="p-2 font-bold"
-                                            >เริ่มกิจกรรม</th
-                                        >
-                                        <th class="p-2 font-bold"
-                                            >สิ้นสุดกิจกรรม</th
-                                        >
-                                        <th class="p-2 font-bold">กิจกรรม</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {#each day.activity as act, ai}
-                                        <tr
-                                            class="text-center {ai % 2 === 0
-                                                ? 'bg-gray-100'
-                                                : ''}"
-                                        >
-                                            <td class="p-2">{act.start}</td>
-                                            <td class="p-2">{act.end}</td>
-                                            <td class="p-2">{act.activity}</td>
+                <section class="flex flex-col gap-4">
+                    <h3 class="font-bold">ตารางกิจกรรม</h3>
+                    {#each timetable as day}
+                        <div class="flex flex-col gap-2">
+                            <p class="text-sm font-bold">{fmtDay(day.date)}</p>
+                            <div class="table-box">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-200">
+                                            <th class="p-2 font-bold"
+                                                >เริ่มกิจกรรม</th
+                                            >
+                                            <th class="p-2 font-bold"
+                                                >สิ้นสุดกิจกรรม</th
+                                            >
+                                            <th class="p-2 font-bold"
+                                                >กิจกรรม</th
+                                            >
                                         </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {#each day.activity as act, ai}
+                                            <tr
+                                                class="text-center {ai % 2 === 0
+                                                    ? 'bg-gray-100'
+                                                    : ''}"
+                                            >
+                                                <td class="p-2">{act.start}</td>
+                                                <td class="p-2">{act.end}</td>
+                                                <td class="p-2"
+                                                    >{act.activity}</td
+                                                >
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                {:else}
-                    <p class="text-sm text-gray-500">ยังไม่มีตารางกิจกรรม</p>
-                {/each}
-            </section>
+                    {:else}
+                        <p class="text-sm text-gray-500">
+                            ยังไม่มีตารางกิจกรรม
+                        </p>
+                    {/each}
+                </section>
 
-            <section>
-                <h3 class="mb-1 font-bold">แผนผังที่นั่ง</h3>
-                <!-- TODO: ต้องรู้โครงสร้างข้อมูลที่นั่งของ place ก่อนถึงจะวาดได้ -->
-                <p class="text-sm text-gray-500">
-                    ยังไม่ได้เชื่อมข้อมูลที่นั่ง
-                </p>
-            </section>
+                <section>
+                    <h3 class="mb-1 font-bold">แผนผังที่นั่ง</h3>
+                    <!-- TODO: ต้องรู้โครงสร้างข้อมูลที่นั่งของ place ก่อนถึงจะวาดได้ -->
+                    <p class="text-sm text-gray-500">
+                        ยังไม่ได้เชื่อมข้อมูลที่นั่ง
+                    </p>
+                </section>
+            </div>
         </div>
     </div>
-</div>
 
+    <!-- ขวา: ดำเนินการ -->
+    <aside class="event-card action-card flex flex-col gap-3">
+        <h3 class="font-bold">ดำเนินการ</h3>
+        <!-- แก้ไข: พาไปหน้า update-event -->
+        <a
+            href={editHref}
+            class="rounded border border-gray-400 bg-white py-1.5 text-center hover:cursor-pointer"
+        >
+            เผยแพร่
+        </a>
 
+        <a
+            href={editHref}
+            class="rounded border border-gray-400 bg-white py-1.5 text-center hover:cursor-pointer"
+        >
+            แก้ไข
+        </a>
 
-<div class="event-card">
-        <!-- ขวา: ดำเนินการ -->
-        <aside class="flex flex-col gap-3">
-            <h3 class="font-bold">ดำเนินการ</h3>
-            <!-- แก้ไข: พาไปหน้า update-event -->
-            <a
-                href={editHref}
-                class="rounded border border-gray-400 bg-white py-1.5 text-center hover:cursor-pointer"
-            >
-                แก้ไข
-            </a>
-            <!-- ยังไม่ทำอะไร -->
-            <button
-                type="button"
-                class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
-            >
-                Statistic
-            </button>
-            <button
-                type="button"
-                class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
-            >
-                Check in
-            </button>
-        </aside>
+        <button
+            type="button"
+            class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
+        >
+            ลบ
+        </button>
+        <!-- ยังไม่ทำอะไร -->
+        <button
+            type="button"
+            class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
+        >
+            Statistic
+        </button>
+
+        <button
+            type="button"
+            class="bg-green px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-green-hover transition-colors duration-200"
+        >
+            Check in
+        </button>
+    </aside>
 </div>
 
 <style>
-    .event-card {
+    .page-layout {
         width: min(72rem, 92vw);
-        margin: 1.25rem auto;
-        align-self: center;
+        margin: calc(var(--nav-h, 4rem) + 3.25rem) auto 1.25rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 18rem;
+        gap: 1.5rem;
+        align-items: start;
+    }
+    .event-card {
         padding: 2rem;
         border-radius: 1rem;
         background: #f3f4f6;
     }
-
-    .event-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 20rem;
-        gap: 2rem;
-        align-items: start;
+    .action-card {
+        position: sticky;
+        top: calc(var(--nav-h, 4rem) + 3.25rem);
     }
     .cover {
         position: relative;

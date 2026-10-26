@@ -1,5 +1,6 @@
 <script lang="ts">
   import { apiFetch } from "$lib/scripts/api";
+  import { alertModal } from "$lib/store/alert.svelte";
   import type { User } from "$lib/type/user";
   import { onMount } from "svelte";
     let users:User[] = $state([])
@@ -46,15 +47,18 @@
     }
 
     async function saveRole(index:number) {
-        await apiFetch(`/user/editRole?googleId=${encodeURIComponent(users[index].googleId)}&email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
+        await apiFetch(`/user/editRole?email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
             method: 'POST',
         })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.statusCode === 200) {
-                users[index].role = editing.role;
-            } else {
-                alert("Failed to update role: " + data.body.error);
+        .then(async (res) => {
+            if (res.status === 200){
+                let result = await res.json();
+                users[index].role = result.body.updatedUser.role;
+                alertModal.success('สำเร็จ', `เปลี่ยนบทบาทของผู้ใช้ ${result.body.updatedUser.name} เป็น ${result.body.updatedUser.role} สำเร็จ`)
+            }
+            else {
+                let result = await res.json();
+                alertModal.failure('แก้ไขบทบาทล้มเหลว', `เปลี่ยนบทบาทของผู้ใช้ ${result.body.updatedUser.name} ไม่สำเร็จ\n เหตุผล: ${result.error.message}`)
             }
         })
         editing = {index: -1, role: ''}; // Reset editing state when changing pages

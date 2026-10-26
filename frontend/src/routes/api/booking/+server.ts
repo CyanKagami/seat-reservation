@@ -9,7 +9,8 @@ import {
   isValidSeatId,
   listReservations,
   readSeatRequest,
-  reserveSeat
+  reserveSeat,
+  withSeatParts
 } from '$lib/scripts/server/reservation';
 import type { Event } from '$lib/type/event';
 
@@ -25,7 +26,7 @@ function registrationOpen(ev: Event, now = new Date()) {
 }
 
 // GET /api/booking?eventId=...  - seat map data for one event (reserved seats only).
-// Everyone gets { seatId, mine }; admin/organizer also get the full record
+// Everyone gets { seatId, zone, seat, mine }; admin/organizer also get the full record
 // (status, googleId, reservedAt) plus the booker's name and email.
 export const GET: RequestHandler = async (event) => {
   const user = await guard(event);
@@ -37,13 +38,18 @@ export const GET: RequestHandler = async (event) => {
   try {
     const all = await listReservations(eventId);
     const privileged = user.role === 'admin' || user.role === 'organizer';
-    const people = privileged ? await fetchUserSummaries(all.map((r) => r.googleId)) : null;
+    const people = privileged ? await fetchUserSummaries(all.map((r) => r.email ?? r.googleId ?? '')) : null;
 
     const reservations = all.map((r) => {
-      const mine = r.googleId === user.googleId;
-      return people ? { ...r, mine, user: people.get(r.googleId) ?? null } : { seatId: r.seatId, mine };
+      const bookerId = r.email ?? r.googleId ?? '';
+      const mine = (r.email && r.email === user.email) || (r.googleId && r.googleId === user.googleId);
+      return withSeatParts(
+        people ? { ...r, mine, user: people.get(bookerId) ?? null } : { seatId: r.seatId, mine }
+      );
     });
-    const myReservation = all.find((r) => r.googleId === user.googleId) ?? null;
+
+    const found = all.find((r) => (r.email && r.email === user.email) || (r.googleId && r.googleId === user.googleId));
+    const myReservation = found ? withSeatParts(found) : null;
 
     return json({ body: { reservations, myReservation } });
   } catch (error) {
@@ -51,7 +57,7 @@ export const GET: RequestHandler = async (event) => {
   }
 };
 
-// POST /api/booking  { eventId, seatId } - reserve a seat
+// POST /api/booking  { eventId, seatId }  (seatId = "<zone>-<seat>") - reserve a seat
 export const POST: RequestHandler = async (event) => {
   const user = await guard(event);
   if (user instanceof Response) return user;
@@ -61,14 +67,14 @@ export const POST: RequestHandler = async (event) => {
 
   try {
     const ev = (await fetchData('events', { eventId: input.eventId })) as Event | null;
-    if (!ev) return json({ error: 'Event not found' }, { status: 404 });
+    if (!ev) return json({ error: 'ไม่พบกิจกรรม' }, { status: 404 });
 
     if (!registrationOpen(ev)) {
-      return json({ error: 'Registration is not open for this event' }, { status: 403 });
+      return json({ error: 'กิจกรรมนี้ไม่ถูกเปิดให้จองในช่วงเวลานี้' }, { status: 403 });
     }
 
     const reservation = await reserveSeat(input.eventId, input.seatId, user);
-    return json({ body: { message: 'Seat reserved', reservation } }, { status: 201 });
+    return json({ body: { message: 'Seat reserved', reservation: withSeatParts(reservation) } }, { status: 201 });
   } catch (error) {
     return bookingErrorResponse(error);
   }
