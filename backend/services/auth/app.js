@@ -1,4 +1,4 @@
-// services/auth/app.js
+﻿// services/auth/app.js
 import express from 'express';
 import cors from 'cors';
 import { OAuth2Client } from 'google-auth-library';
@@ -17,7 +17,6 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
   .filter(Boolean);
 
 function getBaseUrl(req) {
-  // optional override, e.g. for local testing
   if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
   const proto = req.headers['x-forwarded-proto'] || 'https';
   return `${proto}://${req.headers.host}`;
@@ -67,9 +66,9 @@ router.get('/google/callback', async (req, res) => {
     if (!payload || !payload.email_verified) {
       return res.redirect(`${frontendUrl}/login?error=unverified_email`);
     }
-    console.log('OAuth Callback Payload:', payload);
-    console.log('LocalStack URL:', process.env.AWS_LOCALSTACK_URL);
-    let user = await fetchUser(payload.sub);
+
+    // Look up by email — the users table hash key.
+    let user = await fetchUser(payload.email);
 
     if (!user) {
       user = {
@@ -94,9 +93,7 @@ router.get('/google/callback', async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    // Token goes in the URL fragment (#), not a query param or cookie:
-    // fragments never reach the server/logs and work fine cross-origin
-    // against an S3-hosted static frontend.
+    // Token goes in the URL fragment (#) — never reaches server/logs.
     return res.redirect(`${frontendUrl}/auth/callback#token=${signedToken}`);
   } catch (err) {
     console.error('OAuth Callback Error:', err);
@@ -104,9 +101,7 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// GET /api/auth/me — client calls this to check/bootstrap the current session.
-// This route is public at the gateway level (no Lambda authorizer on /api/auth/*),
-// so it verifies the JWT itself.
+// GET /api/auth/me — verify JWT and return user info.
 router.get('/me', (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/i, '');
@@ -123,8 +118,7 @@ router.get('/me', (req, res) => {
   }
 });
 
-// POST /api/auth/logout — JWTs are stateless, so this is purely a client-side
-// no-op endpoint for symmetry; the actual logout is deleting the token client-side.
+// POST /api/auth/logout — stateless; client deletes the token.
 router.post('/logout', (req, res) => {
   res.status(200).json({ body: { message: 'Logged out successfully' } });
 });

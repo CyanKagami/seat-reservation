@@ -1,4 +1,4 @@
-// layers/shared/nodejs/node_modules/shared-lib/dynamo.js
+﻿// layers/shared/dynamo.js
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
@@ -6,7 +6,9 @@ import {
   ScanCommand,
   paginateScan,
   UpdateCommand,
-  GetCommand
+  GetCommand,
+  DeleteCommand,
+  BatchGetCommand
 } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -20,7 +22,7 @@ const client = new DynamoDBClient({
     credentials: { accessKeyId: 'test', secretAccessKey: 'test' }
   })
 });
-const docClient = DynamoDBDocumentClient.from(client);
+export const docClient = DynamoDBDocumentClient.from(client);
 
 function removeInvalidXmlCharacters(str) {
   if (typeof str !== 'string') return '';
@@ -50,7 +52,6 @@ export async function createMyTable() {
     ],
     BillingMode: 'PAY_PER_REQUEST'
   });
-
   try {
     const response = await client.send(command);
     console.log('Table creation initiated successfully:', response.TableDescription.TableStatus);
@@ -58,11 +59,6 @@ export async function createMyTable() {
     console.error('Error creating table:', error);
   }
 }
-
-// NOTE: fixed — original recursive retry on collision didn't return/await the
-// retry's result up the original call stack in one of the three variants below
-// consistently; all three now `return` the retry so callers awaiting this
-// actually get the eventual outcome instead of undefined.
 
 export async function addData(tableName, item, _attempt = 0) {
   if (_attempt > 5) throw new Error('Too many ID collisions, aborting');
@@ -73,45 +69,32 @@ export async function addData(tableName, item, _attempt = 0) {
     Item: { eventId: uniqueId, ...updatedObj },
     ConditionExpression: 'attribute_not_exists(eventId)'
   };
-
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
+    await docClient.send(new PutCommand(params));
     return uniqueId;
   } catch (error) {
-    if (error.name === 'ConditionalCheckFailedException') {
-      console.warn('Collision detected! Retrying with a new ID...');
-      return addData(tableName, item, _attempt + 1);
-    }
-    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
+    if (error.name === 'ConditionalCheckFailedException') return addData(tableName, item, _attempt + 1);
     throw error;
   }
 }
 
-export async function addDataUniqueId(tableName, item, primaryKey, _attempt = 0) {
+// extraFieldsFn(id) => { field: value } merged into item before write.
+export async function addDataUniqueId(tableName, item, primaryKey, extraFieldsFn, _attempt = 0) {
   if (_attempt > 5) throw new Error('Too many ID collisions, aborting');
   const uniqueId = uuidv4();
   const updatedObj = sanitize(item);
-  const newItem = { ...updatedObj, [primaryKey]: uniqueId };
-
+  const extra = typeof extraFieldsFn === 'function' ? (extraFieldsFn(uniqueId) ?? {}) : {};
+  const newItem = { ...updatedObj, ...extra, [primaryKey]: uniqueId };
   const params = {
     TableName: tableName,
     Item: newItem,
     ConditionExpression: `attribute_not_exists(${primaryKey})`
   };
-
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
+    await docClient.send(new PutCommand(params));
     return uniqueId;
   } catch (error) {
-    if (error.name === 'ConditionalCheckFailedException') {
-      console.warn('Collision detected! Retrying with a new ID...');
-      return addDataUniqueId(tableName, item, primaryKey, _attempt + 1);
-    }
-    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
+    if (error.name === 'ConditionalCheckFailedException') return addDataUniqueId(tableName, item, primaryKey, extraFieldsFn, _attempt + 1);
     throw error;
   }
 }
@@ -123,23 +106,18 @@ export async function addDataIfNotExists(tableName, item, primaryKey) {
     Item: { ...updatedObj },
     ConditionExpression: `attribute_not_exists(${primaryKey})`
   };
-
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
-    return 0; // added
+    await docClient.send(new PutCommand(params));
+    return 0;
   } catch (error) {
-    if (error.name === 'ConditionalCheckFailedException') return 1; // already exists
-    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
-    return -1; // error
+    if (error.name === 'ConditionalCheckFailedException') return 1;
+    return -1;
   }
 }
 
 export async function fetchAllData(tableName) {
   const allItems = [];
   let lastEvaluatedKey;
-
   try {
     do {
       const params = { TableName: tableName, ExclusiveStartKey: lastEvaluatedKey };
@@ -147,7 +125,6 @@ export async function fetchAllData(tableName) {
       if (response.Items) allItems.push(...response.Items);
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
-
     return allItems;
   } catch (error) {
     console.error('Error scanning DynamoDB table:', error);
@@ -155,14 +132,13 @@ export async function fetchAllData(tableName) {
   }
 }
 
-export async function fetchEventFromHost(googleId) {
+export async function fetchEventFromHost(creatorId) {
   const paginatorConfig = { client: docClient, pageSize: 25 };
   const scanParams = {
     TableName: 'events',
-    FilterExpression: 'creatorId = :googleId',
-    ExpressionAttributeValues: { ':googleId': googleId }
+    FilterExpression: 'creatorId = :creatorId',
+    ExpressionAttributeValues: { ':creatorId': creatorId }
   };
-
   const allItems = [];
   for await (const page of paginateScan(paginatorConfig, scanParams)) {
     if (page.Items) allItems.push(...page.Items);
@@ -177,7 +153,6 @@ export async function fetchEventFromEventId(eventId) {
     FilterExpression: 'eventId = :eventId',
     ExpressionAttributeValues: { ':eventId': eventId }
   };
-
   const allItems = [];
   for await (const page of paginateScan(paginatorConfig, scanParams)) {
     if (page.Items) allItems.push(...page.Items);
@@ -190,7 +165,6 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
   const expressionAttributeNames = {};
   const expressionAttributeValues = {};
   const primaryKeyNames = Object.keys(primaryKey);
-
   let count = 0;
   for (const [key, value] of Object.entries(attributesToUpdate)) {
     if (primaryKeyNames.includes(key)) continue;
@@ -201,9 +175,7 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
     expressionAttributeNames[namePlaceholder] = key;
     expressionAttributeValues[valuePlaceholder] = value;
   }
-
   if (updateParts.length === 0) return;
-
   const params = {
     TableName: tableName,
     Key: primaryKey,
@@ -212,7 +184,6 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
     ExpressionAttributeValues: expressionAttributeValues,
     ReturnValues: 'ALL_NEW'
   };
-
   try {
     const response = await docClient.send(new UpdateCommand(params));
     return response.Attributes;
@@ -222,34 +193,27 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
   }
 }
 
-// NOTE: fixed — addUser had a ConditionalCheckFailedException branch but no
-// ConditionExpression in its PutCommand, so that branch could never fire and
-// a re-login would silently overwrite the existing user record (wiping role
-// changes, etc). Added attribute_not_exists so an existing user is never
-// clobbered by this function; use updateAllAttributes to intentionally update one.
+// addUser — email is the hash key.
 export async function addUser(user) {
   const params = {
     TableName: 'users',
     Item: user,
-    ConditionExpression: 'attribute_not_exists(googleId)'
+    ConditionExpression: 'attribute_not_exists(email)'
   };
-
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
+    await docClient.send(new PutCommand(params));
   } catch (error) {
     if (error.name === 'ConditionalCheckFailedException') {
       console.warn('User already exists, not overwriting.');
       return;
     }
-    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
     throw error;
   }
 }
 
-export async function fetchUser(googleId) {
-  const params = { TableName: 'users', Key: { googleId } };
+// fetchUser — looks up by email (the hash key).
+export async function fetchUser(email) {
+  const params = { TableName: 'users', Key: { email } };
   try {
     const response = await docClient.send(new GetCommand(params));
     return response.Item ?? null;
@@ -270,6 +234,32 @@ export async function fetchData(tablename, key) {
   }
 }
 
+export async function deleteItem(tableName, key) {
+  const params = { TableName: tableName, Key: key };
+  try {
+    await docClient.send(new DeleteCommand(params));
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    throw error;
+  }
+}
+
+// batchGet — retries unprocessed keys, 100 per call max.
+export async function batchGet(tableName, keys, projectionOptions = {}) {
+  const items = [];
+  for (let i = 0; i < keys.length; i += 100) {
+    let pending = keys.slice(i, i + 100);
+    for (let attempt = 0; pending && pending.length > 0 && attempt < 3; attempt++) {
+      const res = await docClient.send(
+        new BatchGetCommand({ RequestItems: { [tableName]: { Keys: pending, ...projectionOptions } } })
+      );
+      items.push(...(res.Responses?.[tableName] ?? []));
+      pending = res.UnprocessedKeys?.[tableName]?.Keys;
+    }
+  }
+  return items;
+}
+
 export async function paginateReadData(tableName, limit, nextToken) {
   try {
     const params = {
@@ -279,9 +269,7 @@ export async function paginateReadData(tableName, limit, nextToken) {
         ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'))
         : undefined
     };
-
     const data = await docClient.send(new ScanCommand(params));
-
     let newNextToken = null;
     if (data.LastEvaluatedKey) {
       newNextToken = Buffer.from(JSON.stringify(data.LastEvaluatedKey)).toString('base64');

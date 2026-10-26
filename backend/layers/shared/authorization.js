@@ -1,10 +1,11 @@
-// layers/shared/auth.js
+﻿// layers/shared/authorization.js
 import jwt from 'jsonwebtoken';
 import { fetchUser } from './dynamo.js';
 
+// verifyAccess — live DB check using email as the users hash key.
 export async function verifyAccess(user, intendedRoles) {
-  const { googleId } = user;
-  const fetchedUser = await fetchUser(googleId);
+  const { email } = user;
+  const fetchedUser = await fetchUser(email);
   if (!fetchedUser) return false;
   return intendedRoles.includes(fetchedUser.role);
 }
@@ -22,11 +23,7 @@ export function extractBearerToken(headers) {
   return authHeader.replace(/^Bearer\s+/i, '');
 }
 
-// --- New: Express middleware for reading authorizer context + role gating ---
-
-// Identity + role were already verified by the Lambda authorizer before this
-// handler ran — this just reads what the authorizer already put on the request,
-// it does not re-verify the token.
+// getUser — reads authorizer context set by the Lambda authorizer.
 export function getUser(req) {
   const ctx = req.requestContext?.authorizer?.lambda ?? {};
   return {
@@ -50,7 +47,7 @@ export function requireRole(...allowedRoles) {
 
 export function requireAuth(req, res, next) {
   const user = getUser(req);
-  if (!user.googleId) {
+  if (!user.email) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   req.user = user;

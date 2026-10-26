@@ -60,10 +60,10 @@ Resources:
     Properties:
       TableName: users
       AttributeDefinitions:
-        - AttributeName: googleId
+        - AttributeName: email
           AttributeType: S
       KeySchema:
-        - AttributeName: googleId
+        - AttributeName: email
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
@@ -254,6 +254,7 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
+          S3_BUCKET: !Ref KSeatS3Bucket
 
   CoreApiServiceFunction:
     Type: AWS::Serverless::Function
