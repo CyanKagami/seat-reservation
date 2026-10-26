@@ -6,7 +6,15 @@ export const handler = async (event) => {
 
   try {
     const user = verifyToken(token);
-    return { isAuthorized: true, context: { email: user.email, role: user.role, googleId: user.googleId, name: user.name } };
+    return {
+      isAuthorized: true,
+      context: {
+        email: user.email || '',
+        role: user.role || '',
+        googleId: user.googleId || '',
+        name: user.name || ''
+      }
+    };
   } catch {
     return { isAuthorized: false };
   }

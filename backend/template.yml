@@ -236,6 +236,20 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Events:
+        BookingApiBaseRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/booking
+            Method: ANY
+        BookingApiBasePreflight:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/booking
+            Method: OPTIONS
+            Auth:
+              Authorizer: NONE
         BookingApiRoute:
           Type: HttpApi
           Properties:
@@ -254,6 +268,7 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
           S3_BUCKET: !Ref KSeatS3Bucket
 
   CoreApiServiceFunction:

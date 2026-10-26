@@ -1,4 +1,4 @@
-﻿// services/core/routers/userRouter.js
+// services/core/routers/userRouter.js
 import { Router } from 'express';
 import {
   paginateReadData,
@@ -45,7 +45,7 @@ router.post('/editRole', requireAuth, async (req, res) => {
 
   try {
     const newAttributes = await updateAllAttributes('users', { email }, { role });
-    return res.status(200).json({ body: { message: 'User role updated successfully', newAttributes } });
+    return res.status(200).json({ body: { message: 'User role updated successfully', updatedUser: newAttributes, newAttributes } });
   } catch (error) {
     console.error('Error updating role:', error);
     return res.status(500).json({ error: 'Internal server error' });

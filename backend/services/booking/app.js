@@ -1,4 +1,4 @@
-﻿// services/booking/app.js
+// services/booking/app.js
 import express from 'express';
 import cors from 'cors';
 import { decode } from '@msgpack/msgpack';
@@ -30,7 +30,8 @@ import {
 } from '/opt/nodejs/index.js';
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN, credentials: true }));
+const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: frontendOrigin, credentials: true }));
 app.use(express.json());
 
 // All booking routes require authentication.
@@ -105,8 +106,10 @@ function getZoneMetaData(objects, takenId) {
         const zId = obj.metadata.zone;
         if (!groups[zId]) groups[zId] = { id: zId, name: obj.metadata.zone ?? 'โซนทั่วไป', capacity: 0, takenCount: 0 };
         groups[zId].capacity += 1;
-        // Derive seatId the same way as zone-editor: zone-seat
-        const seatLabel = obj.metadata?.label ?? obj.metadata?.seatId ?? '';
+        // Derive seatId the same way as zone-editor: zone-seat (row + seatNo)
+        const seatLabel = (obj.metadata?.row && obj.metadata?.seatNo)
+          ? `${obj.metadata.row}${obj.metadata.seatNo}`
+          : (obj.metadata?.label || obj.id?.replace('seat_', '') || '');
         if (takenId.has(`${obj.metadata.zone}-${seatLabel}`)) groups[zId].takenCount += 1;
       } else {
         const noZoneId = 'zone-no-zone';

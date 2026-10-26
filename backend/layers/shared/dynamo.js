@@ -1,4 +1,4 @@
-﻿// layers/shared/dynamo.js
+// layers/shared/dynamo.js
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
@@ -22,7 +22,11 @@ const client = new DynamoDBClient({
     credentials: { accessKeyId: 'test', secretAccessKey: 'test' }
   })
 });
-export const docClient = DynamoDBDocumentClient.from(client);
+export const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true
+  }
+});
 
 function removeInvalidXmlCharacters(str) {
   if (typeof str !== 'string') return '';
@@ -167,7 +171,7 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
   const primaryKeyNames = Object.keys(primaryKey);
   let count = 0;
   for (const [key, value] of Object.entries(attributesToUpdate)) {
-    if (primaryKeyNames.includes(key)) continue;
+    if (primaryKeyNames.includes(key) || value === undefined) continue;
     const namePlaceholder = `#attr_${count}`;
     const valuePlaceholder = `:val_${count}`;
     count++;

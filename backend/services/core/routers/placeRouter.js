@@ -1,10 +1,10 @@
-﻿// services/core/routers/placeRouter.js
+// services/core/routers/placeRouter.js
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
-import { encode } from '@msgpack/msgpack';
+import { decode, encode } from '@msgpack/msgpack';
 import {
   addFile,
   readFileAsByteArray,
@@ -27,16 +27,32 @@ async function convertToWebp(buffer, quality = 80) {
   return sharp(buffer).webp({ quality }).toBuffer();
 }
 
-async function formatData(data, creator) {
-  const location = await fetchData('locations', { locationId: data.location });
+function isValidDataUrl(str) {
+  return typeof str === 'string' && /^data:(.+?);base64,(.+)$/.test(str);
+}
+
+function parseDataUrl(dataUrl) {
+  const matches = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+  if (!matches) throw new Error('Invalid Data URL format');
   return {
-    placeId: data.placeId,
-    creatorId: creator.email,
-    creatorName: creator.name,
-    description: data.description,
-    name: data.name,
-    location
+    mimeType: matches[1],
+    buffer: Buffer.from(matches[2], 'base64')
   };
+}
+
+async function formatData(data, creator) {
+  const result = {};
+  if (data.placeId) result.placeId = data.placeId;
+  if (creator) {
+    if (creator.email) result.creatorId = creator.email;
+    if (creator.name) result.creatorName = creator.name;
+  }
+  if (data.description !== undefined) result.description = data.description;
+  if (data.name !== undefined) result.name = data.name;
+  if (data.location) {
+    result.location = await fetchData('locations', { locationId: data.location });
+  }
+  return result;
 }
 
 // --- /layout routes registered BEFORE /:placeId ---
@@ -44,8 +60,14 @@ async function formatData(data, creator) {
 // GET /layout?placeId= — fetch the seat layout file
 router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
   const { placeId } = req.query;
+  if (!placeId) return res.status(400).send();
   try {
-    const fileContent = await readFileAsByteArray(`layouts/place/${placeId}/layout.msgpack`);
+    let fileContent;
+    try {
+      fileContent = await readFileAsByteArray(`layouts/place/${placeId}/layout.msgpack`);
+    } catch {
+      fileContent = await readFileAsByteArray(`layouts/place/${placeId}.msgpack`);
+    }
     res.set({
       'Content-Type': 'application/msgpack',
       'Content-Length': fileContent.byteLength.toString(),
@@ -58,11 +80,43 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
   }
 });
 
-// PUT /layout — replace the seat layout file
+// PUT /layout — replace the seat layout file (extracts any data URL images in seatTypes)
 router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (req, res) => {
   const { placeId } = req.body;
+  if (!placeId || !req.file) {
+    return res.status(400).json({ error: 'Missing placeId or layoutFile' });
+  }
   try {
-    const layoutURL = await addFile(`layouts/place/${placeId}`, 'layout.msgpack', req.file.buffer);
+    let layoutBuffer = req.file.buffer;
+    try {
+      const seatmap = decode(layoutBuffer);
+      if (seatmap && seatmap.seatTypes) {
+        const seatTypes = Object.values(seatmap.seatTypes);
+        const keepKeys = new Set(
+          seatTypes
+            .filter((v) => v.picture && !isValidDataUrl(v.picture))
+            .map((v) => `layouts/place/${placeId}/${v.name}.webp`)
+        );
+        await deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys).catch(() => {});
+
+        for (const value of seatTypes) {
+          if (!value.picture || !isValidDataUrl(value.picture)) continue;
+          try {
+            const parsed = parseDataUrl(value.picture);
+            const convertedImg = await convertToWebp(parsed.buffer, 80);
+            const imgURL = await addFile(`layouts/place/${placeId}`, `${value.name}.webp`, convertedImg);
+            seatmap.seatTypes[value.name].picture = imgURL;
+          } catch (err) {
+            console.error('Error converting seatType image:', err);
+          }
+        }
+        layoutBuffer = Buffer.from(encode(seatmap));
+      }
+    } catch (decodeErr) {
+      console.warn('Layout is not valid msgpack with seatTypes, uploading as raw buffer:', decodeErr);
+    }
+
+    const layoutURL = await addFile(`layouts/place/${placeId}`, 'layout.msgpack', layoutBuffer);
     await updateAllAttributes('places', { placeId }, { layoutURL });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {

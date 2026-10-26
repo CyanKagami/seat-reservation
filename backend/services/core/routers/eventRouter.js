@@ -1,4 +1,4 @@
-﻿// services/core/routers/eventRouter.js
+// services/core/routers/eventRouter.js
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -22,20 +22,37 @@ import {
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-async function formatData(data) {
-  const event = { date: {}, 'register-date': {} };
+async function formatData(data, creatorId) {
+  const event = {};
 
-  event.date.start = data.start;
-  event.date.end = data.end;
-  event['register-date'].start = data['register-date-start'];
-  event['register-date'].end = data['register-date-end'];
-  event.host = data.host;
-  event.name = data.name;
-  event.creatorId = data.creatorId;
-  event.place = await fetchData('places', { placeId: data.place });
-  event.detail = data.detail;
-  if (data.timetable) event.timetable = JSON.parse(data.timetable);
-  event.condition = data.condition;
+  if (data.start || data.end) {
+    event.date = {};
+    if (data.start) event.date.start = data.start;
+    if (data.end) event.date.end = data.end;
+  }
+  if (data['register-date-start'] || data['register-date-end']) {
+    event['register-date'] = {};
+    if (data['register-date-start']) event['register-date'].start = data['register-date-start'];
+    if (data['register-date-end']) event['register-date'].end = data['register-date-end'];
+  }
+  if (data.host !== undefined) event.host = data.host;
+  if (data.name !== undefined) event.name = data.name;
+  if (creatorId) event.creatorId = creatorId;
+  else if (data.creatorId) event.creatorId = data.creatorId;
+
+  if (data.place) {
+    const placeId = typeof data.place === 'object' ? data.place.placeId : data.place;
+    event.place = await fetchData('places', { placeId });
+  }
+  if (data.detail !== undefined) event.detail = data.detail;
+  if (data.timetable) {
+    try {
+      event.timetable = typeof data.timetable === 'string' ? JSON.parse(data.timetable) : data.timetable;
+    } catch {
+      event.timetable = data.timetable;
+    }
+  }
+  if (data.condition !== undefined) event.condition = data.condition;
   if (data.eventId) event.eventId = data.eventId;
 
   return event;
@@ -45,7 +62,13 @@ async function getLayoutFromPlace(eventId, res) {
   const event = await fetchData('events', { eventId });
   if (!event) throw new Error('Event not found');
 
-  const fileContent = await readFileAsByteArray(`layouts/place/${event.place.placeId}/layout.msgpack`);
+  const placeId = event.place?.placeId || event.place;
+  let fileContent;
+  try {
+    fileContent = await readFileAsByteArray(`layouts/place/${placeId}/layout.msgpack`);
+  } catch {
+    fileContent = await readFileAsByteArray(`layouts/place/${placeId}.msgpack`);
+  }
   res.set({
     'Content-Type': 'application/msgpack',
     'Content-Length': fileContent.byteLength.toString(),
@@ -161,8 +184,8 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /event — create an event
 router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async (req, res) => {
   try {
-    const data = { ...req.body, creatorId: req.user.email };
-    const processData = { ...(await formatData(data)), status: 'Created' };
+    const data = { ...req.body };
+    const processData = { ...(await formatData(data, req.user.email)), status: 'Created' };
 
     const eventId = await addDataUniqueId('events', processData, 'eventId');
 

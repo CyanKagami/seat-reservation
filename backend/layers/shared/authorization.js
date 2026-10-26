@@ -1,4 +1,4 @@
-﻿// layers/shared/authorization.js
+// layers/shared/authorization.js
 import jwt from 'jsonwebtoken';
 import { fetchUser } from './dynamo.js';
 
@@ -23,14 +23,27 @@ export function extractBearerToken(headers) {
   return authHeader.replace(/^Bearer\s+/i, '');
 }
 
-// getUser — reads authorizer context set by the Lambda authorizer.
+// getUser — reads authorizer context set by the Lambda authorizer,
+// with fallback to direct Bearer token verification (for local dev/tests).
 export function getUser(req) {
-  const ctx = req.requestContext?.authorizer?.lambda ?? {};
+  let ctx = req.requestContext?.authorizer?.lambda ?? req.apiGateway?.event?.requestContext?.authorizer?.lambda;
+  if (!ctx || !ctx.email) {
+    const token = extractBearerToken(req.headers);
+    if (token) {
+      try {
+        ctx = verifyToken(token);
+      } catch (e) {
+        ctx = {};
+      }
+    } else {
+      ctx = {};
+    }
+  }
   return {
-    googleId: ctx.googleId,
-    email: ctx.email,
-    name: ctx.name,
-    role: ctx.role
+    googleId: ctx.googleId || '',
+    email: ctx.email || '',
+    name: ctx.name || '',
+    role: ctx.role || ''
   };
 }
 
