@@ -1,4 +1,6 @@
 import serverless from 'serverless-http';
 import app from './app.js';
 
-export const handler = serverless(app);
+export const handler = serverless(app, {
+  binary: ['application/msgpack', 'application/octet-stream', 'image/*']
+});
