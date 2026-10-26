@@ -198,9 +198,9 @@
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'
 						: status === 'unavailable'
-							? (isSelected ? 'fill-stone-900 stroke-stone-900 ring-2 ring-indigo-400' : 'fill-stone-700 stroke-stone-600')
+							? 'fill-stone-700 stroke-stone-600'
 							: isReserved
-								? (isSelected ? 'fill-amber-300 stroke-amber-600 ring-2 ring-indigo-400' : 'fill-amber-200 stroke-amber-500 hover:fill-amber-300')
+								? 'fill-stone-700 stroke-stone-900'
 								: (isSelected ? 'fill-indigo-500 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
 
 					<g 
@@ -230,7 +230,7 @@
 								y={centerY}
 								text-anchor="middle"
 								dominant-baseline="central"
-								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : 'fill-slate-800'}"
+								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' || isReserved ? 'fill-stone-300' : 'fill-slate-800'}"
 							>
 								{seatId}
 							</text>
