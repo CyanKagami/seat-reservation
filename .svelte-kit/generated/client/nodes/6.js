@@ -1,1 +1,0 @@
-export { default as component } from "../../../../src/routes/(client)/(staff)/my-event/create-event/+page.svelte";

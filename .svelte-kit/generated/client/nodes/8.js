@@ -1,1 +1,0 @@
-export { default as component } from "../../../../src/routes/(client)/(staff)/my-event/update-event/[eventId]/seatmap/+page.svelte";
