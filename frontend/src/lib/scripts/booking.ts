@@ -2,7 +2,7 @@
 // Thin client for /api/booking. Components call these instead of touching fetch directly.
 // apiFetch (src/lib/api.ts) prefixes PUBLIC_API_URL (which ends in /api), adds the
 // Bearer token, and redirects to /login on a 401.
-import { apiFetch } from '$lib/scripts/api';
+import { apiFetch, unwrap } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
 import type { Reservation, ReservationView, ReservationWithEvent } from '$lib/type/reservation';
 import type { SeatParts } from './seat';
@@ -32,25 +32,9 @@ export interface SeatMap {
 
 // Thrown for any non-2xx answer; `code` is one of
 // SEAT_TAKEN | ALREADY_BOOKED | NOT_FOUND | FORBIDDEN | CONFLICT (when the server sent one).
-export class ApiError extends Error {
-  status: number;
-  code?: string;
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
 
 
-// Success bodies look like { body: ... }, errors like { error, code? }.
-export async function unwrap<T>(res: Response): Promise<T> {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new ApiError(data.error ?? 'Request failed', res.status, data.code);
-  }
-  return data.body as T;
-}
+
 
 export async function getSeatMap(eventId: string, fetchFunc: typeof fetch = fetch): Promise<SeatMap> {
   return unwrap(await apiFetch(`/booking?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));

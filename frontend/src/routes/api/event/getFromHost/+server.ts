@@ -5,7 +5,7 @@ import { fetchEventFromHost } from '$lib/scripts/server/dynamo';
 
 // GET /api/event/getFromHost - events created by the logged-in user
 export const GET: RequestHandler = async (event) => {
-    const user = await guard(event);
+    const user = await guard(event, ['organizer','admin']);
     if (user instanceof Response) return user;
 
     try {

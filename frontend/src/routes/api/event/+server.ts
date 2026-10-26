@@ -1,10 +1,11 @@
 // src/routes/api/event/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { guard } from '$lib/scripts/server/guard';
-import { addFile } from '$lib/scripts/server/s3';
-import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
-import type { Event } from '$lib/type/event';
+import { addFile, deleteFile } from '$lib/scripts/server/s3';
+import { addDataUniqueId, deleteItem, fetchAllData, fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
+import { type EventStatus, type Event } from '$lib/type/event';
 import type { Place } from '$lib/type/place';
+import { v4 as uuidv4 } from "uuid";
 
 interface EventFormData {
   name: string;
@@ -19,6 +20,7 @@ interface EventFormData {
   timetable?: string;
   host: string;
   eventId?: string;
+  status:EventStatus
 }
 
 // creatorId is passed in by the server (from the verified token) on create;
@@ -49,7 +51,7 @@ export const GET: RequestHandler = async (event) => {
   if (user instanceof Response) return user;
 
   try {
-    const data = await fetchAllData('events');
+    const data = await fetchAllData('events', {status:'Published'});
     return json({ body: data });
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -67,14 +69,17 @@ export const POST: RequestHandler = async (event) => {
     let processData = {} as Event;
 
     const img = data.img;
-    if (img && img.size > 0) {
-      const buffer = Buffer.from(await img.arrayBuffer());
-      processData.picture = await addFile(`pictures/event`,`${Date.now()}-${img.name}`, buffer);
-    }
+    
     delete data.img;
 
     processData = { ...processData, ...(await formatData(data, user.email)) };
-    await addDataUniqueId('events', processData, 'eventId');
+    processData.status = "Created";
+    let eventId = await addDataUniqueId('events', processData, 'eventId');
+    if (img && img.size > 0) {
+      const buffer = Buffer.from(await img.arrayBuffer());
+      processData.picture = await addFile(`pictures/event`, eventId , buffer);
+    }
+    await updateAllAttributes('events', { eventId: eventId }, {picture: eventId});
 
     return json({ body: { message: 'OK' } });
   } catch (error) {
@@ -98,7 +103,7 @@ export const PATCH: RequestHandler = async (event) => {
     const img = data.img;
     if (img && img.size > 0) {
       const buffer = Buffer.from(await img.arrayBuffer());
-      processData.picture = await addFile(`pictures/event`,`${Date.now()}-${img.name}`, buffer);
+      processData.picture = await addFile(`pictures/event`, data.eventId, buffer);
     }
     delete data.img;
 
@@ -109,6 +114,25 @@ export const PATCH: RequestHandler = async (event) => {
     return json({ body: { message: 'OK' } });
   } catch (error) {
     console.error('Error updating event:', error);
-    return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
+    return json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+};
+
+// PATCH /api/event - update an event
+export const DELETE: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin', 'organizer']);
+  if (user instanceof Response) return user;
+
+  const eventId = event.url.searchParams.get('eventId');
+  if (!eventId) return json({ error: 'Missing eventId' }, { status: 400 });
+
+  try {
+    let eventData = await fetchData('events', {eventId}) as Event;
+    await deleteItem('events', { eventId });
+    await deleteFile('pictures/event', eventData.eventId);
+    return json({ body: { message: 'OK' } });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return json({ error: 'Internal Server Error'  }, { status: 500 });
   }
 };

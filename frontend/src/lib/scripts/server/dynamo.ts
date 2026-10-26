@@ -1,5 +1,5 @@
 import { DynamoDBClient, CreateTableCommand, GetItemCommand, type GetItemCommandInput, type QueryCommandInput } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
@@ -92,13 +92,19 @@ export async function addData(tableName:string, item:Object) {
   }
 }
 
-export async function addDataUniqueId(tableName:string, item:Object, primaryKey:string) {
+export async function addDataUniqueId(
+  tableName:string,
+  item:Object,
+  primaryKey:string,
+  insertId: (id:string) => {[key:string]:any} = () => {return {}})
+{
   const uniqueId = uuidv4();
   const updatedObj = Object.fromEntries(
     Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
   );
   let newItem = {
-      ...updatedObj
+      ...updatedObj,
+      ...insertId(uniqueId)
     }
   newItem[primaryKey] = uniqueId;
 
@@ -110,7 +116,6 @@ export async function addDataUniqueId(tableName:string, item:Object, primaryKey:
 
   try {
     const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
     return uniqueId;
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
@@ -366,16 +371,13 @@ export async function fetchData(tablename:string, key:Key) {
     // Define the exact primary key match
     Key: key,
   };
-  console.log(`Fetching table ${tablename} with params:`, params);
   try {
     const command = new GetCommand(params);
     const response = await docClient.send(command);
 
     if (response.Item) {
-      console.log('Item found:', response.Item);
       return response.Item;
     } else {
-      console.log('No item found with the specified key.');
       return null;
     }
   } catch (error) {
@@ -407,6 +409,22 @@ export async function paginateReadData(tableName:string, limit:number, nextToken
       nextToken: newNextToken,
     }
   } catch (error) {
+    throw error;
+  }
+}
+
+export async function deleteItem(tablename:string, key:Key){
+    const params = {
+    TableName: tablename,
+    // Define the exact primary key match
+    Key: key,
+  };
+  try {
+    const command = new DeleteCommand(params);
+    const response = await docClient.send(command);
+    return response;
+  } catch (error) {
+    console.error('Error deleting item:', error);
     throw error;
   }
 }

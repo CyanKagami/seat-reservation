@@ -1,13 +1,14 @@
 // /api/place/+server.ts
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { addFile } from "$lib/scripts/server/s3";
-import { addDataUniqueId, fetchAllData, fetchData, updateAllAttributes } from "$lib/scripts/server/dynamo";
+import { addFile, deleteFile, deleteObjectsWithPrefix, getObjectURL } from "$lib/scripts/server/s3";
+import { addDataUniqueId, deleteItem, fetchAllData, fetchData, updateAllAttributes } from "$lib/scripts/server/dynamo";
 import type { User } from "$lib/type/user";
 import type { Place } from "$lib/type/place";
 import path from "node:path";
 import { v4 as uuid4} from "uuid";
 import { encode } from "@msgpack/msgpack";
 import { guard } from "$lib/scripts/server/guard";
+import { convertToWebp } from "$lib/scripts/server/utils";
 
 interface PlaceFormData {
     placeId?: string;
@@ -56,27 +57,30 @@ export const POST: RequestHandler = async (event) => {
     const formData = await event.request.formData();
     const location = await fetchData('locations', { locationId: formData.get('location') as string });
     const picture = formData.get('picture') as File | null;
- 
-    let pictureURL = '';
-    if (picture && picture.size > 0) {
-      const buffer = Buffer.from(await picture.arrayBuffer());
-      pictureURL = await addFile(
-        `pictures/place`,`${Date.now()}-${uuid4()}${path.extname(picture.name)}`,
-        buffer
-      );
-    }
+
  
     const uniqueId = await addDataUniqueId(
       'places',
       {
         name: formData.get('name'),
-        picture: pictureURL,
         location,
         creatorId: user.email,
         creatorName: user.name
       },
-      'placeId'
+      'placeId',
+      (id) => {
+        if (picture && picture.size > 0) return {picture:getObjectURL('pictures/place',`${id}.webp`)}
+        return {}
+      }
     );
+
+    if (picture && picture.size > 0) {
+      const buffer = await convertToWebp(Buffer.from(await picture.arrayBuffer()));
+      await addFile(
+        `pictures/place`,`${uniqueId}.webp`,
+        buffer
+      );
+    }
  
     const initialLayout = {
       version: '1.0',
@@ -84,7 +88,7 @@ export const POST: RequestHandler = async (event) => {
       canvas: { gridWidth: 80, gridHeight: 80 },
       objects: []
     };
-    await addFile(`layouts/place/`,`${uniqueId}.msgpack`, Buffer.from(encode(initialLayout)));
+    await addFile(`layouts/place/${uniqueId}`,`layout.msgpack`, Buffer.from(encode(initialLayout)));
  
     return json({ body: { message: 'ok', placeId: uniqueId } });
   } catch (error) {
@@ -103,9 +107,9 @@ export const PATCH: RequestHandler = async (event) => {
  
     const picture = data.picture;
     if (picture && picture.size > 0) {
-      const buffer = Buffer.from(await picture.arrayBuffer());
+      const buffer = await convertToWebp(Buffer.from(await picture.arrayBuffer()));
       processData.picture = await addFile(
-        `pictures/place/`,`${data.placeId}${path.extname(picture.name)}`,
+        `pictures/place`,`${data.placeId}.webp`,
         buffer
       );
     }
@@ -118,5 +122,24 @@ export const PATCH: RequestHandler = async (event) => {
   } catch (error) {
     console.error('Error updating place:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
+  }
+};
+
+export const DELETE: RequestHandler = async (event) => {
+  const user = await guard(event, ['admin', 'organizer']);
+  if (user instanceof Response) return user;
+
+  const placeId = event.url.searchParams.get('places');
+  if (!placeId) return json({ error: 'Missing placeId' }, { status: 400 });
+
+  try {
+    let placeData = await fetchData('places', {placeId}) as Place;
+    await deleteItem('places', { placeId });
+    await deleteFile('pictures/place',placeData.picture);
+    await deleteObjectsWithPrefix(`layouts/place/${placeId}`);
+    return json({ body: { message: 'OK' } });
+  } catch (error) {
+    console.error('Error deleting place:', error);
+    return json({ error: 'Internal Server Error'  }, { status: 500 });
   }
 };
