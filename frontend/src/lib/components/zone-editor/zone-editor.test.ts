@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ZoneEditorState } from './zoneState.svelte';
 import type { CanvasObject } from './types';
 

@@ -6,7 +6,8 @@ import jwt from 'jsonwebtoken';
 import { addUser, fetchUser } from '/opt/nodejs/dynamo.js';
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN, credentials: true }));
+const allowedOrigins = [process.env.FRONTEND_ORIGIN, 'http://localhost:5173'].filter(Boolean);
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 const router = express.Router();
@@ -33,19 +34,24 @@ function getOAuthClient(req) {
 
 // GET /api/auth/google — kick off the OAuth flow
 router.get('/google', (req, res) => {
+  const origin = req.query.origin || (req.headers.referer && new URL(req.headers.referer).origin) || '';
   const oauth2Client = getOAuthClient(req);
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['openid', 'email', 'profile'],
-    prompt: 'select_account'
+    prompt: 'select_account',
+    state: origin || undefined
   });
   res.redirect(authUrl);
 });
 
 // GET /api/auth/google/callback — exchange code, upsert user, issue JWT
 router.get('/google/callback', async (req, res) => {
-  const { code, error } = req.query;
-  const frontendUrl = process.env.FRONTEND_ORIGIN;
+  const { code, error, state } = req.query;
+  let frontendUrl = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+  if (state && (state.startsWith('http://localhost') || state.startsWith('https://localhost'))) {
+    frontendUrl = state;
+  }
 
   if (error || !code) {
     return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);

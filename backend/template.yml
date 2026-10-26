@@ -153,8 +153,10 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       CorsConfiguration:
+        AllowCredentials: true
         AllowOrigins:
-          - !Ref FrontendOrigin
+          - !Sub "http://seat-reservation-frontend-${AWS::AccountId}.s3-website-${AWS::Region}.amazonaws.com"
+          - "http://localhost:5173"
         AllowMethods:
           - GET
           - POST
@@ -163,8 +165,7 @@ Resources:
           - DELETE
           - OPTIONS
         AllowHeaders:
-          - Content-Type
-          - Authorization
+          - "*"
 
   AuthServiceFunction:
     Type: AWS::Serverless::Function
