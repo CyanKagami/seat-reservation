@@ -16,6 +16,7 @@ import {
   deleteFile,
   deleteObjectsWithPrefix,
   getObjectURL,
+  getLocation,
   requireRole,
   requireAuth,
 } from '/opt/nodejs/index.js';
@@ -50,7 +51,7 @@ async function formatData(data, creator) {
   if (data.description !== undefined) result.description = data.description;
   if (data.name !== undefined) result.name = data.name;
   if (data.location) {
-    result.location = await fetchData('locations', { locationId: data.location });
+    result.location = getLocation(data.location);
   }
   return result;
 }
@@ -140,7 +141,7 @@ router.get('/', requireRole('admin', 'organizer'), async (req, res) => {
 router.post('/', requireRole('admin'), upload.single('picture'), async (req, res) => {
   try {
     const { name, location: locationId } = req.body;
-    const location = await fetchData('locations', { locationId });
+    const location = getLocation(locationId);
     const picture = req.file;
 
     const uniqueId = await addDataUniqueId(

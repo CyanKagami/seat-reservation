@@ -1,4 +1,4 @@
-﻿// layers/shared/checkIn.js
+// layers/shared/checkIn.js
 // Classifies a scan/check-in identifier as a student ID, seat ID, or unknown.
 
 const pattern = /^(?<eightDigits>\d{8})$|^(?<hyphenated>[^#\-_]+-[^#\-_]+)$|^(?<other>.*)$/;

@@ -7,8 +7,8 @@ import eventRouter from './routers/eventRouter.js';
 import locationRouter from './routers/locationRouter.js';
 
 const app = express();
-app.use(express.json());
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN, credentials: true }));
+app.use(express.json());
 app.use('/api/place', placeRouter);
 app.use('/api/user', userRouter);
 app.use('/api/event', eventRouter);

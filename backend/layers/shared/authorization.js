@@ -50,6 +50,9 @@ export function getUser(req) {
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
     const user = getUser(req);
+    if (!user.email) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     if (!allowedRoles.includes(user.role)) {
       return res.status(403).json({ error: 'Access denied' });
     }

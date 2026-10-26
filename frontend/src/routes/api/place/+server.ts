@@ -22,6 +22,33 @@ interface PlaceFormData {
 }
 
 
+const FACULTY_MAP: Record<string, string> = {
+  '01': 'คณะวิศวกรรมศาสตร์',
+  '02': 'คณะสถาปัตยกรรม ศิลปะและการออกแบบ',
+  '03': 'คณะครุศาสตร์อุตสาหกรรมและเทคโนโลยี',
+  '04': 'คณะเทคโนโลยีการเกษตร',
+  '05': 'คณะวิทยาศาสตร์',
+  '06': 'คณะอุตสาหกรรมอาหาร',
+  '07': 'คณะเทคโนโลยีสารสนเทศ',
+  '08': 'คณะบริหารธุรกิจ',
+  '09': 'คณะศิลปศาสตร์',
+  '10': 'วิทยาลัยเทคโนโลยีและนวัตกรรมวัสดุ',
+  '11': 'วิทยาลัยนวัตกรรมการผลิตขั้นสูง',
+  '12': 'วิทยาลัยอุตสาหกรรมการบินนานาชาติ',
+  '13': 'คณะแพทยศาสตร์',
+  '14': 'คณะทันตแพทยศาสตร์',
+  '15': 'คณะพยาบาลศาสตร์',
+  '31': 'วิทยาเขตชุมพรเขตอุดมศักดิ์',
+};
+
+function getLocation(locationId?: string) {
+    if (!locationId) return null;
+    return {
+        locationId,
+        name: FACULTY_MAP[locationId] || locationId
+    };
+}
+
 async function formatData(data:PlaceFormData, creator:User) {
     let place:Place = {
         placeId:data.placeId,
@@ -29,7 +56,7 @@ async function formatData(data:PlaceFormData, creator:User) {
         creatorName: creator.name,
         description:data.description,
         name: data.name,
-        location: await fetchData('locations', {locationId: data.location}),
+        location: getLocation(data.location),
     } as Place
 
     return place
@@ -55,7 +82,7 @@ export const POST: RequestHandler = async (event) => {
  
   try {
     const formData = await event.request.formData();
-    const location = await fetchData('locations', { locationId: formData.get('location') as string });
+    const location = getLocation(formData.get('location') as string);
     const picture = formData.get('picture') as File | null;
 
  

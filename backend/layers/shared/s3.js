@@ -1,4 +1,4 @@
-﻿// layers/shared/s3.js
+// layers/shared/s3.js
 import {
   S3Client,
   PutObjectCommand,

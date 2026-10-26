@@ -91,17 +91,6 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
-  LocationsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: locations
-      AttributeDefinitions:
-        - AttributeName: locationId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: locationId
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
 
   ReservationTable:
     Type: AWS::DynamoDB::Table
@@ -176,30 +165,6 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
-      Auth:
-        DefaultAuthorizer: JwtLambdaAuthorizer
-        Authorizers:
-          JwtLambdaAuthorizer:
-            FunctionArn: !GetAtt AuthorizerFunction.Arn
-            FunctionInvokeRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
-            AuthorizerPayloadFormatVersion: "2.0"
-            EnableSimpleResponses: true
-            Identity:
-              Headers:
-                - Authorization
-
-  AuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: services/core/
-      Runtime: nodejs20.x
-      Handler: authorizer.handler
-      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
-      Layers:
-        - !Ref SharedLayer
-      Environment:
-        Variables:
-          JWT_SECRET: !Ref JwtSecret
 
   AuthServiceFunction:
     Type: AWS::Serverless::Function
@@ -216,8 +181,6 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/auth/{proxy+}
             Method: ANY
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:
@@ -242,28 +205,12 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/booking
             Method: ANY
-        BookingApiBasePreflight:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref SharedApiGateway
-            Path: /api/booking
-            Method: OPTIONS
-            Auth:
-              Authorizer: NONE
         BookingApiRoute:
           Type: HttpApi
           Properties:
             ApiId: !Ref SharedApiGateway
             Path: /api/booking/{proxy+}
             Method: ANY
-        BookingApiPreflight:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref SharedApiGateway
-            Path: /api/booking/{proxy+}
-            Method: OPTIONS
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:
@@ -286,14 +233,6 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/{proxy+}
             Method: ANY
-        CoreApiPreflight:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref SharedApiGateway
-            Path: /api/{proxy+}
-            Method: OPTIONS
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:

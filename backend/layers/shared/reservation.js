@@ -1,4 +1,4 @@
-﻿// layers/shared/reservation.js
+// layers/shared/reservation.js
 // Port of frontend/src/lib/scripts/server/reservation.ts.
 // Adapted for Express: readSeatRequest/readCheckInRequest take req.body (already parsed JSON),
 // and bookingErrorResponse/checkInErrorResponse return { status, body } for the router to send.

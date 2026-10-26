@@ -27,6 +27,7 @@ import {
   withSeatParts,
   isValidSeatId,
   classifyIdentifier,
+  FACULTY_MAP,
 } from '/opt/nodejs/index.js';
 
 const app = express();
@@ -57,25 +58,7 @@ function registrationOngoing(ev, now = new Date()) {
   return true;
 }
 
-// FACULTY_MAP for demographic stats (seating stats endpoint).
-const FACULTY_MAP = {
-  '01': 'คณะวิศวกรรมศาสตร์',
-  '02': 'คณะสถาปัตยกรรม ศิลปะและการออกแบบ',
-  '03': 'คณะครุศาสตร์อุตสาหกรรมและเทคโนโลยี',
-  '04': 'คณะเทคโนโลยีการเกษตร',
-  '05': 'คณะวิทยาศาสตร์',
-  '06': 'คณะอุตสาหกรรมอาหาร',
-  '07': 'คณะเทคโนโลยีสารสนเทศ',
-  '08': 'คณะบริหารธุรกิจ',
-  '09': 'คณะศิลปศาสตร์',
-  '10': 'วิทยาลัยเทคโนโลยีและนวัตกรรมวัสดุ',
-  '11': 'วิทยาลัยนวัตกรรมการผลิตขั้นสูง',
-  '12': 'วิทยาลัยอุตสาหกรรมการบินนานาชาติ',
-  '13': 'คณะแพทยศาสตร์',
-  '14': 'คณะทันตแพทยศาสตร์',
-  '15': 'คณะพยาบาลศาสตร์',
-  '31': 'วิทยาเขตชุมพรเขตอุดมศักดิ์',
-};
+
 
 function parseKmitlEmail(email) {
   if (typeof email !== 'string') return { isValid: false, error: 'Input must be a string.' };

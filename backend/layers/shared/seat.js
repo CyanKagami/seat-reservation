@@ -1,4 +1,4 @@
-﻿// layers/shared/seat.js
+// layers/shared/seat.js
 // seatId format: "<zone>-<seat>", split at the LAST hyphen.
 // zone: 1-32 chars, hyphens allowed inside but not at either end.
 // seat: 1-32 chars, no hyphen.
