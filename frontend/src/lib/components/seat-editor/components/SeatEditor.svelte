@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { SeatEditorState } from "../seatState.svelte";
+	import type { SeatType } from "../types";
 	import SubHeader from "./SubHeader.svelte";
 	import Toolbar from "./Toolbar.svelte";
 	import LeftSidebar from "./LeftSidebar.svelte";
@@ -7,7 +8,8 @@
 	import Canvas from "./Canvas.svelte";
 
 	let { seatState, place, backLink } = $props();
-	let isCreateSeatType = $state(false);
+	let isSeatTypePopupOpen = $state(false);
+	let editingSeatType = $state<SeatType | null>(null);
 	let isPreview = $state(false);
 	let SeatTypeName = $state('');
 	let SeatTypeDescription = $state('');
@@ -15,15 +17,29 @@
 	let seatTypeImage = $state<string | null>(null);
 
 	$effect(() => {
-		if (isCreateSeatType) {
+		if (isSeatTypePopupOpen) {
 			seatState.isUneditable = true; // Disable canvas interactions when the popup is open
 		} else {
 			seatState.isUneditable = false; // Enable canvas interactions when the popup is closed
 		}
 	});
 
-	function onSeatTypePopupToggle() {
-		isCreateSeatType = !isCreateSeatType;
+	function handleOpenCreatePopup() {
+		editingSeatType = null;
+		SeatTypeName = '';
+		SeatTypeDescription = '';
+		SeatTypeColor = '#ffffff';
+		seatTypeImage = null;
+		isSeatTypePopupOpen = true;
+	}
+
+	function handleOpenEditPopup(seatType: SeatType) {
+		editingSeatType = seatType;
+		SeatTypeName = seatType.name;
+		SeatTypeDescription = seatType.description || '';
+		SeatTypeColor = seatType.color || '#ffffff';
+		seatTypeImage = seatType.picture || null;
+		isSeatTypePopupOpen = true;
 	}
 
 	function handleImageChange(event: Event) {
@@ -43,24 +59,45 @@
 	}
 
 	function resetForm() {
+		editingSeatType = null;
 		SeatTypeName = '';
 		SeatTypeDescription = '';
 		SeatTypeColor = '#ffffff';
 		seatTypeImage = null;
-		isCreateSeatType = false;
+		isSeatTypePopupOpen = false;
 	}
 
-	function handleAddSeatType() {
-		let result = seatState.createSeatType({
-			name: SeatTypeName,
-			color: SeatTypeColor,
-			description: SeatTypeDescription,
-			picture: seatTypeImage
-		});
-
-		if (!result) {
-			alert('ชื่อประเภทเก้าอี้ซ้ำ');
+	function handleSaveSeatType() {
+		const trimmedName = SeatTypeName.trim();
+		if (!trimmedName) {
+			alert('กรุณากรอกชื่อประเภทเก้าอี้');
 			return;
+		}
+
+		if (editingSeatType) {
+			const success = seatState.updateSeatType(editingSeatType.name, {
+				name: trimmedName,
+				color: SeatTypeColor,
+				description: SeatTypeDescription.trim(),
+				picture: seatTypeImage
+			});
+
+			if (!success) {
+				alert('ชื่อประเภทเก้าอี้ซ้ำ');
+				return;
+			}
+		} else {
+			const result = seatState.createSeatType({
+				name: trimmedName,
+				color: SeatTypeColor,
+				description: SeatTypeDescription.trim(),
+				picture: seatTypeImage
+			});
+
+			if (!result) {
+				alert('ชื่อประเภทเก้าอี้ซ้ำ');
+				return;
+			}
 		}
 
 		resetForm();
@@ -79,17 +116,23 @@
 	<Toolbar state={seatState} />
 
 	<div class="flex-1 flex overflow-hidden">
-		<LeftSidebar />
+		<LeftSidebar
+			{seatState}
+			onOpenCreatePopup={handleOpenCreatePopup}
+			onOpenEditPopup={handleOpenEditPopup}
+		/>
 		<Canvas state={seatState} />
-		<RightSidebar state={seatState} onOpenPopup={onSeatTypePopupToggle} />
+		<RightSidebar state={seatState} onOpenPopup={handleOpenCreatePopup} />
 	</div>
 </div>
 
-<!--Create Zone Popup-->
-{#if isCreateSeatType}
+<!--Create or Edit Seat Type Popup-->
+{#if isSeatTypePopupOpen}
 	<div class="w-full h-full bg-black/50 fixed top-0 left-0 z-50 flex items-center justify-center">
 		<div class="bg-white w-120 rounded-lg flex flex-col items-center p-7 gap-4 max-h-[90vh] overflow-y-auto">
-			<p class="text-2xl font-semibold">เพิ่มประเภทเก้าอี้</p>
+			<p class="text-2xl font-semibold">
+				{editingSeatType ? 'แก้ไขประเภทเก้าอี้' : 'เพิ่มประเภทเก้าอี้'}
+			</p>
 			
 			<div class="w-full">
 				<label for="name" class="font-semibold block mb-1">
@@ -154,7 +197,9 @@
 
 			<div class="w-full flex justify-between gap-3 mt-2">
 				<button class="w-1/2 border-2 border-black h-10 hover:bg-dim-gray hover:cursor-pointer rounded-lg" onclick={resetForm}>ยกเลิก</button>
-				<button class="w-1/2 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg" onclick={handleAddSeatType}>สร้าง</button>
+				<button class="w-1/2 bg-accent h-10 hover:bg-accent-hover hover:cursor-pointer text-white rounded-lg" onclick={handleSaveSeatType}>
+					{editingSeatType ? 'บันทึก' : 'สร้าง'}
+				</button>
 			</div>
 		</div>
 	</div>

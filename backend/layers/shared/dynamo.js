@@ -119,16 +119,47 @@ export async function addDataIfNotExists(tableName, item, primaryKey) {
   }
 }
 
-export async function fetchAllData(tableName) {
+export async function fetchAllData(tableName, filter) {
   const allItems = [];
   let lastEvaluatedKey;
+
+  const filterEntries = filter && typeof filter === 'object'
+    ? Object.entries(filter).filter(([_, v]) => v !== undefined)
+    : [];
+  const hasFilter = filterEntries.length > 0;
+
+  const expressionAttributeNames = {};
+  const expressionAttributeValues = {};
+  const filterParts = [];
+
+  if (hasFilter) {
+    filterEntries.forEach(([key, value], index) => {
+      const namePlaceholder = `#filterKey_${index}`;
+      const valPlaceholder = `:filterVal_${index}`;
+      expressionAttributeNames[namePlaceholder] = key;
+      expressionAttributeValues[valPlaceholder] = value;
+      filterParts.push(`${namePlaceholder} = ${valPlaceholder}`);
+    });
+  }
+
   try {
     do {
-      const params = { TableName: tableName, ExclusiveStartKey: lastEvaluatedKey };
+      const params = {
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey
+      };
+
+      if (hasFilter) {
+        params.FilterExpression = filterParts.join(' AND ');
+        params.ExpressionAttributeNames = expressionAttributeNames;
+        params.ExpressionAttributeValues = expressionAttributeValues;
+      }
+
       const response = await docClient.send(new ScanCommand(params));
       if (response.Items) allItems.push(...response.Items);
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
+
     return allItems;
   } catch (error) {
     console.error('Error scanning DynamoDB table:', error);

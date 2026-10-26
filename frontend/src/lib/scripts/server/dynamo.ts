@@ -172,58 +172,46 @@ export async function fetchAllData(
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    // Determine if we are querying by a hash key or scanning the whole table
-    const hasFilter = filter && Object.keys(filter).length > 0;
-    
-    // Extract the first key-value pair to use as the hash key condition
-    let hashKeyName: string | undefined;
-    let hashKeyValue: any;
+    const filterEntries = filter && typeof filter === 'object' 
+      ? Object.entries(filter).filter(([_, v]) => v !== undefined) 
+      : [];
+    const hasFilter = filterEntries.length > 0;
+
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+    const filterParts: string[] = [];
+
     if (hasFilter) {
-      const entries = Object.entries(filter);
-      hashKeyName = entries[0][0];
-      hashKeyValue = entries[0][1];
+      filterEntries.forEach(([key, value], index) => {
+        const namePlaceholder = `#filterKey_${index}`;
+        const valPlaceholder = `:filterVal_${index}`;
+        expressionAttributeNames[namePlaceholder] = key;
+        expressionAttributeValues[valPlaceholder] = value;
+        filterParts.push(`${namePlaceholder} = ${valPlaceholder}`);
+      });
     }
 
     do {
-      let response;
+      const params: ScanCommandInput = {
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey,
+      };
 
-      if (hasFilter && hashKeyName) {
-        // --- QUERY MODE (Efficient: Target specific Hash Key) ---
-        const params: QueryCommandInput = {
-          TableName: tableName,
-          KeyConditionExpression: "#hk = :hv",
-          ExpressionAttributeNames: {
-            "#hk": hashKeyName, // Prevents reserved keyword conflicts
-          },
-          ExpressionAttributeValues: {
-            ":hv": hashKeyValue,
-          },
-          ExclusiveStartKey: lastEvaluatedKey,
-        };
-
-        const command = new QueryCommand(params);
-        response = await docClient.send(command);
-
-      } else {
-        // --- SCAN MODE (Fallback: Read entire table) ---
-        const params: ScanCommandInput = {
-          TableName: tableName,
-          ExclusiveStartKey: lastEvaluatedKey,
-        };
-
-        const command = new ScanCommand(params);
-        response = await docClient.send(command);
+      if (hasFilter) {
+        params.FilterExpression = filterParts.join(' AND ');
+        params.ExpressionAttributeNames = expressionAttributeNames;
+        params.ExpressionAttributeValues = expressionAttributeValues;
       }
 
-      // Store retrieved items
+      const command = new ScanCommand(params);
+      const response = await docClient.send(command);
+
       if (response.Items) {
         allItems.push(...response.Items);
       }
 
-      // Track the pagination token
       lastEvaluatedKey = response.LastEvaluatedKey;
-
-    } while (lastEvaluatedKey); // Continue loop if there are more pages
+    } while (lastEvaluatedKey);
 
     return allItems;
   } catch (error) {

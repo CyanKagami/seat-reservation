@@ -135,7 +135,22 @@
 			alert('กรุณากำหนดโซนให้ที่นั่งก่อนสร้างป้ายกำกับอัตโนมัติ');
 			return;
 		}
-		zoneState.autoLabelZone(targetZone, false);
+
+		const manualSeatsCount = zoneState.objects.filter(
+			(o) => o.type === 'seat' && o.metadata?.zone === targetZone && o.metadata?.isManualLabel
+		).length;
+
+		if (manualSeatsCount > 0) {
+			const overwrite = confirm(
+				`โซน "${targetZone}" มีที่นั่งที่ล็อกป้ายเองอยู่ ${manualSeatsCount} ที่นั่ง\n\n` +
+				`ต้องการเขียนทับที่นั่งที่กำหนดเองด้วยหรือไม่?\n` +
+				`• กด [ตกลง / OK]: เขียนทับทั้งหมด (ปลดล็อกและรัน Auto Label ทุกที่นั่ง)\n` +
+				`• กด [ยกเลิก / Cancel]: ข้ามที่นั่งที่กำหนดเอง (จัดลำดับเฉพาะที่นั่งที่ไม่ได้ล็อก)`
+			);
+			zoneState.autoLabelZone(targetZone, overwrite);
+		} else {
+			zoneState.autoLabelZone(targetZone, false);
+		}
 	}
 
 	function handleClearManualLabel() {
@@ -175,7 +190,7 @@
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
 					<label for="zone-name" class="text-xs font-medium text-slate-600 block">
-						โซน (Zone)
+						โซน
 					</label>
 					<button
 						onclick={onOpenPopup}
@@ -202,7 +217,7 @@
 			<!-- 2. Status Assignment (Available / Unavailable) -->
 			<div class="space-y-1.5 border-t border-slate-200 pt-3">
 				<label for="seat-status" class="text-xs font-medium text-slate-600 block">
-					สถานะที่นั่ง (Status)
+					สถานะที่นั่ง
 				</label>
 				<select
 					id="seat-status"
@@ -211,29 +226,29 @@
 					class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
 				>
 					{#if !currentStatus}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
-					<option value="available">🟢 พร้อมใช้งาน (Available)</option>
-					<option value="unavailable">🔴 ไม่พร้อมใช้งาน (Unavailable)</option>
+					<option value="available">🟢 พร้อมใช้งาน</option>
+					<option value="unavailable">🔴 ไม่พร้อมใช้งาน</option>
 				</select>
 			</div>
 
 			<!-- 3. Seat Row & Number Labeling -->
 			<div class="space-y-3 border-t border-slate-200 pt-3">
 				<div class="flex items-center justify-between">
-					<span class="text-xs font-semibold text-slate-700">ป้ายกำกับ (Labeling)</span>
+					<span class="text-xs font-semibold text-slate-700">ป้ายกำกับ</span>
 					<button
 						type="button"
 						onclick={handleAutoLabel}
 						class="text-[11px] px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded border border-indigo-200 transition-colors cursor-pointer"
 						title="จัดลำดับแถว (A, B, C...) และเลขที่นั่ง (1, 2, 3...) อัตโนมัติตามตำแหน่ง"
 					>
-						Auto Label โซน
+						ใส่ป้ายกำกับอัตโนมัติทั้งโซน
 					</button>
 				</div>
 
 				<div class="grid grid-cols-2 gap-2">
 					<div class="space-y-1">
 						<label for="seat-row" class="text-[11px] font-medium text-slate-600 block">
-							แถว (Row)
+							แถว
 						</label>
 						<input
 							id="seat-row"
@@ -246,7 +261,7 @@
 					</div>
 					<div class="space-y-1">
 						<label for="seat-no" class="text-[11px] font-medium text-slate-600 block">
-							เลขที่นั่ง (No.)
+							เลขที่นั่ง
 						</label>
 						<input
 							id="seat-no"
@@ -258,24 +273,45 @@
 						/>
 					</div>
 				</div>
+				<p class="text-[10.5px] text-slate-400 leading-tight">
+					* หากพิมพ์ระบุแถวหรือเลขเอง ป้ายจะถูกล็อกไว้เพื่อไม่ให้ Auto Label เขียนทับ
+				</p>
 
 				<div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-xs flex items-center justify-between">
 					<span class="text-slate-500">ป้ายปัจจุบัน:</span>
-					<span class="font-mono font-bold text-slate-800">
-						{currentLabel || (selectedObjects.length > 1 ? '(หลายค่า)' : 'ยังไม่มีป้าย')}
-					</span>
+					<div class="flex items-center gap-1.5">
+						<span class="font-mono font-bold text-slate-800">
+							{currentLabel || (selectedObjects.length > 1 ? '(หลายค่า)' : 'ยังไม่มีป้าย')}
+						</span>
+						{#if hasManualLabel}
+							<span class="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5" title="ป้ายนี้ถูกล็อกไว้จากการรัน Auto Label">
+								🔒 ล็อกป้ายเอง
+							</span>
+						{/if}
+					</div>
 				</div>
 
 				{#if hasManualLabel}
-					<div class="flex items-center justify-between text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-						<span>มีป้ายที่ระบุด้วยตนเอง</span>
-						<button
-							type="button"
-							onclick={handleClearManualLabel}
-							class="underline hover:text-amber-900 cursor-pointer"
-						>
-							ปลดล็อค
-						</button>
+					<div class="space-y-1.5 text-xs bg-amber-50/80 p-2.5 rounded-md border border-amber-200 text-amber-900">
+						<div class="flex items-center justify-between">
+							<span class="font-medium flex items-center gap-1">
+								<svg class="w-3.5 h-3.5 text-amber-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+									<path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
+								</svg>
+								ล็อกป้ายกำกับ (กำหนดเอง)
+							</span>
+							<button
+								type="button"
+								onclick={handleClearManualLabel}
+								class="text-[11px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition-colors cursor-pointer"
+								title="ปลดล็อกเพื่อให้ที่นั่งนี้สามารถถูกคำนวณใหม่เมื่อกด Auto Label"
+							>
+								ปลดล็อก
+							</button>
+						</div>
+						<p class="text-[11px] text-amber-700 leading-tight">
+							ที่นั่งนี้ถูกล็อกไว้ จะไม่ถูกเปลี่ยนเมื่อกด <b>Auto Label โซน</b> (กดปลดล็อกหากต้องการให้จัดลำดับอัตโนมัติ)
+						</p>
 					</div>
 				{/if}
 			</div>

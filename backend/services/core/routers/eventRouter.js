@@ -172,9 +172,8 @@ router.get('/getFromHost', requireAuth, async (req, res) => {
 // GET /event — list published events
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const data = await fetchAllData('events');
-    const published = data.filter((e) => e.status === 'Published');
-    return res.status(200).json({ body: published });
+    const data = await fetchAllData('events', { status: 'Published' });
+    return res.status(200).json({ body: data });
   } catch (error) {
     console.error('Error fetching events:', error);
     return res.status(500).json({ body: { message: 'Internal Server Error' } });

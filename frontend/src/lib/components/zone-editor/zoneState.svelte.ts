@@ -5,6 +5,7 @@ import { rotatePoint } from '../canvas-shared/utils';
 import { decode, encode } from "@msgpack/msgpack";
 import type { SeatType } from "../canvas-shared/types";
 import { apiFetch } from "$lib/scripts/api";
+import { alertModal } from "$lib/store/alert.svelte";
 
 export class ZoneEditorState {
 	locationId = $state("");
@@ -187,7 +188,7 @@ export class ZoneEditorState {
 			console.log(o.metadata)
 			return o.metadata && o.metadata.zone || o.metadata && o.metadata.status === 'unavailable'
 		})){
-			alert('กรุณากำหนดโซนให้ที่นั่งทุกที่')
+			alertModal.warning('ที่นั่งบางที่ไม่ถูกกำหนดโซน','กรุณากำหนดโซนให้ครบทุกที่นั่ง')
 		}
 		else{
 			await this.uploadToAPI()
@@ -215,13 +216,13 @@ export class ZoneEditorState {
 			});
 
 			if (res.ok) {
-				alert("บันทึกลง S3 เรียบร้อย!");
-		} else {
-			const err = await res.json();
-			alert(`เกิดข้อผิดพลาด: ${err.error}`);
-		}
+				alertModal.success("บันทึกสำเร็จ", "การเปลี่ยนแปลงของคุณได้รับการบันทึกแล้ว")
+			} else {
+				const err = await res.json();
+				alertModal.failure("บันทึกล้มเหลว", "การเปลี่ยนแปลงของคุณยังไม่ได้รับการบันทึก กรุณาลองอีกครั้ง")
+			}
 		} catch (err) {
-			alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+			alertModal.failure("ล้มเหลว", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ")
 		} finally {
 			this.isSaving = false;
 		}	

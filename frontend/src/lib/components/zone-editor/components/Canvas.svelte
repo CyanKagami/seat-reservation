@@ -82,7 +82,11 @@
 								? (isSelected ? 'fill-red-400 stroke-red-700 ring-2 ring-red-500' : 'fill-red-200 stroke-red-500') 
 								: statusClasses}"
 						style={hasZone && status !== 'unavailable' && !isOverlapping ? `${isSelected ? `fill:${darkenHexColor(zoneColor, 0.3)};` : `fill:${zoneColor};`} stroke:unset;` : ''}
-					/>
+					>
+						{#if seatLabel}
+							<title>{seatLabel}{obj.metadata?.isManualLabel ? ' (ล็อกป้ายกำหนดเอง)' : ''}</title>
+						{/if}
+					</rect>
 					<!-- 2. Top Accent Bar (Indicates custom seatType) -->
 					{#if accentColor && seatType.name && seatType.name !== 'standard'}
 					{@const barHeight = Math.max(3, Math.floor(screenHeight * 0.22))} <!-- ~20% of seat height -->
