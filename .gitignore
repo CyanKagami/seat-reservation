@@ -28,3 +28,4 @@ localstack
 .aws-sam
 
 dev-scripts
+backend/*.bat
