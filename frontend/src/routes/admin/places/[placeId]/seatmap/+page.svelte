@@ -2,7 +2,8 @@
 	import SeatEditor from "$lib/components/seat-editor/components/SeatEditor.svelte";
 	import { SeatEditorState } from "$lib/components/seat-editor/seatState.svelte.js";
   import { apiFetch } from "$lib/scripts/api.js";
-  import type { Place } from "$lib/type/place.js";
+	import { alertModal } from "$lib/store/alert.svelte";
+	import type { Place } from "$lib/type/place.js";
 	import { onMount } from "svelte";
 	let { params } = $props();
 	let seatState: SeatEditorState | undefined = $state();
@@ -32,7 +33,7 @@
 			}
 		})
 		.catch((err) => {
-			alert(err);
+			alertModal.failure("เกิดข้อผิดพลาด", String(err));
 		})
 		
 		isLoading = false;
@@ -45,4 +46,3 @@
 {:else}
 <SeatEditor place={place} seatState={seatState} backLink={`/admin/places/${params.placeId}`}></SeatEditor>
 {/if}
-

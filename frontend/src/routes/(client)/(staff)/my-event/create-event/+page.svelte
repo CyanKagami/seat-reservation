@@ -255,26 +255,37 @@
   }
 </script>
 
-<div
-  class="flex flex-col items-center mt-10 sm:mt-14 mx-auto rounded-3xl  sm:shadow-xl bg-white sm:border-2 sm:border-black/20 w-full max-w-2xl sm:max-w-3xl self-center p-5 sm:p-8 pt-12 mx-4"
->
-  <h1 class="text-4xl font-bold mb-12">เพิ่มกิจกรรม</h1>
+<div class="mx-auto flex w-full max-w-6xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+  <nav class="mb-5 flex min-w-0 items-center gap-2 text-sm text-dark-soft" aria-label="Breadcrumb">
+    <a href="/my-event" class="shrink-0 transition-colors hover:text-dark">กิจกรรมของฉัน</a>
+    <span aria-hidden="true">/</span>
+    <span class="truncate font-semibold text-dark-muted">เพิ่มกิจกรรม</span>
+  </nav>
+  <header class="mb-6">
+    <h1 class="text-2xl font-extrabold tracking-tight text-dark sm:text-3xl">เพิ่มกิจกรรม</h1>
+    <p class="mt-1 text-sm text-dark-soft">กรอกข้อมูลกิจกรรมและกำหนดรายละเอียดการเข้าร่วม</p>
+  </header>
   <form
-    class="flex flex-col gap-5 w-full"
+    class="flex w-full flex-col gap-6"
     onsubmit={handleSubmit}
     enctype="multipart/form-data"
   >
+    <section class="rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-6">
+      <div class="mb-5 border-b border-border-subtle pb-4">
+        <h2 class="text-lg font-bold text-dark sm:text-xl">ข้อมูลกิจกรรม</h2>
+        <p class="mt-1 text-sm text-dark-soft">รูปภาพ รายละเอียด และช่วงเวลาของกิจกรรม</p>
+      </div>
+      <div class="flex flex-col gap-5">
     <!-- Picture Segment -->
-    <div class="flex flex-col gap-2 border-b border-slate-100 pb-6">
-      <label for="picture" class="text-lg font-bold text-slate-800">รูปภาพหน้าปก</label>
-      <div class="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-        <!-- Preview Box -->
-        <div class="relative w-full sm:w-64 h-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner flex items-center justify-center shrink-0">
+    <div class="flex flex-col gap-2 border-b border-border-subtle pb-6">
+      <label for="picture" class="text-sm font-semibold text-dark">รูปภาพหน้าปก</label>
+      <div class="flex min-w-0 flex-col items-start gap-4 rounded-2xl border border-border-subtle bg-surface-base p-4 sm:flex-row sm:items-center">
+        <div class="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl border border-border-subtle bg-white sm:w-64">
           {#if previewUrl}
-            <img src={previewUrl} alt="Preview" class="w-full h-full object-cover" />
+            <img src={previewUrl} alt="ตัวอย่างรูปภาพกิจกรรม" class="h-full w-full object-cover" />
           {:else}
-            <div class="flex flex-col items-center gap-1 text-slate-700">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex h-full flex-col items-center justify-center gap-1 text-dark-soft">
+              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span class="text-xs">ไม่มีรูปภาพ</span>
@@ -282,32 +293,35 @@
           {/if}
         </div>
 
-        <!-- Input Field & Label -->
-        <div class="flex flex-col gap-2 w-full sm:w-auto">
+        <div class="flex min-w-0 flex-col gap-2">
           <input
+            id="picture"
             type="file"
             accept="image/png, image/jpeg, image/webp"
             onchange={handleFileSelect}
-            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-secondary hover:file:bg-indigo-100 hover:cursor-pointer transition-colors"
+            class="block w-full min-w-0 text-sm text-dark file:mr-3 file:rounded-xl file:border-0 file:bg-secondary-subtle file:px-4 file:py-2 file:text-sm file:font-semibold file:text-secondary hover:file:cursor-pointer hover:file:bg-secondary-subtle/70"
           />
-          <p class="text-xs text-slate-700">รองรับไฟล์ JPG, PNG และ WEBP (ขนาดไม่เกิน 5MB)</p>
+          <p class="text-xs text-dark-soft">รองรับไฟล์ JPG, PNG และ WEBP (ขนาดไม่เกิน 5MB)</p>
         </div>
       </div>
+      {#if errorMessage}
+        <p class="text-sm font-medium text-red-600" role="alert">{errorMessage}</p>
+      {/if}
     </div>
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
       <label for="name" class="shrink-0">ชื่อกิจกรรม</label>
-      <input name="name" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+      <input name="name" class="w-full sm:w-80 md:w-96 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-sm text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden" required />
     </div>
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
       <label for="host" class="shrink-0">ชื่อผู้จัด</label>
-      <input name="host" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" required />
+      <input name="host" class="w-full sm:w-80 md:w-96 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-sm text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden" required />
     </div>
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
       <label for="place" class="shrink-0">สถานที่จัด</label>
-      <select name="place" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+      <select name="place" class="w-full sm:w-80 md:w-96 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-sm text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden">
         {#each data.places as place}
           <option value={place.placeId}>{place.name} ({place.location.name})</option>
         {/each} 
@@ -316,13 +330,13 @@
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-start">
       <label for="detail" class="shrink-0 sm:mt-2">รายละเอียด</label>
-      <textarea name="detail" class="resize-none w-full sm:w-80 md:w-96 h-30 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      <textarea name="detail" class="resize-y w-full sm:w-80 md:w-96 min-h-30 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-sm text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden"
       ></textarea>
     </div>
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
       <label for="condition" class="shrink-0">เงื่อนไขการเข้าร่วมกิจกรรม</label>
-      <input name="condition" class="w-full sm:w-80 md:w-96 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+      <input name="condition" class="w-full sm:w-80 md:w-96 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-sm text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden" />
     </div>
 
     <div class="flex flex-col sm:flex-row w-full gap-2 sm:gap-3 justify-between sm:items-center">
@@ -339,8 +353,15 @@
       </div>
     </div>
 
-    <div class="my-10">
-      <label for="timetable" class="text-xl font-bold block mb-3">ตารางกิจกรรม</label>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-6">
+      <div class="mb-5 border-b border-border-subtle pb-4">
+        <h2 class="text-lg font-bold text-dark sm:text-xl">ตารางกิจกรรม</h2>
+        <p class="mt-1 text-sm text-dark-soft">กำหนดกิจกรรมในแต่ละวันของงาน (ไม่บังคับ)</p>
+      </div>
+      <div>
 
       <!-- Date selector chips -->
       {#if unusedDates.length > 0}
@@ -466,20 +487,21 @@
           </div>
         {/each}
       </div>
-    </div>
+      </div>
+    </section>
 
     <!-- Action Buttons -->
     <div class="flex flex-col-reverse sm:flex-row w-full justify-end gap-3">
       <a 
         href="/my-event" 
-        class="text-slate-700 bg-slate-200 hover:bg-slate-300 w-full sm:w-auto py-3 px-7 cursor-pointer rounded-md text-center font-medium transition-colors"
+        class="inline-flex w-full items-center justify-center rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle sm:w-auto sm:min-w-32"
       >
         ยกเลิก
       </a>
       <button 
         type="submit" 
         disabled={isSubmitting} 
-        class="text-white bg-accent hover:bg-accent-hover w-full sm:w-auto py-3 px-7 cursor-pointer rounded-md disabled:opacity-50"
+        class="inline-flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-40"
       >
         {isSubmitting ? "กำลังบันทึก..." : "สร้าง"}
       </button>

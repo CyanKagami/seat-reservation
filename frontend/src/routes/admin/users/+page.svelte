@@ -68,52 +68,71 @@
         editing = {index, role: users[index].role};
     }
 </script>
-<div class="w-full max-w-6xl mx-auto mt-10 px-5">
-    <h1 class="text-3xl font-semibold mb-5 text-center">บัญชีผู้ใช้</h1>
-    <!--Search bar-->
-        <div>
-            <p class="text-sm font-semibold">Search</p>
-            <input class="rounded-lg w-96">
+<div class="mx-auto flex w-full max-w-6xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+    <nav class="mb-5 flex min-w-0 items-center gap-2 text-sm text-dark-soft" aria-label="Breadcrumb">
+        <a href="/admin/users" class="transition-colors hover:text-dark">ผู้ดูแลระบบ</a>
+        <span aria-hidden="true">/</span>
+        <span class="truncate font-semibold text-dark-muted">บัญชีผู้ใช้</span>
+    </nav>
+    <h1 class="mb-6 text-3xl font-extrabold tracking-tight text-dark sm:text-4xl">บัญชีผู้ใช้</h1>
+    <div class="mb-5 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:flex-row sm:items-end sm:justify-between sm:p-5">
+        <div class="w-full sm:max-w-xs">
+            <label for="user-search" class="mb-2 block text-sm font-semibold text-dark">ค้นหาผู้ใช้</label>
+            <input
+                id="user-search"
+                type="search"
+                placeholder="ค้นหาบัญชีผู้ใช้"
+                class="w-full rounded-lg border border-border-strong bg-surface-base px-3 py-2 text-sm text-dark placeholder:text-dark-soft focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden"
+            >
         </div>
-    <hr class="my-5 border-dim-gray">
-    <table class="w-full border-separate border-spacing-0 border border-dim-gray rounded-lg overflow-hidden table-fixed">
-        <thead>
-            <tr class="bg-pale">
-                <th class="border w-64 border-dim-gray p-2 text-left rounded-tl-lg">อีเมล</th>
-                <th class="border w-64 border-dim-gray p-2 text-left">ชื่อ</th>
-                <th class="border w-48 border-dim-gray p-2 text-left">บทบาท</th>
-                <th class="border w-52 border-dim-gray p-2 text-left rounded-tr-lg">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {#each users as user, index}
-                <tr>
-                    <td class="border border-dim-gray p-2">{user.email}</td>
-                    <td class="border border-dim-gray p-2">{user.name}</td>
-                    {#if editing.index === index}
-                        <td class="border border-dim-gray p-2">
-                            <select bind:value={editing.role} class="w-full rounded-lg border border-dim-gray p-1">
-                                <option value="admin">admin</option>
-                                <option value="organizer">organizer</option>
-                                <option value="guest">guest</option>
-                            </select>
-                        </td>
-                        <td class="border border-dim-gray p-2 flex gap-2">
-                            <button onclick={() => {editing = {index: -1, role: ''};}} class="bg-white border border-black cursor-pointer text-black w-1/2 px-3 py-1 rounded-lg hover:bg-gray-200">ยกเลิก</button>
-                            <button onclick={() => {saveRole(index)}} class="bg-secondary cursor-pointer text-white w-1/2 px-3 py-1 rounded-lg hover:bg-secondary-hover">บันทึก</button>
-                        </td>
-                    {:else}
-                        <td class="border border-dim-gray p-2">{user.role}</td>
-                        <td class="border border-dim-gray p-2">
-                            <button onclick={() => editRole(index)} class="bg-secondary cursor-pointer text-white w-full px-3 py-1 rounded-lg hover:bg-secondary-hover">แก้ไขบทบาท</button>
-                        </td>
-                    {/if}
-                </tr>
-            {/each}
-        </tbody>
-    </table>
-    <div class="flex gap-2 my-4 justify-end">
-        <button class="bg-secondary cursor-pointer text-white px-3 py-1 rounded-lg hover:bg-secondary-hover disabled:bg-dim-gray disabled:cursor-auto" onclick={fetchPreviousPage} disabled={currentPage === 1}>Previous</button>
-        <button class="bg-secondary cursor-pointer text-white px-3 py-1 rounded-lg hover:bg-secondary-hover disabled:bg-dim-gray disabled:cursor-auto" onclick={fetchNextPage} disabled={currentPage > 1 || token[currentPage - 1] === null}>Next</button>
+    </div>
+    <section class="w-full overflow-hidden rounded-2xl border border-border-subtle bg-white shadow-xs">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[44rem] border-collapse text-left text-sm">
+                <thead class="bg-surface-subtle text-dark-muted">
+                    <tr>
+                        <th scope="col" class="border border-border-strong px-4 py-4 font-semibold sm:px-5">อีเมล</th>
+                        <th scope="col" class="border border-border-strong px-4 py-4 font-semibold sm:px-5">ชื่อ</th>
+                        <th scope="col" class="border border-border-strong px-4 py-4 font-semibold sm:px-5">บทบาท</th>
+                        <th scope="col" class="border border-border-strong px-4 py-4 font-semibold sm:px-5">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="text-dark-muted">
+                    {#each users as user, index}
+                        <tr class="transition-colors odd:bg-white even:bg-surface-base/60 hover:bg-secondary-subtle/40">
+                            <td class="border border-border-strong px-4 py-4 sm:px-5">{user.email}</td>
+                            <td class="border border-border-strong px-4 py-4 sm:px-5">{user.name}</td>
+                            {#if editing.index === index}
+                                <td class="border border-border-strong px-4 py-4 sm:px-5">
+                                    <select bind:value={editing.role} class="w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-dark focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden">
+                                        <option value="admin">admin</option>
+                                        <option value="organizer">organizer</option>
+                                        <option value="guest">guest</option>
+                                    </select>
+                                </td>
+                                <td class="border border-border-strong px-4 py-4 sm:px-5">
+                                    <div class="flex min-w-40 gap-2">
+                                        <button onclick={() => {editing = {index: -1, role: ''};}} class="w-1/2 rounded-lg border border-border-strong bg-white px-3 py-2 font-medium text-dark transition-colors hover:bg-surface-subtle">ยกเลิก</button>
+                                        <button onclick={() => {saveRole(index)}} class="w-1/2 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover">บันทึก</button>
+                                    </div>
+                                </td>
+                            {:else}
+                                <td class="border border-border-strong px-4 py-4 sm:px-5">{user.role}</td>
+                                <td class="border border-border-strong px-4 py-4 sm:px-5">
+                                    <button onclick={() => editRole(index)} class="w-full min-w-40 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover">แก้ไขบทบาท</button>
+                                </td>
+                            {/if}
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <div class="my-5 flex gap-3 flex-row items-center justify-between">
+        <p class="text-sm text-dark-soft">หน้า {currentPage}</p>
+        <div class="flex justify-end gap-2">
+            <button class="rounded-lg border border-border-strong bg-white px-4 py-2 text-dark transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50" onclick={fetchPreviousPage} disabled={currentPage === 1}>ก่อนหน้า</button>
+            <button class="rounded-lg bg-secondary px-4 py-2 text-white transition-colors hover:bg-secondary-hover disabled:cursor-not-allowed disabled:opacity-50" onclick={fetchNextPage} disabled={currentPage > 1 || token[currentPage - 1] === null}>ถัดไป</button>
+        </div>
     </div>
 </div>

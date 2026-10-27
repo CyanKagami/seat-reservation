@@ -2,7 +2,8 @@
   	import ZoneEditor from "$lib/components/zone-editor/components/ZoneEditor.svelte";
 	import { ZoneEditorState } from "$lib/components/zone-editor/zoneState.svelte.js";
   import { apiFetch } from "$lib/scripts/api.js";
-  	import type { Place } from "$lib/type/place.js";
+	import { alertModal } from "$lib/store/alert.svelte";
+		import type { Place } from "$lib/type/place.js";
 	import { onMount } from "svelte";
 	let { params } = $props();
 	let seatState: ZoneEditorState | undefined = $state();
@@ -29,7 +30,7 @@
 			}
 		})
 		.catch((err) => {
-			alert(err);
+			alertModal.failure("เกิดข้อผิดพลาด", String(err));
 		})
 		isLoading = false;
 	})
@@ -41,4 +42,3 @@
 {:else if place && seatState}
 <ZoneEditor place={place} zoneState={seatState} backLink={`/my-event/update-event/${params.eventId}`}></ZoneEditor>
 {/if}
-
