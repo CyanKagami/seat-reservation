@@ -60,10 +60,10 @@ Resources:
     Properties:
       TableName: users
       AttributeDefinitions:
-        - AttributeName: googleId
+        - AttributeName: email
           AttributeType: S
       KeySchema:
-        - AttributeName: googleId
+        - AttributeName: email
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
@@ -91,17 +91,6 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
-  LocationsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: locations
-      AttributeDefinitions:
-        - AttributeName: locationId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: locationId
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
 
   ReservationTable:
     Type: AWS::DynamoDB::Table
@@ -164,8 +153,10 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       CorsConfiguration:
+        AllowCredentials: true
         AllowOrigins:
-          - !Ref FrontendOrigin
+          - !Sub "http://seat-reservation-frontend-${AWS::AccountId}.s3-website-${AWS::Region}.amazonaws.com"
+          - "http://localhost:5173"
         AllowMethods:
           - GET
           - POST
@@ -174,32 +165,7 @@ Resources:
           - DELETE
           - OPTIONS
         AllowHeaders:
-          - Content-Type
-          - Authorization
-      Auth:
-        DefaultAuthorizer: JwtLambdaAuthorizer
-        Authorizers:
-          JwtLambdaAuthorizer:
-            FunctionArn: !GetAtt AuthorizerFunction.Arn
-            FunctionInvokeRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
-            AuthorizerPayloadFormatVersion: "2.0"
-            EnableSimpleResponses: true
-            Identity:
-              Headers:
-                - Authorization
-
-  AuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: services/core/
-      Runtime: nodejs20.x
-      Handler: authorizer.handler
-      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
-      Layers:
-        - !Ref SharedLayer
-      Environment:
-        Variables:
-          JWT_SECRET: !Ref JwtSecret
+          - "*"
 
   AuthServiceFunction:
     Type: AWS::Serverless::Function
@@ -216,8 +182,6 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/auth/{proxy+}
             Method: ANY
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:
@@ -236,24 +200,24 @@ Resources:
       Layers:
         - !Ref SharedLayer
       Events:
+        BookingApiBaseRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/booking
+            Method: ANY
         BookingApiRoute:
           Type: HttpApi
           Properties:
             ApiId: !Ref SharedApiGateway
             Path: /api/booking/{proxy+}
             Method: ANY
-        BookingApiPreflight:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref SharedApiGateway
-            Path: /api/booking/{proxy+}
-            Method: OPTIONS
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:
           JWT_SECRET: !Ref JwtSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+          S3_BUCKET: !Ref KSeatS3Bucket
 
   CoreApiServiceFunction:
     Type: AWS::Serverless::Function
@@ -270,14 +234,6 @@ Resources:
             ApiId: !Ref SharedApiGateway
             Path: /api/{proxy+}
             Method: ANY
-        CoreApiPreflight:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref SharedApiGateway
-            Path: /api/{proxy+}
-            Method: OPTIONS
-            Auth:
-              Authorizer: NONE
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
       Environment:
         Variables:

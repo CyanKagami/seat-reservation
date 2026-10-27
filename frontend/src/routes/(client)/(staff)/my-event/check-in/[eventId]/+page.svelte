@@ -1,6 +1,7 @@
 <script lang='ts'>
-  import { invalidate, refreshAll } from '$app/navigation';
-  import { ApiError, checkInSeat, getReservation } from '$lib/scripts/booking.js';
+  import { invalidate } from '$app/navigation';
+  import { ApiError } from '$lib/scripts/api.js';
+  import { checkInSeat, getReservation } from '$lib/scripts/booking.js';
   import type { SeatParts } from '$lib/scripts/seat.js';
   import type { Reservation } from '$lib/type/reservation.js';
 

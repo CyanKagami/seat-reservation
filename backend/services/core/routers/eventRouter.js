@@ -1,6 +1,8 @@
 // services/core/routers/eventRouter.js
 import { Router } from 'express';
 import multer from 'multer';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import {
   addFile,
@@ -9,6 +11,8 @@ import {
   fetchData,
   addDataUniqueId,
   updateAllAttributes,
+  deleteItem,
+  deleteFile,
   fetchEventFromEventId,
   fetchEventFromHost,
   requireRole,
@@ -18,21 +22,37 @@ import {
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-async function formatData(data) {
-  const event = { date: {}, 'register-date': {} };
+async function formatData(data, creatorId) {
+  const event = {};
 
-  event.date.start = data.start;
-  event.date.end = data.end;
-  event['register-date'].start = data['register-date-start'];
-  event['register-date'].end = data['register-date-end'];
-  event.host = data.host;
+  if (data.start || data.end) {
+    event.date = {};
+    if (data.start) event.date.start = data.start;
+    if (data.end) event.date.end = data.end;
+  }
+  if (data['register-date-start'] || data['register-date-end']) {
+    event['register-date'] = {};
+    if (data['register-date-start']) event['register-date'].start = data['register-date-start'];
+    if (data['register-date-end']) event['register-date'].end = data['register-date-end'];
+  }
+  if (data.host !== undefined) event.host = data.host;
+  if (data.name !== undefined) event.name = data.name;
+  if (creatorId) event.creatorId = creatorId;
+  else if (data.creatorId) event.creatorId = data.creatorId;
 
-  event.name = data.name;
-  event.creatorId = data.creatorId;
-  event.place = await fetchData('places', { placeId: data.place });
-  event.detail = data.detail;
-  if (data.timetable) event.timetable = JSON.parse(data.timetable);
-  event.condition = data.condition;
+  if (data.place) {
+    const placeId = typeof data.place === 'object' ? data.place.placeId : data.place;
+    event.place = await fetchData('places', { placeId });
+  }
+  if (data.detail !== undefined) event.detail = data.detail;
+  if (data.timetable) {
+    try {
+      event.timetable = typeof data.timetable === 'string' ? JSON.parse(data.timetable) : data.timetable;
+    } catch {
+      event.timetable = data.timetable;
+    }
+  }
+  if (data.condition !== undefined) event.condition = data.condition;
   if (data.eventId) event.eventId = data.eventId;
 
   return event;
@@ -42,7 +62,13 @@ async function getLayoutFromPlace(eventId, res) {
   const event = await fetchData('events', { eventId });
   if (!event) throw new Error('Event not found');
 
-  const fileContent = await readFileAsByteArray(`layouts/place/${event.place.placeId}.msgpack`);
+  const placeId = event.place?.placeId || event.place;
+  let fileContent;
+  try {
+    fileContent = await readFileAsByteArray(`layouts/place/${placeId}/layout.msgpack`);
+  } catch {
+    fileContent = await readFileAsByteArray(`layouts/place/${placeId}.msgpack`);
+  }
   res.set({
     'Content-Type': 'application/msgpack',
     'Content-Length': fileContent.byteLength.toString(),
@@ -51,13 +77,35 @@ async function getLayoutFromPlace(eventId, res) {
   return res.status(200).send(Buffer.from(fileContent));
 }
 
-// --- /event/layout and /event/getFromId, /event/getFromHost registered
-// before /event itself — none of these collide since they're distinct
-// literal path segments, not a ':eventId' catch-all, but kept grouped
-// together for clarity.
+// --- /published routes must be registered BEFORE generic routes ---
 
-// GET /event/layout?eventId=... — event-specific layout, falls back to
-// the place's default layout if the event hasn't customized one yet
+// POST /event/published?eventId= — publish an event
+router.post('/published', requireRole('admin', 'organizer'), async (req, res) => {
+  const { eventId } = req.query;
+  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  try {
+    await updateAllAttributes('events', { eventId }, { status: 'Published' });
+    return res.status(200).json({ body: { message: 'OK' } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+  }
+});
+
+// DELETE /event/published?eventId= — unpublish an event
+router.delete('/published', requireRole('admin', 'organizer'), async (req, res) => {
+  const { eventId } = req.query;
+  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  try {
+    await updateAllAttributes('events', { eventId }, { status: 'Created' });
+    return res.status(200).json({ body: { message: 'OK' } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET /event/layout?eventId= — event-specific layout, falls back to place layout
 router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
   const { eventId } = req.query;
   if (!eventId) return res.status(400).send();
@@ -72,21 +120,13 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
     return res.status(200).send(Buffer.from(fileContent));
   } catch (error) {
     if (error instanceof S3ServiceException) {
-      console.error(`S3 Error [${error.name}]: ${error.message}`);
-      switch (error.name) {
-        case 'NoSuchKey':
-          console.error('The requested file does not exist. Falling back to place layout.');
-          try {
-            return await getLayoutFromPlace(eventId, res);
-          } catch (fallbackErr) {
-            console.error(fallbackErr);
-            return res.status(500).json({ body: { message: 'Internal Server Error' } });
-          }
-        case 'AccessDenied':
-          console.error('Check your IAM permissions or Bucket policies.');
-          break;
-        default:
-          console.error('Other S3 specific issue.');
+      if (error.name === 'NoSuchKey') {
+        try {
+          return await getLayoutFromPlace(eventId, res);
+        } catch (fallbackErr) {
+          console.error(fallbackErr);
+          return res.status(500).json({ body: { message: 'Internal Server Error' } });
+        }
       }
     }
     console.error(error);
@@ -98,7 +138,7 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
 router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (req, res) => {
   const { eventId } = req.body;
   try {
-    const layoutURL = await addFile(`layouts/event/${eventId}.msgpack`, req.file.buffer);
+    const layoutURL = await addFile('layouts/event', `${eventId}.msgpack`, req.file.buffer);
     await updateAllAttributes('events', { eventId }, { layoutURL });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
@@ -107,8 +147,7 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
   }
 });
 
-// GET /event/getFromId/:eventId — public, matches original's actual behavior
-// (original extracted a token but never verified it — dead code removed)
+// GET /event/getFromId/:eventId
 router.get('/getFromId/:eventId', requireAuth, async (req, res) => {
   try {
     const data = await fetchEventFromEventId(req.params.eventId);
@@ -119,10 +158,10 @@ router.get('/getFromId/:eventId', requireAuth, async (req, res) => {
   }
 });
 
-// GET /event/getFromHost — events created by the current logged-in user
+// GET /event/getFromHost — events created by the current user
 router.get('/getFromHost', requireAuth, async (req, res) => {
   try {
-    const data = await fetchEventFromHost(req.user.googleId);
+    const data = await fetchEventFromHost(req.user.email);
     return res.status(200).json({ body: data });
   } catch (error) {
     console.error('Error fetching events for host:', error);
@@ -130,10 +169,10 @@ router.get('/getFromHost', requireAuth, async (req, res) => {
   }
 });
 
-// GET /event — list all events (public, matches original)
+// GET /event — list published events
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const data = await fetchAllData('events');
+    const data = await fetchAllData('events', { status: 'Published' });
     return res.status(200).json({ body: data });
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -141,20 +180,18 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// POST /event — create an event.
-// NOTE: original had no auth check at all — added requireRole here as a fix.
-// Remove if this was intentionally meant to be a public endpoint.
+// POST /event — create an event
 router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async (req, res) => {
   try {
     const data = { ...req.body };
-    let processData = {};
+    const processData = { ...(await formatData(data, req.user.email)), status: 'Created' };
+
+    const eventId = await addDataUniqueId('events', processData, 'eventId');
 
     if (req.file) {
-      processData.picture = await addFile(`pictures/event/${Date.now()}-${uuidv4()}${path.extname(req.file.originalname) || ''}`, req.file.buffer);
+      const pictureURL = await addFile('pictures/event', eventId, req.file.buffer);
+      await updateAllAttributes('events', { eventId }, { picture: pictureURL });
     }
-
-    processData = { ...processData, ...(await formatData(data)) };
-    await addDataUniqueId('events', processData, 'eventId');
 
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
@@ -163,24 +200,36 @@ router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async 
   }
 });
 
-// PATCH /event — update an event.
-// NOTE: same missing-auth fix as POST above.
+// PATCH /event — update an event
 router.patch('/', requireRole('admin', 'organizer'), upload.single('img'), async (req, res) => {
   try {
     const data = { ...req.body };
-    let processData = {};
+    const processData = await formatData(data);
 
     if (req.file) {
-      processData.picture = await addFile(`pictures/event/${Date.now()}-${uuidv4()}${path.extname(req.file.originalname) || ''}`, req.file.buffer);
+      const pictureURL = await addFile('pictures/event', processData.eventId, req.file.buffer);
+      processData.picture = pictureURL;
     }
 
-    processData = { ...processData, ...(await formatData(data)) };
     await updateAllAttributes('events', { eventId: processData.eventId }, processData);
-
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
     console.error('Error updating event:', error);
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
+  }
+});
+
+// DELETE /event?eventId= — delete an event
+router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
+  const { eventId } = req.query;
+  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  try {
+    await deleteItem('events', { eventId });
+    await deleteFile('pictures/event', eventId).catch(() => {}); // ignore if no picture
+    return res.status(200).json({ body: { message: 'OK' } });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -1,5 +1,6 @@
 import type { Place } from "./place"
 
+export type EventStatus = "Created" | "Published";
 export interface Event {
     picture:string,
     name:string,
@@ -18,6 +19,7 @@ export interface Event {
     },
     condition?:string,
     eventId:string
+    status:EventStatus
 }
 
 export interface Daytable {

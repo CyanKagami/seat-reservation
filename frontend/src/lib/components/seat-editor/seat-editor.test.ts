@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ArrayToolStrategy } from './tools/ArrayTool';
 import { SeatEditorState } from './seatState.svelte';
 import { BOX_SIZE, GAP } from './constants';

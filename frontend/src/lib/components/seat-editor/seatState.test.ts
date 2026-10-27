@@ -189,4 +189,95 @@ describe('SeatEditorState', () => {
             expect(state.objects[1].metadata).toEqual({}); // unchanged
         });
     });
+
+    describe('seatTypes CRUD', () => {
+        it('should create a new seat type and prevent duplicate names', () => {
+            const created = state.createSeatType({
+                name: 'VIP',
+                color: '#gold',
+                description: 'VIP Sofa',
+                picture: 'data:image/png;base64,...'
+            });
+
+            expect(created).toBeDefined();
+            expect(state.seatTypes['VIP']).toEqual({
+                name: 'VIP',
+                color: '#gold',
+                description: 'VIP Sofa',
+                picture: 'data:image/png;base64,...'
+            });
+
+            // Prevent duplicate name
+            const duplicate = state.createSeatType({
+                name: 'VIP',
+                color: '#silver'
+            });
+            expect(duplicate).toBeNull();
+        });
+
+        it('should update a seat type without changing name', () => {
+            state.createSeatType({ name: 'Deluxe', color: '#blue', description: 'Old desc' });
+            
+            const updated = state.updateSeatType('Deluxe', {
+                name: 'Deluxe',
+                color: '#purple',
+                description: 'New desc'
+            });
+
+            expect(updated).toBe(true);
+            expect(state.seatTypes['Deluxe'].color).toBe('#purple');
+            expect(state.seatTypes['Deluxe'].description).toBe('New desc');
+        });
+
+        it('should rename a seat type and update referencing seats on canvas', () => {
+            state.createSeatType({ name: 'OldName', color: '#111' });
+            state.objects = [
+                { id: 's1', type: 'seat', x: 0, y: 0, width: 20, height: 20, metadata: { seatType: 'OldName' } } as CanvasObject,
+                { id: 's2', type: 'seat', x: 20, y: 0, width: 20, height: 20, metadata: { seatType: 'standard' } } as CanvasObject
+            ];
+
+            const updated = state.updateSeatType('OldName', {
+                name: 'NewName',
+                color: '#222'
+            });
+
+            expect(updated).toBe(true);
+            expect(state.seatTypes['OldName']).toBeUndefined();
+            expect(state.seatTypes['NewName']).toBeDefined();
+            expect(state.seatTypes['NewName'].color).toBe('#222');
+            expect(state.objects[0].metadata?.seatType).toBe('NewName');
+            expect(state.objects[1].metadata?.seatType).toBe('standard');
+        });
+
+        it('should prevent renaming to an already existing seat type name', () => {
+            state.createSeatType({ name: 'TypeA', color: '#aaa' });
+            state.createSeatType({ name: 'TypeB', color: '#bbb' });
+
+            const updated = state.updateSeatType('TypeA', {
+                name: 'TypeB',
+                color: '#ccc'
+            });
+
+            expect(updated).toBe(false);
+            expect(state.seatTypes['TypeA']).toBeDefined();
+        });
+
+        it('should remove a seat type and revert matching seats to standard', () => {
+            state.createSeatType({ name: 'ToDelete', color: '#red' });
+            state.objects = [
+                { id: 's1', type: 'seat', x: 0, y: 0, width: 20, height: 20, metadata: { seatType: 'ToDelete' } } as CanvasObject
+            ];
+
+            // Cannot remove standard
+            expect(state.removeSeatType('standard')).toBe(false);
+
+            const removed = state.removeSeatType('ToDelete');
+            expect(removed).toBe(true);
+            expect(state.seatTypes['ToDelete']).toBeUndefined();
+            expect(state.objects[0].metadata?.seatType).toBe('standard');
+
+            // Cannot remove non-existent
+            expect(state.removeSeatType('NonExistent')).toBe(false);
+        });
+    });
 });

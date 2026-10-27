@@ -4,7 +4,7 @@
   import ReservationZonePicker from "$lib/components/zone-editor/components/ReservationZonePicker.svelte";
   import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
   import type { CanvasObject } from "$lib/components/canvas-shared/types";
-  import { ApiError, getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
+  import { getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
   import { onMount } from "svelte";
   import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
   import { alertModal } from "$lib/store/alert.svelte.js";

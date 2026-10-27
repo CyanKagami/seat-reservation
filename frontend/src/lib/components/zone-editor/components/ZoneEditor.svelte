@@ -9,6 +9,7 @@
 	import type { CanvasObject } from "../types";
   import LeftSidebar from "./LeftSidebar.svelte";
   import { GRID_SIZE } from "../constants";
+  import { alertModal } from "$lib/store/alert.svelte";
 
 	let isCreateZonePopupOpen = $state(false)
 	let isPreview = $state(false);
@@ -29,7 +30,7 @@
 	function handleAddZone(){
 		let result = zoneState.createZone({name: zoneName, color: zoneColor});
 		if (!result) {
-			alert('ชื่อโซนซ้ำ')
+			alertModal.warning('ชื่อโซนซ้ำ', 'กรุณาเลือกชื่อโซนที่ไม่ซ้ำ')
 		}
 		zoneName = '';
 		zoneColor = '#ffffff';

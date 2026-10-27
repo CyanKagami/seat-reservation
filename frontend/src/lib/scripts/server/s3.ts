@@ -1,5 +1,5 @@
 import { AWS_LOCALSTACK_URL, AWS_REGION } from "$env/static/private";
-import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, CreateBucketCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
 export const BUCKET = 'k-seat-object';
@@ -40,6 +40,29 @@ function removeInvalidXmlCharacters(str:string) {
   return str.replace(invalidXmlRegex, '');
 }
 
+export function getObjectURL(folder:string, filename:string){
+  let cleanFileName = removeInvalidXmlCharacters(filename);
+  if (localstackUrl) {
+      return `${localstackUrl}/${BUCKET}/${folder}/${cleanFileName}`
+  }
+  return `https://${BUCKET}.s3.${AWS_REGION}://${folder}/${cleanFileName}`
+}
+
+export function extractKey(objectURL:string){
+  const PREFIX = (localstackUrl) ? `${localstackUrl}/${BUCKET}/` : `https://${BUCKET}.s3.${AWS_REGION}://`;
+  if (objectURL.startsWith(PREFIX)) {
+        // PREFIX is exactly at the beginning
+    let segments = objectURL.slice(PREFIX.length).split('/');
+    let name = segments.pop()
+    let folder = segments.join('/');
+    return {folder:folder,filename:name};
+  }
+  let segments = objectURL.split('/');
+  let name = segments.pop()
+  let folder = segments.join('/');
+  return {folder:folder,filename:name};
+}
+
 export async function addFile(folder:string, filename:string, fileBuffer:Buffer) {
     let cleanFileName = removeInvalidXmlCharacters(filename);
     try {
@@ -48,11 +71,7 @@ export async function addFile(folder:string, filename:string, fileBuffer:Buffer)
           Key: `${folder}/${cleanFileName}`,
           Body: fileBuffer,
       }));
-    if (localstackUrl) {
-      console.log(`File "${cleanFileName}" uploaded successfully to localstack at ${localstackUrl}/${BUCKET}/${folder}/${cleanFileName}`);
-      return `${localstackUrl}/${BUCKET}/${folder}/${cleanFileName}`
-    }
-    return `https://${BUCKET}.s3.${AWS_REGION}://${folder}/${cleanFileName}`
+    return getObjectURL(folder, filename);
   }
   catch (error:any) {
     if (error.$responseBodyText) {
@@ -106,3 +125,62 @@ export async function readFileAsByteArray(folder:string, fileKey:string) {
   }
 }
 
+export async function deleteFile(folder:string, fileKey:string) {
+  const command = new DeleteObjectCommand({
+    Bucket: BUCKET,
+    Key: `${folder}/${fileKey}`,
+  });
+
+  try {
+    const response = await s3Client.send(command);
+    // 2. Convert the stream to a string directly
+    return response
+  } catch (error) {
+    console.error("Error deleting file from S3:", error);
+    throw error
+  }
+}
+
+export async function deleteObjectsWithPrefix(prefix:string, keepKeys:Set<string> = new Set()) {
+  let isTruncated = true;
+  let continuationToken = undefined;
+
+  while (isTruncated) {
+    // 1. List objects with the specific prefix
+    const listCommand:ListObjectsV2Command = new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
+
+    const listResponse = await s3Client.send(listCommand);
+    
+    if (!listResponse.Contents || listResponse.Contents.length === 0) {
+      console.log("No objects found with this prefix.");
+      break;
+    }
+
+    // 2. Format object keys for the batch delete request
+    const objectsToDelete = listResponse.Contents
+        .filter((obj) => !keepKeys.has(obj.Key || ''))
+        .map((obj) => ({ Key: obj.Key }));
+
+    // 3. Execute batch deletion (up to 1,000 objects)
+    const deleteCommand = new DeleteObjectsCommand({
+      Bucket: BUCKET,
+      Delete: {
+        Objects: objectsToDelete,
+        Quiet: true, // Only returns errors in the response payload
+      },
+    });
+
+    const deleteResponse = await s3Client.send(deleteCommand);
+    console.log(`Successfully deleted ${objectsToDelete.length} objects.`);
+
+    // 4. Check if there are more objects remaining to process
+    isTruncated = listResponse.IsTruncated || false;
+    continuationToken = listResponse.NextContinuationToken;
+  }
+  
+  console.log("Deletion completed successfully.");
+}

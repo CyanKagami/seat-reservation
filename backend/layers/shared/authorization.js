@@ -1,10 +1,11 @@
-// layers/shared/auth.js
+// layers/shared/authorization.js
 import jwt from 'jsonwebtoken';
 import { fetchUser } from './dynamo.js';
 
+// verifyAccess — live DB check using email as the users hash key.
 export async function verifyAccess(user, intendedRoles) {
-  const { googleId } = user;
-  const fetchedUser = await fetchUser(googleId);
+  const { email } = user;
+  const fetchedUser = await fetchUser(email);
   if (!fetchedUser) return false;
   return intendedRoles.includes(fetchedUser.role);
 }
@@ -22,24 +23,36 @@ export function extractBearerToken(headers) {
   return authHeader.replace(/^Bearer\s+/i, '');
 }
 
-// --- New: Express middleware for reading authorizer context + role gating ---
-
-// Identity + role were already verified by the Lambda authorizer before this
-// handler ran — this just reads what the authorizer already put on the request,
-// it does not re-verify the token.
+// getUser — reads authorizer context set by the Lambda authorizer,
+// with fallback to direct Bearer token verification (for local dev/tests).
 export function getUser(req) {
-  const ctx = req.requestContext?.authorizer?.lambda ?? {};
+  let ctx = req.requestContext?.authorizer?.lambda ?? req.apiGateway?.event?.requestContext?.authorizer?.lambda;
+  if (!ctx || !ctx.email) {
+    const token = extractBearerToken(req.headers);
+    if (token) {
+      try {
+        ctx = verifyToken(token);
+      } catch (e) {
+        ctx = {};
+      }
+    } else {
+      ctx = {};
+    }
+  }
   return {
-    googleId: ctx.googleId,
-    email: ctx.email,
-    name: ctx.name,
-    role: ctx.role
+    googleId: ctx.googleId || '',
+    email: ctx.email || '',
+    name: ctx.name || '',
+    role: ctx.role || ''
   };
 }
 
 export function requireRole(...allowedRoles) {
   return (req, res, next) => {
     const user = getUser(req);
+    if (!user.email) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     if (!allowedRoles.includes(user.role)) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -50,7 +63,7 @@ export function requireRole(...allowedRoles) {
 
 export function requireAuth(req, res, next) {
   const user = getUser(req);
-  if (!user.googleId) {
+  if (!user.email) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   req.user = user;

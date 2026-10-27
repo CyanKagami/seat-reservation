@@ -10,6 +10,7 @@ import type { RectToolStrategy } from "./tools/RectTool";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
 import { decode, encode } from "@msgpack/msgpack";
 import { apiFetch } from "$lib/scripts/api";
+import { alertModal } from "$lib/store/alert.svelte";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
@@ -294,11 +295,74 @@ export class SeatEditorState {
 		this.centerGrid();
 	};
 
-	createSeatType = ({name, color, description, picture}:{name:string, color:string, description?: string, picture?: string}) => {
+	createSeatType = ({name, color, description, picture}:{name:string, color:string, description?: string, picture?: string | null}) => {
 		if (this.seatTypes[name]) return null;
-		this.seatTypes[name] = {name, color, description, picture};
+		this.seatTypes[name] = {name, color, description, picture: picture ?? undefined};
 		return this.seatTypes[name];
 	}
+
+	updateSeatType = (
+		oldName: string,
+		{ name, color, description, picture }: { name: string; color: string; description?: string; picture?: string | null }
+	) => {
+		if (!this.seatTypes[oldName]) return false;
+		if (name !== oldName && this.seatTypes[name]) return false;
+
+		const updatedType: SeatType = {
+			name,
+			color,
+			description: description ?? '',
+			picture: picture ?? undefined
+		};
+
+		if (name !== oldName) {
+			delete this.seatTypes[oldName];
+			this.seatTypes[name] = updatedType;
+
+			// Update all seats that reference the old name
+			this.objects = this.objects.map((obj) => {
+				if (obj.type === 'seat' && obj.metadata?.seatType === oldName) {
+					return {
+						...obj,
+						metadata: {
+							...obj.metadata,
+							seatType: name
+						}
+					};
+				}
+				return obj;
+			});
+		} else {
+			this.seatTypes[name] = updatedType;
+		}
+
+		this.commitHistory();
+		return true;
+	};
+
+	removeSeatType = (name: string) => {
+		if (name === 'standard') return false;
+		if (!this.seatTypes[name]) return false;
+
+		delete this.seatTypes[name];
+
+		// Revert any seats with this seatType to 'standard'
+		this.objects = this.objects.map((obj) => {
+			if (obj.type === 'seat' && obj.metadata?.seatType === name) {
+				return {
+					...obj,
+					metadata: {
+						...obj.metadata,
+						seatType: 'standard'
+					}
+				};
+			}
+			return obj;
+		});
+
+		this.commitHistory();
+		return true;
+	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
 		await this.uploadToAPI()
@@ -325,13 +389,13 @@ export class SeatEditorState {
 			});
 
 			if (res.ok) {
-				alert("บันทึกลง S3 เรียบร้อย!");
-		} else {
-			const err = await res.json();
-			alert(`เกิดข้อผิดพลาด: ${err.error}`);
-		}
+				alertModal.success("บันทึกสำเร็จ", "การเปลี่ยนแปลงของคุณได้รับการบันทึกแล้ว")
+			} else {
+				const err = await res.json();
+				alertModal.failure("บันทึกล้มเหลว", "การเปลี่ยนแปลงของคุณยังไม่ได้รับการบันทึก กรุณาลองอีกครั้ง")
+			}
 		} catch (err) {
-			alert("ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+			alertModal.failure("ล้มเหลว", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ")
 		} finally {
 			this.isUneditable = false;
 		}	

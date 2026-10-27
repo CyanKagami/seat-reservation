@@ -13,14 +13,9 @@
 		})
 		delete zoneState.zones[zoneName]
 	}
-	function handleSelectZoneSeats(zoneName: string) {
-		const matchingIds = new Set<string>();
-		zoneState.objects.forEach((obj) => {
-			if (obj.type === 'seat' && obj.metadata?.zone === zoneName) {
-				matchingIds.add(obj.id);
-			}
-		});
-		zoneState.selectedIds = matchingIds;
+	function handleApplyZone(zoneName: string) {
+		if (zoneState.selectedIds.size === 0) return;
+		zoneState.updateSelectedObjectMetadata({ zone: zoneName });
 	}
 
 	function handleQuickAutoLabel(event: MouseEvent, zoneName: string) {
@@ -45,10 +40,10 @@
 			<div 
 				role="button"
 				tabindex="0"
-				onclick={() => handleSelectZoneSeats(zoneName)}
-				onkeydown={(e) => e.key === 'Enter' && handleSelectZoneSeats(zoneName)}
+				onclick={() => handleApplyZone(zoneName)}
+				onkeydown={(e) => e.key === 'Enter' && handleApplyZone(zoneName)}
 				class="w-full flex items-center justify-between border group border-slate-300 rounded bg-white gap-1 hover:bg-indigo-50 hover:border-indigo-400 transition-colors p-2 cursor-pointer"
-				title="คลิกเพื่อเลือกที่นั่งทั้งหมดในโซนนี้"
+				title="คลิกเพื่อกำหนดโซนของที่นั่งที่เลือกให้เป็น {zoneName}"
 			>
 				<div class="flex items-center gap-1.5 min-w-0">
 					<div class="w-2.5 h-2.5 rounded-xs shrink-0" style={`background-color: ${zoneInfo.color};`}></div>

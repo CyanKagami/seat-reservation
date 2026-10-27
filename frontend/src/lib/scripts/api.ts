@@ -23,3 +23,23 @@ export async function apiFetch(path:string, options:RequestInit = {}, fetchFunct
 
   return res;
 }
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+
+// Success bodies look like { body: ... }, errors like { error, code? }.
+export async function unwrap<T>(res: Response): Promise<T> {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(data.error ?? 'Request failed', res.status, data.code);
+  }
+  return data.body as T;
+}

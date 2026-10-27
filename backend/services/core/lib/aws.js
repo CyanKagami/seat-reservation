@@ -26,11 +26,37 @@ export async function fetchData(TableName, Key) {
   return (await dynamo.send(new GetCommand({ TableName, Key }))).Item ?? null;
 }
 
-export async function fetchAllData(TableName) {
+export async function fetchAllData(TableName, filter) {
   const items = [];
   let ExclusiveStartKey;
+
+  const filterEntries = filter && typeof filter === 'object'
+    ? Object.entries(filter).filter(([_, v]) => v !== undefined)
+    : [];
+  const hasFilter = filterEntries.length > 0;
+
+  const ExpressionAttributeNames = {};
+  const ExpressionAttributeValues = {};
+  const filterParts = [];
+
+  if (hasFilter) {
+    filterEntries.forEach(([key, value], index) => {
+      const namePlaceholder = `#filterKey_${index}`;
+      const valPlaceholder = `:filterVal_${index}`;
+      ExpressionAttributeNames[namePlaceholder] = key;
+      ExpressionAttributeValues[valPlaceholder] = value;
+      filterParts.push(`${namePlaceholder} = ${valPlaceholder}`);
+    });
+  }
+
   do {
-    const response = await dynamo.send(new ScanCommand({ TableName, ExclusiveStartKey }));
+    const params = { TableName, ExclusiveStartKey };
+    if (hasFilter) {
+      params.FilterExpression = filterParts.join(' AND ');
+      params.ExpressionAttributeNames = ExpressionAttributeNames;
+      params.ExpressionAttributeValues = ExpressionAttributeValues;
+    }
+    const response = await dynamo.send(new ScanCommand(params));
     items.push(...(response.Items ?? []));
     ExclusiveStartKey = response.LastEvaluatedKey;
   } while (ExclusiveStartKey);

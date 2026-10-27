@@ -1,5 +1,6 @@
 import type { PageLoad } from './$types';
-import { ApiError, getEventAttendance } from '$lib/scripts/booking';
+import { getEventAttendance } from '$lib/scripts/booking';
+import { ApiError } from '$lib/scripts/api';
 
 export const load: PageLoad = async ({ fetch, params, depends }) => {
     depends('increase:count')

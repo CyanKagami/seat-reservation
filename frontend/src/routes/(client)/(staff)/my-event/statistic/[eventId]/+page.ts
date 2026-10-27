@@ -1,5 +1,6 @@
 import type { PageLoad } from './$types';
-import { ApiError, getReservationStatistic, getSeatMap } from '$lib/scripts/booking';
+import { getReservationStatistic } from '$lib/scripts/booking';
+import { ApiError } from '$lib/scripts/api';
 
 export const load: PageLoad = async ({ fetch, params, depends }) => {
     depends('change:seatmap')

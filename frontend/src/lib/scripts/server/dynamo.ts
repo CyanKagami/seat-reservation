@@ -1,5 +1,5 @@
 import { DynamoDBClient, CreateTableCommand, GetItemCommand, type GetItemCommandInput, type QueryCommandInput } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, ScanCommand, type ScanCommandInput, paginateScan, UpdateCommand, GetCommand, type PutCommandInput, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import "dotenv/config"
 
@@ -92,13 +92,19 @@ export async function addData(tableName:string, item:Object) {
   }
 }
 
-export async function addDataUniqueId(tableName:string, item:Object, primaryKey:string) {
+export async function addDataUniqueId(
+  tableName:string,
+  item:Object,
+  primaryKey:string,
+  insertId: (id:string) => {[key:string]:any} = () => {return {}})
+{
   const uniqueId = uuidv4();
   const updatedObj = Object.fromEntries(
     Object.entries(item).map(([key, value]) => [key, typeof(value) === "string" ? removeInvalidXmlCharacters(value) : value])
   );
   let newItem = {
-      ...updatedObj
+      ...updatedObj,
+      ...insertId(uniqueId)
     }
   newItem[primaryKey] = uniqueId;
 
@@ -110,7 +116,6 @@ export async function addDataUniqueId(tableName:string, item:Object, primaryKey:
 
   try {
     const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
     return uniqueId;
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
@@ -167,58 +172,46 @@ export async function fetchAllData(
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    // Determine if we are querying by a hash key or scanning the whole table
-    const hasFilter = filter && Object.keys(filter).length > 0;
-    
-    // Extract the first key-value pair to use as the hash key condition
-    let hashKeyName: string | undefined;
-    let hashKeyValue: any;
+    const filterEntries = filter && typeof filter === 'object' 
+      ? Object.entries(filter).filter(([_, v]) => v !== undefined) 
+      : [];
+    const hasFilter = filterEntries.length > 0;
+
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+    const filterParts: string[] = [];
+
     if (hasFilter) {
-      const entries = Object.entries(filter);
-      hashKeyName = entries[0][0];
-      hashKeyValue = entries[0][1];
+      filterEntries.forEach(([key, value], index) => {
+        const namePlaceholder = `#filterKey_${index}`;
+        const valPlaceholder = `:filterVal_${index}`;
+        expressionAttributeNames[namePlaceholder] = key;
+        expressionAttributeValues[valPlaceholder] = value;
+        filterParts.push(`${namePlaceholder} = ${valPlaceholder}`);
+      });
     }
 
     do {
-      let response;
+      const params: ScanCommandInput = {
+        TableName: tableName,
+        ExclusiveStartKey: lastEvaluatedKey,
+      };
 
-      if (hasFilter && hashKeyName) {
-        // --- QUERY MODE (Efficient: Target specific Hash Key) ---
-        const params: QueryCommandInput = {
-          TableName: tableName,
-          KeyConditionExpression: "#hk = :hv",
-          ExpressionAttributeNames: {
-            "#hk": hashKeyName, // Prevents reserved keyword conflicts
-          },
-          ExpressionAttributeValues: {
-            ":hv": hashKeyValue,
-          },
-          ExclusiveStartKey: lastEvaluatedKey,
-        };
-
-        const command = new QueryCommand(params);
-        response = await docClient.send(command);
-
-      } else {
-        // --- SCAN MODE (Fallback: Read entire table) ---
-        const params: ScanCommandInput = {
-          TableName: tableName,
-          ExclusiveStartKey: lastEvaluatedKey,
-        };
-
-        const command = new ScanCommand(params);
-        response = await docClient.send(command);
+      if (hasFilter) {
+        params.FilterExpression = filterParts.join(' AND ');
+        params.ExpressionAttributeNames = expressionAttributeNames;
+        params.ExpressionAttributeValues = expressionAttributeValues;
       }
 
-      // Store retrieved items
+      const command = new ScanCommand(params);
+      const response = await docClient.send(command);
+
       if (response.Items) {
         allItems.push(...response.Items);
       }
 
-      // Track the pagination token
       lastEvaluatedKey = response.LastEvaluatedKey;
-
-    } while (lastEvaluatedKey); // Continue loop if there are more pages
+    } while (lastEvaluatedKey);
 
     return allItems;
   } catch (error) {
@@ -366,16 +359,13 @@ export async function fetchData(tablename:string, key:Key) {
     // Define the exact primary key match
     Key: key,
   };
-  console.log(`Fetching table ${tablename} with params:`, params);
   try {
     const command = new GetCommand(params);
     const response = await docClient.send(command);
 
     if (response.Item) {
-      console.log('Item found:', response.Item);
       return response.Item;
     } else {
-      console.log('No item found with the specified key.');
       return null;
     }
   } catch (error) {
@@ -407,6 +397,22 @@ export async function paginateReadData(tableName:string, limit:number, nextToken
       nextToken: newNextToken,
     }
   } catch (error) {
+    throw error;
+  }
+}
+
+export async function deleteItem(tablename:string, key:Key){
+    const params = {
+    TableName: tablename,
+    // Define the exact primary key match
+    Key: key,
+  };
+  try {
+    const command = new DeleteCommand(params);
+    const response = await docClient.send(command);
+    return response;
+  } catch (error) {
+    console.error('Error deleting item:', error);
     throw error;
   }
 }
