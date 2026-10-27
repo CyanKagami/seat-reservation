@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { logout } from '$lib/scripts/auth';
 import type { User } from "$lib/type/user";
 
 class UserStore {
@@ -18,9 +19,7 @@ class UserStore {
 
     logout() {
         if (browser) {
-            fetch('/api/auth/google/', { method: 'DELETE', credentials: 'include' }).finally(() => {
-                this.user = null;
-            });
+            logout()
         }
     }
 }

@@ -89,7 +89,7 @@
                 {/each}
             </div>
         {:else if filteredEvents.length === 0}
-            <div class="bg-white rounded-2xl border border-border-subtle p-12 text-center flex flex-col items-center max-w-md mx-auto my-8">
+            <div class="bg-white rounded-2xl border border-border-subtle p-10 text-center flex flex-col items-center max-w-md mx-auto my-8">
                 <div class="w-12 h-12 rounded-full bg-pale-soft flex items-center justify-center text-secondary mb-4">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>

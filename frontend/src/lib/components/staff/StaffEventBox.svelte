@@ -75,7 +75,7 @@
         </div>
 
         <a 
-            href="/my-event/update-event/{event.eventId}" 
+            href="/my-event/event-info/{event.eventId}" 
             class="w-full py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-xs sm:text-sm text-center transition-colors shadow-2xs"
         >
             แก้ไขรายละเอียดกิจกรรม

@@ -256,7 +256,7 @@
 </script>
 
 <div
-  class="flex flex-col items-center mt-24 sm:mt-32 rounded-3xl sm:shadow-xl bg-white sm:border-2 sm:border-black/20 w-full max-w-2xl sm:max-w-3xl self-center p-5 sm:p-8 pt-12 mx-4"
+  class="flex flex-col items-center mt-10 sm:mt-14 mx-auto rounded-3xl  sm:shadow-xl bg-white sm:border-2 sm:border-black/20 w-full max-w-2xl sm:max-w-3xl self-center p-5 sm:p-8 pt-12 mx-4"
 >
   <h1 class="text-4xl font-bold mb-12">เพิ่มกิจกรรม</h1>
   <form

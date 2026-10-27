@@ -35,216 +35,139 @@
     const fmtDay = (s: string) =>
         s ? fmtDate(new Date(`${s}T00:00:00`)) : "-";
 
-    type Range = { start?: unknown; end?: unknown } | undefined;
-    function fmtRange(r: Range) {
-        if (!r?.start || !r?.end) return "-";
-        const s = new Date(r.start as string | number | Date);
-        const e = new Date(r.end as string | number | Date);
-        return `วันที่ ${fmtDate(s)} เวลา ${fmtTime(s)} ถึง วันที่ ${fmtDate(e)} เวลา ${fmtTime(e)}`;
+    function fmtDateTime(value: unknown) {
+        if (!value) return "-";
+        const date = new Date(value as string | number | Date);
+        return `${fmtDate(date)} เวลา ${fmtTime(date)}`;
     }
 </script>
 
-<div class="page-layout">
-    <div class="event-card">
-        <h1 class="mb-4 text-4xl font-bold">รายละเอียดกิจกรรม</h1>
+<div class="mx-auto mb-5 mt-6 grid w-[92vw] max-w-6xl grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_18rem] max-md:w-[calc(100%-1.5rem)]">
+    <nav class="order-0 col-span-full mb-[-0.75rem] flex min-w-0 items-center gap-2 text-sm text-dark-soft" aria-label="Breadcrumb">
+        <a href="/my-event" class="transition-colors hover:text-dark">กิจกรรมของฉัน</a>
+        <span aria-hidden="true">/</span>
+        <span class="truncate font-semibold text-dark-muted">{event.name || "รายละเอียดกิจกรรม"}</span>
+    </nav>
 
-        <div class="event-layout">
-            <!-- ซ้าย: ข้อมูลกิจกรรม (แสดงอย่างเดียว) -->
-            <div class="flex min-w-0 flex-col gap-5">
-                <div class="cover">
-                    {#if event.picture}
-                        <img
-                            src={event.picture}
-                            alt={event.name}
-                            class="h-full w-full object-cover"
-                        />
-                    {/if}
-                </div>
+    <main class="order-2 min-w-0 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-8 md:order-1">
+        <h1 class="mb-5 text-4xl font-extrabold leading-tight tracking-tight text-dark">รายละเอียดกิจกรรม</h1>
 
-                <div class="flex flex-col gap-2">
-                    <h2 class="text-3xl font-bold wrap-break-word">
-                        {event.name}
-                    </h2>
-                    <p>
-                        <span class="font-bold">สถานที่จัดกิจกรรม:</span>
+        <div class="flex min-w-0 flex-col gap-4">
+            <div class="aspect-[16/7] w-full overflow-hidden rounded-2xl border border-border-subtle bg-surface-subtle max-md:aspect-video">
+                <img
+                    src={event.picture || "/image/defaultEvent.png"}
+                    alt={event.name || "ภาพกิจกรรม"}
+                    class="h-full w-full object-cover"
+                />
+            </div>
+
+            <div class="py-5">
+                <h2 class="mb-4 text-3xl font-extrabold leading-tight text-dark wrap-break-word">
+                    {event.name || "ไม่มีชื่อกิจกรรม"}
+                </h2>
+                <p class="mt-2 flex items-start gap-2.5 text-base leading-relaxed text-dark-muted">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.657 16.657 13.414 20.9a2 2 0 0 1-2.828 0l-4.243-4.243a8 8 0 1 1 11.314 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    <span>
+                        <span class="mb-0.5 block text-sm font-bold text-dark-soft">สถานที่จัดกิจกรรม</span>
                         {place ? `${place.name} (${place.location.name})` : "-"}
-                    </p>
-                    <p>
-                        <span class="font-bold">ผู้จัดกิจกรรม:</span>
-                        {event.host}
-                    </p>
-                </div>
+                    </span>
+                </p>
+                <p class="mt-2 flex items-start gap-2.5 text-base leading-relaxed text-dark-muted">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2m6-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10 10v-2a4 4 0 0 0-3-3.87m-1-12.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>
+                        <span class="mb-0.5 block text-sm font-bold text-dark-soft">ผู้จัดกิจกรรม</span>
+                        {event.host || "-"}
+                    </span>
+                </p>
+            </div>
 
-                <section>
-                    <h3 class="mb-1 font-bold">คำอธิบาย</h3>
-                    <p class="whitespace-pre-line break-words text-sm">
-                        {event.detail || "-"}
-                    </p>
+            <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">คำอธิบาย</h3>
+                <p class="whitespace-pre-line text-sm leading-relaxed text-dark-muted wrap-break-word">
+                    {event.detail || "-"}
+                </p>
+            </section>
+
+            <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">เงื่อนไขการเข้าร่วมกิจกรรม</h3>
+                <p class="text-sm leading-relaxed text-dark-muted wrap-break-word">
+                    {event.condition || "ไม่มี"}
+                </p>
+            </section>
+
+            <div class="grid grid-cols-1 gap-4 min-[561px]:grid-cols-2">
+                <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                    <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">เวลาเปิดลงทะเบียน</h3>
+                    <div class="grid gap-1.5 text-sm leading-relaxed text-dark-muted">
+                        <p class="m-0"><span class="font-semibold text-dark">เริ่ม:</span> {fmtDateTime(event["register-date"]?.start)}</p>
+                        <p class="m-0"><span class="font-semibold text-dark">สิ้นสุด:</span> {fmtDateTime(event["register-date"]?.end)}</p>
+                    </div>
                 </section>
 
-                <section>
-                    <h3 class="mb-1 font-bold">เงื่อนไขการเข้าร่วมกิจกรรม</h3>
-                    <p class="text-sm break-words">
-                        {event.condition || "ไม่มี"}
-                    </p>
-                </section>
-
-                <section>
-                    <h3 class="mb-1 font-bold">เวลาเปิดลงทะเบียน</h3>
-                    <p class="text-sm text-red-500">
-                        {fmtRange(event["register-date"])}
-                    </p>
-                </section>
-
-                <section>
-                    <h3 class="mb-1 font-bold">ช่วงเวลาจัดกิจกรรม</h3>
-                    <p class="text-sm text-red-500">{fmtRange(event.date)}</p>
-                </section>
-
-                <section class="flex flex-col gap-4">
-                    <h3 class="font-bold">ตารางกิจกรรม</h3>
-                    {#each timetable as day}
-                        <div class="flex flex-col gap-2">
-                            <p class="text-sm font-bold">{fmtDay(day.date)}</p>
-                            <div class="table-box">
-                                <table class="w-full text-sm">
-                                    <thead>
-                                        <tr class="border-b border-gray-200">
-                                            <th class="p-2 font-bold"
-                                                >เริ่มกิจกรรม</th
-                                            >
-                                            <th class="p-2 font-bold"
-                                                >สิ้นสุดกิจกรรม</th
-                                            >
-                                            <th class="p-2 font-bold"
-                                                >กิจกรรม</th
-                                            >
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {#each day.activity as act, ai}
-                                            <tr
-                                                class="text-center {ai % 2 === 0
-                                                    ? 'bg-gray-100'
-                                                    : ''}"
-                                            >
-                                                <td class="p-2">{act.start}</td>
-                                                <td class="p-2">{act.end}</td>
-                                                <td class="p-2"
-                                                    >{act.activity}</td
-                                                >
-                                            </tr>
-                                        {/each}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    {:else}
-                        <p class="text-sm text-gray-500">
-                            ยังไม่มีตารางกิจกรรม
-                        </p>
-                    {/each}
-                </section>
-
-                <section>
-                    <h3 class="mb-1 font-bold">แผนผังที่นั่ง</h3>
-                    <!-- TODO: ต้องรู้โครงสร้างข้อมูลที่นั่งของ place ก่อนถึงจะวาดได้ -->
-                    <p class="text-sm text-gray-500">
-                        ยังไม่ได้เชื่อมข้อมูลที่นั่ง
-                    </p>
+                <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                    <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">ช่วงเวลาจัดกิจกรรม</h3>
+                    <div class="grid gap-1.5 text-sm leading-relaxed text-dark-muted">
+                        <p class="m-0"><span class="font-semibold text-dark">วันเริ่ม:</span> {fmtDateTime(event.date?.start)}</p>
+                        <p class="m-0"><span class="font-semibold text-dark">วันสิ้นสุด:</span> {fmtDateTime(event.date?.end)}</p>
+                    </div>
                 </section>
             </div>
-        </div>
-    </div>
 
-    <!-- ขวา: ดำเนินการ -->
-    <aside class="event-card action-card flex flex-col gap-3">
-        <h3 class="font-bold">ดำเนินการ</h3>
-        <!-- แก้ไข: พาไปหน้า update-event -->
-        <a
-            href={editHref}
-            class="rounded border border-gray-400 bg-white py-1.5 text-center hover:cursor-pointer"
-        >
+            <section class="flex flex-col gap-4 rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                <h3 class="mb-0 border-b border-border-subtle pb-3 text-lg font-bold text-dark">ตารางกิจกรรม</h3>
+                {#each timetable as day, dayIdx}
+                    <div class="flex min-w-0 flex-col gap-3 rounded-xl border border-border-subtle bg-surface-base p-4">
+                        <h4 class="m-0 text-sm font-bold text-dark">วันที่ {dayIdx + 1}: {fmtDay(day.date)}</h4>
+                        {#if day.activity?.length}
+                            <div class="grid gap-2.5">
+                                {#each day.activity as act}
+                                    <div class="flex flex-col gap-1 rounded-lg border border-border-subtle bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                                        <span class="shrink-0 font-mono text-xs font-medium text-dark-muted">{act.start} – {act.end}</span>
+                                        <span class="flex-1 font-medium text-dark wrap-break-word sm:text-right">{act.activity}</span>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else}
+                            <p class="m-0 text-sm text-dark-soft">ไม่มีรายการกิจกรรมย่อย</p>
+                        {/if}
+                    </div>
+                {:else}
+                    <p class="m-0 text-sm text-dark-muted">ยังไม่มีตารางกิจกรรม</p>
+                {/each}
+            </section>
+
+            <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
+                <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">แผนผังที่นั่ง</h3>
+                <!-- TODO: ต้องรู้โครงสร้างข้อมูลที่นั่งของ place ก่อนถึงจะวาดได้ -->
+                <p class="m-0 text-sm leading-relaxed text-dark-muted">
+                    ยังไม่ได้เชื่อมข้อมูลที่นั่ง
+                </p>
+            </section>
+        </div>
+    </main>
+
+    <aside class="order-1 flex flex-col gap-3 rounded-2xl border border-border-subtle bg-white p-5 shadow-xs md:order-2 md:sticky md:top-[calc(var(--nav-h,4rem)+3.25rem)]">
+        <h2 class="mb-1 text-lg font-bold text-dark">ดำเนินการ</h2>
+        <a href={`/event-info/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-400 bg-white px-4 py-2 text-center text-sm transition-colors hover:bg-surface-subtle">
             เผยแพร่
         </a>
-
-        <a
-            href={editHref}
-            class="rounded border border-gray-400 bg-white py-1.5 text-center hover:cursor-pointer"
-        >
+        <a href={editHref} class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-400 bg-white px-4 py-2 text-center text-sm transition-colors hover:bg-surface-subtle">
             แก้ไข
         </a>
-
-        <button
-            type="button"
-            class="bg-accent px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-accent-hover transition-colors duration-200"
-        >
+        <button type="button" disabled title="ยังไม่รองรับการลบกิจกรรม" class="min-h-11 cursor-not-allowed rounded-xl bg-accent px-5 py-2 text-sm text-white opacity-50">
             ลบ
         </button>
         <!-- ยังไม่ทำอะไร -->
-        <button
-            type="button"
-            class="bg-secondary px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-secondary-hover transition-colors duration-200"
-        >
+        <a href={`/my-event/statistic/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-5 py-2 text-sm text-white transition-colors duration-200 hover:bg-secondary-hover">
             Statistic
-        </button>
-
-        <button
-            type="button"
-            class="bg-green px-5 py-2 text-white rounded-lg hover:cursor-pointer hover:bg-green-hover transition-colors duration-200"
-        >
+        </a>
+        <a href={`/my-event/check-in/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl bg-green px-5 py-2 text-sm text-white transition-colors duration-200 hover:bg-green-hover">
             Check in
-        </button>
+        </a>
     </aside>
 </div>
-
-<style>
-    .page-layout {
-        width: min(72rem, 92vw);
-        margin: calc(var(--nav-h, 4rem) + 3.25rem) auto 1.25rem;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 18rem;
-        gap: 1.5rem;
-        align-items: start;
-    }
-    .event-card {
-        padding: 2rem;
-        border-radius: 1rem;
-        background: #f3f4f6;
-    }
-    .action-card {
-        position: sticky;
-        top: calc(var(--nav-h, 4rem) + 3.25rem);
-    }
-    .cover {
-        position: relative;
-        width: 100%;
-        max-width: 500px;
-        aspect-ratio: 16 / 9; /* เดิม 5 / 4 */
-        overflow: hidden;
-        border-radius: 1rem;
-        border: 2px solid #d1d5db;
-        background: #d1d5db;
-    }
-    .table-box {
-        overflow: hidden;
-        border-radius: 0.5rem;
-        border: 1px solid #000;
-        background: #fff;
-    }
-    .table-box thead tr {
-        border-bottom: 1px solid #000;
-    }
-    .table-box tbody tr + tr {
-        border-top: 1px solid #000;
-    }
-    .table-box th + th,
-    .table-box td + td {
-        border-left: 1px solid #000;
-    }
-    @media (max-width: 767px) {
-        .event-layout {
-            grid-template-columns: minmax(0, 1fr);
-        }
-    }
-</style>

@@ -3,7 +3,7 @@
     const percentage = $derived(data.checkedInCount / (data.totalReservation || 1) * 100);
 
 </script>
-<div class="flex flex-col items-center mt-24 sm:mt-32 w-3/4 self-center p-5 pt-12">
+<div class="flex flex-col items-center mt-10 sm:mt-14 mx-auto w-full max-w-6xl sm:max-w-7xl self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">สถิติการเข้าร่วม</h1>
     <div class="w-full rounded-lg grid grid-cols-3 pt-5 gap-5">
         <div class="col-span-2 bg-white rounded-lg border border-accent drop-shadow-md h-full w-ful flex gap-3">

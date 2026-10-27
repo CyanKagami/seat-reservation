@@ -51,7 +51,7 @@
 
     let status = $state("initial")
 </script>
-<div class="flex flex-col items-center mt-24 w-3/4 self-center p-5 pt-12">
+<div class="flex flex-col items-center mt-6 sm:mt-10 mx-auto w-full max-w-6xl sm:max-w-7xl self-center p-5 pt-12">
     <h1 class="text-4xl font-semibold mb-10">ข้อมูลการเข้าร่วมกิจกรรม</h1>
     <div class="w-full bg-gray-200 rounded-lg h-52 grid grid-cols-3 p-10 gap-5">
         <div class="col-span-2 bg-white rounded-lg border border-accent h-full w-ful flex gap-3">

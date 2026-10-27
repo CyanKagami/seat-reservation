@@ -39,9 +39,6 @@
             <span class="text-2xl sm:text-3xl font-bold tracking-tight text-dark group-hover:opacity-90 transition-opacity">
                 K-<span class="text-accent">SEAT</span>
             </span>
-            <span class="hidden sm:inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-pale-soft text-dark-secondary border border-pale">
-                KMITL
-            </span>
         </a>
 
         <!-- Navigation Links & User Action -->
@@ -70,14 +67,7 @@
                     </a>
                 {/if}
 
-                {#if user.role === 'admin'}
-                    <a 
-                        href="/admin/places" 
-                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/admin') ? 'text-secondary font-semibold bg-secondary-subtle/60' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
-                    >
-                        จัดการสถานที่
-                    </a>
-                {/if}
+
             {/if}
 
             <!-- Profile & Dropdown Container or Login CTA -->

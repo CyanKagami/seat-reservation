@@ -41,9 +41,6 @@
                     K-<span class="text-accent">SEAT</span>
                 </span>
             </a>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-secondary-subtle text-secondary border border-secondary/20">
-                Admin Console
-            </span>
         </div>
 
         <!-- Right Menu -->
@@ -59,12 +56,6 @@
                 class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/admin/places') ? 'text-secondary font-semibold bg-secondary-subtle/70' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
             >
                 สถานที่ & ผังที่นั่ง
-            </a>
-            <a 
-                href="/" 
-                class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg text-dark-soft hover:text-dark hover:bg-surface-subtle transition-colors"
-            >
-                หน้านักศึกษา
             </a>
 
             <!-- Profile & Dropdown -->

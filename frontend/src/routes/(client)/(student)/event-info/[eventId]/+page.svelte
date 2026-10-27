@@ -61,7 +61,7 @@
                 <img 
                     src={event.picture || "/image/defaultEvent.png"} 
                     alt={event.name} 
-                    class="object-cover w-full h-full"
+                    class="object-cover w-full h-full max-h-96"
                 />
             </div>
 
