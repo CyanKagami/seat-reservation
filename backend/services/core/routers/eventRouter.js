@@ -3,6 +3,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import sharp from 'sharp';
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import {
   addFile,
@@ -21,6 +22,25 @@ import {
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+async function convertToWebp(buffer, quality = 80) {
+  return sharp(buffer).webp({ quality }).toBuffer();
+}
+
+async function readPlaceLayout(placeId) {
+  try {
+    return await readFileAsByteArray(`layouts/place/${placeId}/layout.msgpack`);
+  } catch (error) {
+    if (!(error instanceof S3ServiceException) || error.name !== 'NoSuchKey') throw error;
+  }
+
+  try {
+    return await readFileAsByteArray(`layouts/place/${placeId}.msgpack`);
+  } catch (error) {
+    if (error instanceof S3ServiceException && error.name === 'NoSuchKey') return null;
+    throw error;
+  }
+}
 
 async function formatData(data, creatorId) {
   const event = {};
@@ -185,12 +205,19 @@ router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async 
   try {
     const data = { ...req.body };
     const processData = { ...(await formatData(data, req.user.email)), status: 'Created' };
+    const placeId = processData.place?.placeId || processData.place;
+    const placeLayout = placeId ? await readPlaceLayout(placeId) : null;
 
     const eventId = await addDataUniqueId('events', processData, 'eventId');
 
     if (req.file) {
-      const pictureURL = await addFile('pictures/event', eventId, req.file.buffer);
+      const converted = await convertToWebp(req.file.buffer);
+      const pictureURL = await addFile('pictures/event', `${eventId}.webp`, converted);
       await updateAllAttributes('events', { eventId }, { picture: pictureURL });
+    }
+    if (placeLayout) {
+      const layoutURL = await addFile('layouts/event', `${eventId}.msgpack`, Buffer.from(placeLayout));
+      await updateAllAttributes('events', { eventId }, { layoutURL });
     }
 
     return res.status(200).json({ body: { message: 'OK' } });
@@ -207,7 +234,8 @@ router.patch('/', requireRole('admin', 'organizer'), upload.single('img'), async
     const processData = await formatData(data);
 
     if (req.file) {
-      const pictureURL = await addFile('pictures/event', processData.eventId, req.file.buffer);
+      const converted = await convertToWebp(req.file.buffer);
+      const pictureURL = await addFile('pictures/event', `${processData.eventId}.webp`, converted);
       processData.picture = pictureURL;
     }
 
@@ -225,7 +253,10 @@ router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
   if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
   try {
     await deleteItem('events', { eventId });
-    await deleteFile('pictures/event', eventId).catch(() => {}); // ignore if no picture
+    await Promise.all([
+      deleteFile('pictures/event', `${eventId}.webp`),
+      deleteFile('pictures/event', eventId)
+    ]).catch(() => {}); // Keep deleting events that have no image or a legacy image.
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
     console.error('Error deleting event:', error);

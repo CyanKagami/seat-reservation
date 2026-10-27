@@ -1,11 +1,32 @@
 // src/routes/api/event/+server.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { S3ServiceException } from '@aws-sdk/client-s3';
 import { guard } from '$lib/scripts/server/guard';
-import { addFile, deleteFile } from '$lib/scripts/server/s3';
+import { addFile, deleteFile, readFileAsByteArray } from '$lib/scripts/server/s3';
 import { addDataUniqueId, deleteItem, fetchAllData, fetchData, updateAllAttributes } from '$lib/scripts/server/dynamo';
 import { type EventStatus, type Event } from '$lib/type/event';
 import type { Place } from '$lib/type/place';
+import { convertToWebp } from '$lib/scripts/server/utils';
 import { v4 as uuidv4 } from "uuid";
+
+function isMissingS3Object(error: unknown): boolean {
+  return error instanceof S3ServiceException && error.name === 'NoSuchKey';
+}
+
+async function readPlaceLayout(placeId: string): Promise<Uint8Array | null> {
+  try {
+    return await readFileAsByteArray(`layouts/place/${placeId}`, 'layout.msgpack');
+  } catch (error) {
+    if (!isMissingS3Object(error)) throw error;
+  }
+
+  try {
+    return await readFileAsByteArray('layouts/place', `${placeId}.msgpack`);
+  } catch (error) {
+    if (isMissingS3Object(error)) return null;
+    throw error;
+  }
+}
 
 interface EventFormData {
   name: string;
@@ -74,12 +95,23 @@ export const POST: RequestHandler = async (event) => {
 
     processData = { ...processData, ...(await formatData(data, user.email)) };
     processData.status = "Created";
+    const placeLayout = processData.place?.placeId
+      ? await readPlaceLayout(processData.place.placeId)
+      : null;
     let eventId = await addDataUniqueId('events', processData, 'eventId');
+    let layoutURL: string | undefined;
+    let imgURL: string | undefined;
     if (img && img.size > 0) {
-      const buffer = Buffer.from(await img.arrayBuffer());
-      processData.picture = await addFile(`pictures/event`, eventId , buffer);
+      const buffer = await convertToWebp(Buffer.from(await img.arrayBuffer()));
+      imgURL = await addFile(`pictures/event`, `${eventId}.webp`, buffer);
     }
-    await updateAllAttributes('events', { eventId: eventId }, {picture: eventId});
+    if (placeLayout) {
+      layoutURL = await addFile('layouts/event', `${eventId}.msgpack`, Buffer.from(placeLayout));
+    }
+    await updateAllAttributes('events', { eventId }, {
+      ...(imgURL ? { picture:imgURL } : {}),
+      ...(layoutURL ? { layoutURL } : {})
+    });
 
     return json({ body: { message: 'OK' } });
   } catch (error) {
@@ -102,8 +134,8 @@ export const PATCH: RequestHandler = async (event) => {
 
     const img = data.img;
     if (img && img.size > 0) {
-      const buffer = Buffer.from(await img.arrayBuffer());
-      processData.picture = await addFile(`pictures/event`, data.eventId, buffer);
+      const buffer = await convertToWebp(Buffer.from(await img.arrayBuffer()));
+      processData.picture = await addFile(`pictures/event`, `${data.eventId}.webp`, buffer);
     }
     delete data.img;
 
@@ -118,7 +150,7 @@ export const PATCH: RequestHandler = async (event) => {
   }
 };
 
-// PATCH /api/event - update an event
+// DELETE /api/event - update an event
 export const DELETE: RequestHandler = async (event) => {
   const user = await guard(event, ['admin', 'organizer']);
   if (user instanceof Response) return user;
@@ -129,7 +161,7 @@ export const DELETE: RequestHandler = async (event) => {
   try {
     let eventData = await fetchData('events', {eventId}) as Event;
     await deleteItem('events', { eventId });
-    await deleteFile('pictures/event', eventData.eventId);
+    await deleteFile('pictures/event',`${eventData.eventId}.webp`);
     return json({ body: { message: 'OK' } });
   } catch (error) {
     console.error('Error deleting event:', error);

@@ -36,9 +36,6 @@
     <!-- Header & Action Toolbar -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-border-subtle">
         <div>
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-pale-soft text-dark-secondary border border-pale inline-block mb-2">
-                ผู้จัดกิจกรรม (Organizer)
-            </span>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight">
                 กิจกรรมที่ฉันจัด
             </h1>

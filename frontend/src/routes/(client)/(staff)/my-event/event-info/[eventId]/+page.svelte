@@ -4,6 +4,9 @@
     import type { Event as MyEvent, Daytable } from "$lib/type/event";
     import type { Place } from "$lib/type/place";
     import { redirect } from "@sveltejs/kit";
+    import { goto } from "$app/navigation";
+    import { alertModal } from "$lib/store/alert.svelte";
+    import { deleteEvent, publishEvent, unpublishEvent } from "$lib/scripts/event";
 
     export const load = () => {
         redirect(307, "/my-event");
@@ -14,6 +17,10 @@
     let { params, data }: PageProps = $props();
 
     const event: MyEvent = $derived(data.event);
+    let eventStatus = $state("Created");
+    $effect(() => {
+        eventStatus = event.status ?? "Created";
+    });
     const places: Place[] = $derived(data.places);
     const timetable: Daytable[] = $derived(data.event.timetable ?? []);
     const place = $derived(
@@ -39,6 +46,39 @@
         if (!value) return "-";
         const date = new Date(value as string | number | Date);
         return `${fmtDate(date)} เวลา ${fmtTime(date)}`;
+    }
+
+    async function handlePublish() {
+        try {
+            if (eventStatus === "Published") {
+                await unpublishEvent(params.eventId);
+                eventStatus = "Created";
+                alertModal.success("ยกเลิกการเผยแพร่แล้ว", "กิจกรรมนี้จะไม่แสดงในรายการกิจกรรมที่เผยแพร่");
+            } else {
+                await publishEvent(params.eventId);
+                eventStatus = "Published";
+                alertModal.success("เผยแพร่กิจกรรมสำเร็จ", "กิจกรรมนี้พร้อมแสดงให้นักศึกษาเข้าชมแล้ว");
+            }
+        } catch (error) {
+            alertModal.failure(
+                "ดำเนินการไม่สำเร็จ",
+                error instanceof Error ? error.message : "ไม่สามารถเปลี่ยนสถานะการเผยแพร่ได้",
+            );
+        }
+    }
+
+    async function handleDelete() {
+        try {
+            await deleteEvent(params.eventId);
+            alertModal.success("ลบกิจกรรมสำเร็จ", "กิจกรรมถูกลบแล้ว", () => {
+                void goto("/my-event");
+            });
+        } catch (error) {
+            alertModal.failure(
+                "ลบกิจกรรมไม่สำเร็จ",
+                error instanceof Error ? error.message : "ไม่สามารถลบกิจกรรมได้",
+            );
+        }
     }
 </script>
 
@@ -152,22 +192,78 @@
     </main>
 
     <aside class="order-1 flex flex-col gap-3 rounded-2xl border border-border-subtle bg-white p-5 shadow-xs md:order-2 md:sticky md:top-[calc(var(--nav-h,4rem)+3.25rem)]">
-        <h2 class="mb-1 text-lg font-bold text-dark">ดำเนินการ</h2>
-        <a href={`/event-info/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-400 bg-white px-4 py-2 text-center text-sm transition-colors hover:bg-surface-subtle">
-            เผยแพร่
-        </a>
-        <a href={editHref} class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-400 bg-white px-4 py-2 text-center text-sm transition-colors hover:bg-surface-subtle">
-            แก้ไข
-        </a>
-        <button type="button" disabled title="ยังไม่รองรับการลบกิจกรรม" class="min-h-11 cursor-not-allowed rounded-xl bg-accent px-5 py-2 text-sm text-white opacity-50">
-            ลบ
+        <div class="mb-1 flex items-center justify-between gap-2">
+            <h2 class="text-lg font-bold text-dark">จัดการกิจกรรม</h2>
+            <span class="rounded-full px-2.5 py-1 text-xs font-semibold {eventStatus === 'Published' ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-subtle text-dark-muted'}">
+                {eventStatus === "Published" ? "เผยแพร่แล้ว" : "ยังไม่เผยแพร่"}
+            </span>
+        </div>
+        <button
+            type="button"
+            class="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-accent-hover"
+            onclick={() => alertModal.warning(
+                eventStatus === "Published" ? "ยกเลิกการเผยแพร่กิจกรรม" : "เผยแพร่กิจกรรม",
+                eventStatus === "Published"
+                    ? "กิจกรรมจะไม่แสดงในรายการกิจกรรมที่เผยแพร่ คุณต้องการดำเนินการต่อหรือไม่?"
+                    : "คุณต้องการเผยแพร่กิจกรรมนี้หรือไม่?",
+                {
+                    showCancel: true,
+                    confirmText: eventStatus === "Published" ? "ยกเลิกเผยแพร่" : "เผยแพร่",
+                    cancelText: "กลับ",
+                    onconfirm: () => void handlePublish(),
+                },
+            )}
+        >
+            {#if eventStatus === "Published"}
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636 5.636 18.364M9.172 9.172a4 4 0 0 1 5.656 5.656m-9.9 2.828a8 8 0 0 1 11.314-11.314" />
+                </svg>
+                <span>ยกเลิกการเผยแพร่</span>
+            {:else}
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16V4m0 0L7 9m5-5 5 5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+                </svg>
+                <span>เผยแพร่กิจกรรม</span>
+            {/if}
         </button>
-        <!-- ยังไม่ทำอะไร -->
-        <a href={`/my-event/statistic/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl bg-secondary px-5 py-2 text-sm text-white transition-colors duration-200 hover:bg-secondary-hover">
-            Statistic
+        <a href={editHref} class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-strong bg-white px-4 py-2 text-center text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle">
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16.862 4.487 2.651 2.651M4 20l4.548-.91L19.5 8.138a1.875 1.875 0 0 0-2.652-2.652L5.897 16.44 4 20Z" />
+            </svg>
+            <span>แก้ไขกิจกรรม</span>
         </a>
-        <a href={`/my-event/check-in/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center rounded-xl bg-green px-5 py-2 text-sm text-white transition-colors duration-200 hover:bg-green-hover">
-            Check in
-        </a>
+        <div class="mt-1 grid grid-cols-2 gap-2 border-t border-border-subtle pt-4">
+            <a href={`/my-event/check-in/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-secondary px-3 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-secondary-hover">
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 12 2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <span>เช็คชื่อ</span>
+            </a>
+            <a href={`/my-event/statistic/${params.eventId}`} class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border-subtle bg-surface-subtle px-3 py-2 text-center text-sm font-semibold text-dark transition-colors hover:bg-border-subtle">
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M18 17V9m-5 8V5m-5 12v-5" />
+                </svg>
+                <span>สถิติ</span>
+            </a>
+        </div>
+        <button
+            type="button"
+            class="mt-1 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+            onclick={() => alertModal.warning(
+                "ลบกิจกรรม",
+                `คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรม "${event.name}"? การดำเนินการนี้ไม่สามารถย้อนกลับได้`,
+                {
+                    showCancel: true,
+                    confirmText: "ลบกิจกรรม",
+                    cancelText: "ยกเลิก",
+                    onconfirm: () => void handleDelete(),
+                },
+            )}
+        >
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-10 0V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m-9 0 1 13h6l1-13m-5 3v7m3-7v7" />
+            </svg>
+            <span>ลบกิจกรรม</span>
+        </button>
     </aside>
 </div>
