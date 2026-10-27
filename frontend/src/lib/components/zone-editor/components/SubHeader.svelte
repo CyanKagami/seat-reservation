@@ -39,12 +39,24 @@
 				Preview Zone
 			</span>
 			</label>
-	<button 
-        id="save-button"
-		onclick={state.handleSaveButtonClick}
-		disabled={state.overlappingIds.size > 0}
-		class="px-6 py-1.5 bg-secondary hover:bg-secondary-hover justify-self-end text-white cursor-pointer font-medium text-sm rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-	>
-		บันทึก
-	</button>
+	<div class="flex items-center justify-self-end gap-2">
+		<button
+			id="save-button"
+			onclick={state.handleSaveButtonClick}
+			disabled={state.overlappingIds.size > 0 || state.isSaving}
+			class="px-6 py-1.5 bg-secondary hover:bg-secondary-hover text-white cursor-pointer font-medium text-sm rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			{#if state.isSaving && !state.isResetting}
+				<span class="inline-flex items-center gap-2" aria-live="polite">
+					<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+					</svg>
+					กำลังบันทึก...
+				</span>
+			{:else}
+				บันทึก
+			{/if}
+		</button>
+	</div>
 </div>

@@ -38,9 +38,53 @@
 </script>
 
 <aside class="w-52 bg-[#f5f5f5] border-r border-slate-300 p-4 flex flex-col gap-3 shrink-0 select-none overflow-y-auto max-h-full">
+	
+	<!-- 2. Elements Section -->
+	<div class="flex flex-col gap-2">
+		<h2 class="text-xs font-bold text-slate-800">องค์ประกอบ</h2>
+		<div class="flex gap-2">
+			<!-- Toilet -->
+			<div 
+				draggable="true"
+				ondragstart={(e) => handleDragStart(e, 'toilet', 'ห้องน้ำ')}
+				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
+			>
+				<svg class="w-5 h-5 stroke-slate-800 fill-none pointer-events-none" viewBox="0 0 24 24" stroke-width="1.8">
+					<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
+				</svg>
+				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">ห้องน้ำ</span>
+			</div>
+
+			<!-- Entrance -->
+			<div 
+				draggable="true"
+				ondragstart={(e) => handleDragStart(e, 'entrance', 'ประตู')}
+				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
+			>
+				<svg class="w-5 h-5 fill-slate-800 pointer-events-none" viewBox="0 0 24 24">
+					<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
+				</svg>
+				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">ประตู</span>
+			</div>
+
+			<!-- Stage -->
+			<div 
+				draggable="true"
+				ondragstart={(e) => handleDragStart(e, 'stage', 'เวที')}
+				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
+			>
+				<svg class="w-5 h-5 stroke-slate-800 fill-none pointer-events-none" viewBox="0 0 24 24" stroke-width="1.8">
+					<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+				</svg>
+				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">เวที</span>
+			</div>
+		</div>
+	</div>
+	<hr class="border-slate-300 my-1" />
+
 	<!-- 1. Seat Types Section -->
 	<div class="flex flex-col gap-2">
-		<h2 class="text-xs font-bold text-slate-800">ประเภทที่นั่ง</h2>
+	<h2 class="text-xs font-bold text-slate-800">ประเภทที่นั่ง</h2>
 		<button
 			type="button"
 			class="flex items-center rounded-md bg-accent hover:bg-accent-hover p-1.5 gap-2 text-white cursor-pointer transition-colors shadow-xs"
@@ -106,50 +150,6 @@
 					{/if}
 				</div>
 			{/each}
-		</div>
-	</div>
-
-	<hr class="border-slate-300 my-1" />
-
-	<!-- 2. Elements Section -->
-	<div class="flex flex-col gap-2">
-		<h2 class="text-xs font-bold text-slate-800">องค์ประกอบ</h2>
-		<div class="flex gap-2">
-			<!-- Toilet -->
-			<div 
-				draggable="true"
-				ondragstart={(e) => handleDragStart(e, 'toilet', 'ห้องน้ำ')}
-				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
-			>
-				<svg class="w-5 h-5 stroke-slate-800 fill-none pointer-events-none" viewBox="0 0 24 24" stroke-width="1.8">
-					<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3"/><path d="M21 21v-2a3 3 0 0 0-3-3"/><circle cx="19" cy="8" r="2"/>
-				</svg>
-				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">ห้องน้ำ</span>
-			</div>
-
-			<!-- Entrance -->
-			<div 
-				draggable="true"
-				ondragstart={(e) => handleDragStart(e, 'entrance', 'ประตู')}
-				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
-			>
-				<svg class="w-5 h-5 fill-slate-800 pointer-events-none" viewBox="0 0 24 24">
-					<path d="M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-6-8h-2V9h2v2z"/>
-				</svg>
-				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">ประตู</span>
-			</div>
-
-			<!-- Stage -->
-			<div 
-				draggable="true"
-				ondragstart={(e) => handleDragStart(e, 'stage', 'เวที')}
-				class="w-12 h-14 border border-dashed border-slate-400 rounded bg-white flex flex-col items-center justify-center gap-1 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
-			>
-				<svg class="w-5 h-5 stroke-slate-800 fill-none pointer-events-none" viewBox="0 0 24 24" stroke-width="1.8">
-					<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-				</svg>
-				<span class="text-[10px] text-slate-700 font-medium pointer-events-none">เวที</span>
-			</div>
 		</div>
 	</div>
 </aside>

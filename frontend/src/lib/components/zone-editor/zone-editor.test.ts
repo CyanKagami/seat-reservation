@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ZoneEditorState } from './zoneState.svelte';
 import type { CanvasObject } from './types';
+import { getSeatId } from './utils/zoneUtils';
+import { alertModal } from '$lib/store/alert.svelte';
 
 describe('ZoneEditorState - Seat Status and Labeling', () => {
 	let state: ZoneEditorState;
@@ -39,7 +41,7 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.objects.find((o) => o.id === 'seat_2')?.metadata?.status).toBe('available');
 	});
 
-	it('should auto-label seats in a zone row-by-row (top-to-bottom, left-to-right)', () => {
+	it('should assign row and seat numbers in a zone row-by-row (top-to-bottom, left-to-right)', () => {
 		const seatR1C2: CanvasObject = {
 			id: 'seat_r1_c2',
 			type: 'seat',
@@ -95,23 +97,23 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		// Row 1
 		expect(getMetadata('seat_r1_c1')?.row).toBe('A');
 		expect(getMetadata('seat_r1_c1')?.seatNo).toBe('1');
-		expect(getMetadata('seat_r1_c1')?.label).toBe('A1');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_r1_c1')!)).toBe('A1');
 
 		expect(getMetadata('seat_r1_c2')?.row).toBe('A');
 		expect(getMetadata('seat_r1_c2')?.seatNo).toBe('2');
-		expect(getMetadata('seat_r1_c2')?.label).toBe('A2');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_r1_c2')!)).toBe('A2');
 
 		// Row 2
 		expect(getMetadata('seat_r2_c1')?.row).toBe('B');
 		expect(getMetadata('seat_r2_c1')?.seatNo).toBe('1');
-		expect(getMetadata('seat_r2_c1')?.label).toBe('B1');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_r2_c2')!)).toBe('B2');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_r2_c1')!)).toBe('B1');
 
 		expect(getMetadata('seat_r2_c2')?.row).toBe('B');
 		expect(getMetadata('seat_r2_c2')?.seatNo).toBe('2');
-		expect(getMetadata('seat_r2_c2')?.label).toBe('B2');
 
 		// Other zone seat untouched
-		expect(getMetadata('seat_other')?.label).toBeUndefined();
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_other')!)).toBe('');
 	});
 
 	it('should respect manual overrides when overwriteManual is false', () => {
@@ -122,7 +124,7 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 			y: 0,
 			width: 20,
 			height: 20,
-			metadata: { zone: 'VIP', row: 'CUSTOM', seatNo: '99', label: 'CUSTOM99', isManualLabel: true }
+			metadata: { zone: 'VIP', row: 'CUSTOM', seatNo: '99', isManualLabel: true }
 		};
 		const seatAuto: CanvasObject = {
 			id: 'seat_auto',
@@ -139,12 +141,83 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		state.autoLabelZone('VIP', false);
 
 		const manualMeta = state.objects.find((o) => o.id === 'seat_manual')?.metadata;
-		expect(manualMeta?.label).toBe('CUSTOM99');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_manual')!)).toBe('CUSTOM99');
 		expect(manualMeta?.isManualLabel).toBe(true);
 
 		state.autoLabelZone('VIP', true);
 		const overwrittenMeta = state.objects.find((o) => o.id === 'seat_manual')?.metadata;
-		expect(overwrittenMeta?.label).toBe('A1');
+		expect(getSeatId(state.objects.find((o) => o.id === 'seat_manual')!)).toBe('A1');
 		expect(overwrittenMeta?.isManualLabel).toBe(false);
+	});
+
+	it('should preserve row and seat number when updating other selected metadata', () => {
+		const seat: CanvasObject = {
+			id: 'seat_A1',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1' }
+		};
+		state.objects = [seat];
+		state.selectedIds = new Set([seat.id]);
+
+		state.updateSelectedObjectMetadata({ status: 'unavailable' });
+
+		expect(getSeatId(state.objects[0])).toBe('A1');
+		expect(state.objects[0].metadata?.status).toBe('unavailable');
+	});
+
+	it('should not return a seat ID until both row and seat number are assigned', () => {
+		const seat: CanvasObject = {
+			id: 'seat_internal-id',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { row: 'A' }
+		};
+
+		expect(getSeatId(seat)).toBe('');
+		seat.metadata!.seatNo = '1';
+		expect(getSeatId(seat)).toBe('A1');
+	});
+
+	it('should reject saving when a seat has no row and seat number', async () => {
+		state.objects = [{
+			id: 'seat_unlabeled',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP' }
+		}];
+
+		await state.uploadToAPI();
+
+		expect(state.isSaving).toBe(false);
+		expect(alertModal.title).toBe('ยังบันทึกผังไม่ได้');
+		expect(alertModal.message).toContain('ยังไม่มีรหัส 1 ที่นั่ง');
+	});
+
+	it('should reject saving when seats have duplicate seat IDs', async () => {
+		state.objects = ['seat_1', 'seat_2'].map((id, index) => ({
+			id,
+			type: 'seat',
+			x: index * 30,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1' }
+		}));
+
+		await state.uploadToAPI();
+
+		expect(state.isSaving).toBe(false);
+		expect(alertModal.title).toBe('ยังบันทึกผังไม่ได้');
+		expect(alertModal.message).toContain('A1');
 	});
 });

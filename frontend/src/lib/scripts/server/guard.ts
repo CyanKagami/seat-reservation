@@ -2,7 +2,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
 import { env } from '$env/dynamic/private';
-import { verifyAccess } from '$lib/scripts/server/authorization';
+import { fetchUser } from '$lib/scripts/server/dynamo';
 import type { User } from '$lib/type/user';
 
 /**
@@ -12,14 +12,13 @@ import type { User } from '$lib/type/user';
  *   const user = await guard(event, ['admin']);
  *   if (user instanceof Response) return user;
  *
- * roles omitted -> any logged-in user is accepted
- * live: true    -> re-check the role in DynamoDB instead of trusting the role
- *                  inside the JWT (use for actions that grant/revoke access)
+ * roles provided -> load the current user from DynamoDB and check their current role
+ * live: true      -> also refresh user data for identity-only routes with role-based behavior
  */
 export async function guard(
   event: RequestEvent,
   roles?: string[],
-  opts: { live?: boolean } = {}
+  opts: { live?: boolean; allowRoleChange?: boolean } = {}
 ): Promise<User | Response> {
   const token = (event.request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
 
@@ -30,9 +29,19 @@ export async function guard(
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (roles) {
-    const allowed = opts.live ? await verifyAccess(user, roles) : roles.includes(user.role);
-    if (!allowed) {
+  if (roles || opts.live) {
+    const currentUser = await fetchUser(user.email);
+    if (!currentUser) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!opts.allowRoleChange && (user.role ?? '') !== (currentUser.role ?? '')) {
+      return json(
+        { error: 'Your role has changed. Refresh your access and try again.', code: 'ROLE_CHANGED' },
+        { status: 403 }
+      );
+    }
+    user = { ...user, ...currentUser, role: currentUser.role ?? '' };
+    if (roles && !roles.includes(user.role)) {
       return json({ error: 'Access denied' }, { status: 403 });
     }
   }

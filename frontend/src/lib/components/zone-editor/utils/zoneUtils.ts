@@ -96,5 +96,8 @@ export function getSeatId(object:CanvasObject) {
 	if (object.type !== "seat") {
 		throw Error('Argument is not a seat object');
 	}
-	return `${object.metadata.row}${object.metadata.seatNo}` || object.id.replace('seat_', '');
+	const row = object.metadata?.row?.trim() ?? '';
+	const seatNo = object.metadata?.seatNo?.trim() ?? '';
+	if (!row || !seatNo) return '';
+	return `${row}${seatNo}`;
 }

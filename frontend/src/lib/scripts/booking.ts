@@ -2,7 +2,7 @@
 // Thin client for /api/booking. Components call these instead of touching fetch directly.
 // apiFetch (src/lib/api.ts) prefixes PUBLIC_API_URL (which ends in /api), adds the
 // Bearer token, and redirects to /login on a 401.
-import { apiFetch, unwrap } from '$lib/scripts/api';
+import { apiFetchJson } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
 import type { Reservation, ReservationView, ReservationWithEvent } from '$lib/type/reservation';
 import type { SeatParts } from './seat';
@@ -37,51 +37,45 @@ export interface SeatMap {
 
 
 export async function getSeatMap(eventId: string, fetchFunc: typeof fetch = fetch): Promise<SeatMap> {
-  return unwrap(await apiFetch(`/booking?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
+  return apiFetchJson(`/booking?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc);
 }
 
 // seatId is "<zone>-<seat>", e.g. "Front-A5" (build it with makeSeatId from $lib/seat).
 export async function reserveSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
-  return unwrap(
-    await apiFetch('/booking', {
+  return apiFetchJson('/booking', {
       method: 'POST',
       body: JSON.stringify({ eventId, seatId: `${zone}-${seatId}` })
-    }, fetchFunc)
-  );
+    }, fetchFunc);
 }
 
 export async function checkInSeat(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<Reservation & SeatParts> {
-  return unwrap(
-    await apiFetch('/booking/check-in', {
+  return apiFetchJson('/booking/check-in', {
       method: 'POST',
       body: JSON.stringify({ eventId, identifier })
-    }, fetchFunc)
-  )
+    }, fetchFunc);
 }
 
 export async function cancelSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
-  return unwrap(
-    await apiFetch(
-      `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
-      { method: 'DELETE' },
-      fetchFunc
-    )
+  return apiFetchJson(
+    `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
+    { method: 'DELETE' },
+    fetchFunc
   );
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
 export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promise<{ reservations: ReservationWithEvent[] }> {
-  return unwrap(await apiFetch('/booking/mine', {}, fetchFunc));
+  return apiFetchJson('/booking/mine', {}, fetchFunc);
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
 export async function getEventAttendance(eventId: string, fetchFunc: typeof fetch = fetch): Promise<{ checkInCount: number, totalCount: number }> {
-  return unwrap(await apiFetch(`/booking/statistic/attendance?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
+  return apiFetchJson(`/booking/statistic/attendance?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc);
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
 export async function getReservation(eventId: string, identifier: string, fetchFunc: typeof fetch = fetch): Promise<(Reservation & SeatParts)> {
-  return unwrap(await apiFetch(`/booking/registered?eventId=${encodeURIComponent(eventId)}&identifier=${encodeURIComponent(identifier)}`, {}, fetchFunc));
+  return apiFetchJson(`/booking/registered?eventId=${encodeURIComponent(eventId)}&identifier=${encodeURIComponent(identifier)}`, {}, fetchFunc);
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
@@ -106,5 +100,5 @@ export async function getReservationStatistic(eventId: string, fetchFunc: typeof
     mostParticipatedYear: {name: string, count:number}
   }
 })> {
-  return unwrap(await apiFetch(`/booking/statistic/seating?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc));
+  return apiFetchJson(`/booking/statistic/seating?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc);
 }

@@ -7,7 +7,6 @@ export interface ZoneSeatMetadata {
 	status?: 'available' | 'unavailable' | string;
 	row?: string;
 	seatNo?: string;
-	label?: string;
 	isManualLabel?: boolean;
 	seatType?: string;
 	color?: string;

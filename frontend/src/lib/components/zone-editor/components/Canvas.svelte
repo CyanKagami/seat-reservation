@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import type { ZoneEditorState } from "../zoneState.svelte";
 	import { GRID_SIZE } from "../constants";
+	import { getSeatId } from "../utils/zoneUtils";
 	let { state }: { state: ZoneEditorState } = $props();
 
 	onMount(() => {
@@ -58,7 +59,7 @@
 					{@const zoneName = obj.metadata?.zone}
 					{@const hasZone = !!(zoneName && state.zones[zoneName])}
 					{@const zoneColor = hasZone && zoneName ? state.zones[zoneName].color : ''}
-					{@const seatLabel = obj.metadata?.label || (obj.metadata?.row ? `${obj.metadata.row}${obj.metadata.seatNo ?? ''}` : (obj.metadata?.seatNo ?? ''))}
+					{@const seatId = getSeatId(obj)}
 					{@const seatType = state.seatTypes[obj.metadata?.seatType] || {name: 'standard', color: '#e2e8f0', description: ''}}
 					{@const accentColor = seatType.color || '#e2e8f0'}
 					<!-- Determine fill/stroke based on status and selection -->
@@ -83,8 +84,8 @@
 								: statusClasses}"
 						style={hasZone && status !== 'unavailable' && !isOverlapping ? `${isSelected ? `fill:${darkenHexColor(zoneColor, 0.3)};` : `fill:${zoneColor};`} stroke:unset;` : ''}
 					>
-						{#if seatLabel}
-							<title>{seatLabel}{obj.metadata?.isManualLabel ? ' (ล็อกป้ายกำหนดเอง)' : ''}</title>
+						{#if seatId}
+							<title>{seatId}{obj.metadata?.isManualLabel ? ' (ล็อกป้ายกำหนดเอง)' : ''}</title>
 						{/if}
 					</rect>
 					<!-- 2. Top Accent Bar (Indicates custom seatType) -->
@@ -104,7 +105,7 @@
 
 					{@const activeFill = hasZone && status !== 'unavailable' && !isOverlapping ? (isSelected ? darkenHexColor(zoneColor, 0.3) : zoneColor) : ''}
 					{@const textDark = activeFill ? isDarkColor(activeFill) : false}
-					{#if seatLabel}
+					{#if seatId}
 						<text
 							x={centerX}
 							y={centerY}
@@ -114,7 +115,7 @@
 							class="font-bold pointer-events-none select-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : (textDark ? 'fill-white' : 'fill-slate-800')}"
 							style="font-size: {Math.max(7, Math.min(11, 8.5 * state.scale))}px;"
 						>
-							{seatLabel}
+							{seatId}
 						</text>
 					{/if}
 				<!-- 1. env-rect -->

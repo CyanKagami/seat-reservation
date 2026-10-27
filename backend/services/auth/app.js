@@ -110,7 +110,7 @@ router.get('/google/callback', async (req, res) => {
 });
 
 // GET /api/auth/me — verify JWT and return user info.
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/i, '');
 
@@ -119,10 +119,16 @@ router.get('/me', (req, res) => {
   }
 
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    const tokenUser = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await fetchUser(tokenUser.email);
+    if (!user) return res.status(401).json({ body: null });
     return res.status(200).json({ body: user });
   } catch (err) {
-    return res.status(401).json({ body: null });
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ body: null });
+    }
+    logError('Failed to load current user', err, requestLogContext(req));
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

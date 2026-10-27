@@ -4,6 +4,7 @@ import { toolRegistry } from "./tools";
 import { rotatePoint } from '../canvas-shared/utils';
 import { decode, encode } from "@msgpack/msgpack";
 import type { SeatType } from "../canvas-shared/types";
+import { getSeatId } from "./utils/zoneUtils";
 import { apiFetch } from "$lib/scripts/api";
 import { alertModal } from "$lib/store/alert.svelte";
 
@@ -13,6 +14,7 @@ export class ZoneEditorState {
 	gridWidth = $state(80);
 	gridHeight = $state(60);
 	isSaving = $state(false);
+	isResetting = $state(false);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
@@ -152,6 +154,29 @@ export class ZoneEditorState {
 		return overlaps;
 	});
 
+	seatIdValidation = $derived.by(() => {
+		const seatIdCounts = new Map<string, number>();
+		let missingSeatIds = 0;
+
+		for (const object of this.objects) {
+			if (object.type !== 'seat') continue;
+			const seatId = getSeatId(object);
+			if (!seatId) {
+				missingSeatIds += 1;
+				continue;
+			}
+			const identifier = `โซน ${object.metadata.zone} รหัสที่นั่ง ${seatId}`;
+			seatIdCounts.set(identifier, (seatIdCounts.get(identifier) ?? 0) + 1);
+		}
+
+		return {
+			missingCount: missingSeatIds,
+			duplicateSeatIds: Array.from(seatIdCounts)
+				.filter(([, count]) => count > 1)
+				.map(([seatId]) => seatId)
+		};
+	});
+
 	isPointInPolygon(point: Point, polygon: Point[]): boolean {
 		let inside = false;
 		for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -184,31 +209,88 @@ export class ZoneEditorState {
 	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
-		if (!this.objects.filter((o) => o.type === 'seat').every((o)=> {
-			return o.metadata && o.metadata.zone || o.metadata && o.metadata.status === 'unavailable'
-		})){
-			alertModal.warning('ที่นั่งบางที่ไม่ถูกกำหนดโซน','กรุณากำหนดโซนให้ครบทุกที่นั่ง')
-		}
-		else{
-			await this.uploadToAPI()
+		if (this.isSaving) return;
+		await this.uploadToAPI();
+	}
+
+	handleResetToPlaceLayout = () => {
+		if (this.isSaving || this.isResetting) return;
+
+		alertModal.warning(
+			'รีเซ็ตผังที่นั่ง',
+			'การดำเนินการนี้จะแทนที่ข้อมูลในตัวแก้ไขด้วยผังปัจจุบันของสถานที่ และยกเลิกการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการดำเนินการต่อหรือไม่?',
+			{
+				showCancel: true,
+				confirmText: 'รีเซ็ตผัง',
+				cancelText: 'ยกเลิก',
+				onconfirm: () => this.resetToPlaceLayout()
+			}
+		);
+	};
+
+	private async resetToPlaceLayout() {
+		if (this.isSaving || this.isResetting) return;
+		this.isSaving = true;
+		this.isResetting = true;
+
+		try {
+			const response = await apiFetch(`/place/layout?placeId=${encodeURIComponent(this.locationId)}`);
+			if (!response.ok) {
+				throw new Error('Unable to load place layout.');
+			}
+
+			const loaded = this.loadFromMessagePack(await response.arrayBuffer());
+			if (loaded) {
+				alertModal.success(
+					'โหลดผังสถานที่แล้ว',
+					'ผังปัจจุบันของสถานที่ถูกโหลดในตัวแก้ไขแล้ว กรุณากดบันทึกเพื่อใช้ผังนี้กับกิจกรรม'
+				);
+			}
+		} catch (error) {
+			alertModal.failure('รีเซ็ตผังไม่สำเร็จ', 'ไม่สามารถโหลดผังปัจจุบันของสถานที่ได้ กรุณาลองอีกครั้ง');
+		} finally {
+			this.isSaving = false;
+			this.isResetting = false;
 		}
 	}
 
 	async uploadToAPI(apiEndpoint = '/api/place/layout') {
+		if (this.isSaving || this.isResetting) return;
+		const { missingCount, duplicateSeatIds } = this.seatIdValidation;
+		if (missingCount > 0) {
+			alertModal.warning(
+				'ยังบันทึกผังไม่ได้',
+				`กรุณากำหนดแถวและเลขที่นั่งให้ครบทุกที่นั่ง (ยังไม่มีรหัส ${missingCount} ที่นั่ง)`
+			);
+			return;
+		}
+		if (duplicateSeatIds.length > 0) {
+			alertModal.warning(
+				'ยังบันทึกผังไม่ได้',
+				`พบรหัสที่นั่งซ้ำ: ${duplicateSeatIds.join(', ')} กรุณาแก้ไขให้แต่ละที่นั่งมีรหัสไม่ซ้ำกัน`
+			);
+			return;
+		}
+		if (!this.objects.filter((o) => o.type === 'seat').every((o) =>
+			(o.metadata?.zone || o.metadata?.status === 'unavailable')
+		)) {
+			alertModal.warning('ที่นั่งบางที่ไม่ถูกกำหนดโซน', 'กรุณากำหนดโซนให้ครบทุกที่นั่ง');
+			return;
+		}
 		this.isSaving = true;
-		this.selectedIds.clear();
-		const binaryData = this.exportToMessagePack();
-
-		const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
-		const file = new File([blob], `${this.locationId}.msgpack`, {
-			type: blob.type,
-			lastModified: Date.now()
-		});
-		const formData = new FormData();
-		formData.append('layoutFile', file);
-		formData.append('eventId', this.eventId);
 
 		try {
+			this.selectedIds.clear();
+			const binaryData = this.exportToMessagePack();
+			const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
+			const file = new File([blob], `${this.locationId}.msgpack`, {
+				type: blob.type,
+				lastModified: Date.now()
+			});
+			const formData = new FormData();
+			formData.append('layoutFile', file);
+			formData.append('eventId', this.eventId);
+
 			const res = await apiFetch("/event/layout", {
 				method: "PUT",
 				body: formData
@@ -263,26 +345,26 @@ export class ZoneEditorState {
 		this.selectedIds.clear();
 	}
 
-	loadFromMessagePack(buffer: ArrayBuffer) {
+	loadFromMessagePack(buffer: ArrayBuffer): boolean {
 		try {
 			const data = decode(buffer) as any;
-			if (data.canvas) {
-				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
-				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
+			if (!data || typeof data !== 'object' || !Array.isArray(data.objects)) {
+				throw new Error('Invalid layout data.');
 			}
-			if (data.seatTypes) {
-				this.seatTypes = data.seatTypes;
-			}
-			if (Array.isArray(data.objects)) {
-				this.objects = data.objects;
-				this.selectedIds.clear();
-			}
-			if (data.zones) {
-				this.zones = data.zones;
-			}
+
+			this.gridWidth = data.canvas?.gridWidth ?? 80;
+			this.gridHeight = data.canvas?.gridHeight ?? 60;
+			this.seatTypes = data.seatTypes ?? {
+				standard: { name: 'standard', color: '#e2e8f0', description: 'Standard seat' }
+			};
+			this.objects = data.objects;
+			this.zones = data.zones ?? {};
+			this.selectedIds.clear();
 			this.centerGrid();
+			return true;
 		} catch (err) {
 			alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ผังที่นั่งได้");
+			return false;
 		}
 	}
 
@@ -304,11 +386,6 @@ export class ZoneEditorState {
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
 		this.objects = this.objects.map((obj) => {
 			if (this.selectedIds.has(obj.id)) {
-				if (obj.type === 'seat') {
-					obj.metadata.row = '';
-					obj.metadata.seatNo = '';
-					obj.metadata.label = '';
-				}
 				return {
 					...obj,
 					metadata: {
@@ -381,7 +458,6 @@ export class ZoneEditorState {
 					...(obj.metadata || {}),
 					row: rowLetter,
 					seatNo: seatNumber,
-					label: `${rowLetter}${seatNumber}`,
 					isManualLabel: overwriteManual ? false : (obj.metadata?.isManualLabel ?? false)
 				}
 			};

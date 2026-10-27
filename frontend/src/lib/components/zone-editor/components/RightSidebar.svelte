@@ -1,7 +1,10 @@
 <script lang="ts">
 	import type { ZoneEditorState } from "../zoneState.svelte";
+	import type { SeatType } from "../types";
+	import { getSeatId } from "../utils/zoneUtils";
 
 	let { zoneState, onOpenPopup }: { zoneState: ZoneEditorState, onOpenPopup: () => void } = $props();
+	let previewSeatType = $state<SeatType | null>(null);
 
 	let selectedObjects = $derived(
 		zoneState.objects.filter((o) => zoneState.selectedIds.has(o.id))
@@ -12,6 +15,30 @@
 	let isSeatSelection = $derived(
 		hasSelection && selectedObjects.every((o) => o.type === "seat")
 	);
+
+	let selectedSeatTypes = $derived.by(() => {
+		const seatTypeCounts = new Map<string, { seatType: SeatType; count: number }>();
+
+		for (const seat of selectedObjects) {
+			const seatTypeKey = seat.metadata?.seatType ?? "standard";
+			const seatType = zoneState.seatTypes[seatTypeKey] ?? {
+				name: "standard",
+				color: "#e2e8f0",
+			};
+			const existing = seatTypeCounts.get(seatTypeKey);
+
+			if (existing) {
+				existing.count += 1;
+			} else {
+				seatTypeCounts.set(seatTypeKey, {
+					seatType,
+					count: 1,
+				});
+			}
+		}
+
+		return Array.from(seatTypeCounts.values());
+	});
 
 	let isShapeSelection = $derived(
 		hasSelection && selectedObjects.every((o) => o.type !== "seat")
@@ -57,13 +84,11 @@
 			: ""
 	);
 
-	let currentLabel = $derived(
+	let currentSeatId = $derived(
 		hasSelection && selectedObjects.every((o) => {
-			const cLabel = o.metadata?.label ?? '';
-			const fLabel = selectedObjects[0].metadata?.label ?? '';
-			return cLabel === fLabel;
+			return o.type === 'seat' && getSeatId(o) === getSeatId(selectedObjects[0]);
 		})
-			? (selectedObjects[0].metadata?.label ?? '')
+			? getSeatId(selectedObjects[0])
 			: ""
 	);
 
@@ -93,13 +118,11 @@
 		zoneState.objects = zoneState.objects.map((obj) => {
 			if (zoneState.selectedIds.has(obj.id)) {
 				const seatNo = obj.metadata?.seatNo ?? '';
-				const label = row && seatNo ? `${row}${seatNo}` : (row || seatNo || '');
 				return {
 					...obj,
 					metadata: {
 						...(obj.metadata || {}),
 						row,
-						label,
 						isManualLabel: true
 					}
 				};
@@ -114,13 +137,11 @@
 		zoneState.objects = zoneState.objects.map((obj) => {
 			if (zoneState.selectedIds.has(obj.id)) {
 				const row = obj.metadata?.row ?? '';
-				const label = row && seatNo ? `${row}${seatNo}` : (row || seatNo || '');
 				return {
 					...obj,
 					metadata: {
 						...(obj.metadata || {}),
 						seatNo,
-						label,
 						isManualLabel: true
 					}
 				};
@@ -186,6 +207,36 @@
 				เลือกที่นั่งหรือวัตถุบนผืนผ้าใบเพื่อตั้งค่า
 			</div>
 		{:else if isSeatSelection}
+			<section class="space-y-2 border-b border-slate-200 pb-3" aria-labelledby="selected-seat-types">
+				<h3 id="selected-seat-types" class="text-xs font-semibold text-slate-700">
+					ประเภทที่นั่งที่เลือก
+				</h3>
+				<ul class="space-y-1.5">
+					{#each selectedSeatTypes as { seatType, count } (seatType.name)}
+						<li>
+							<button
+								type="button"
+								onclick={() => (previewSeatType = seatType)}
+								class="group flex w-full items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-indigo-500 cursor-pointer"
+								aria-label={`ดูรูปภาพประเภทที่นั่ง ${seatType.name}`}
+							>
+								<span
+									class="h-4 w-4 shrink-0 rounded border border-black/20"
+									style={`background-color: ${seatType.color}`}
+									aria-hidden="true"
+								></span>
+								<span class="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
+									{seatType.name}
+								</span>
+								<span class="shrink-0 text-[10px] text-slate-500 group-hover:text-indigo-700">
+									ดูรูปภาพ · {count} ที่นั่ง
+								</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+
 			<!-- 1. Zone Selection -->
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
@@ -278,10 +329,10 @@
 				</p>
 
 				<div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-xs flex items-center justify-between">
-					<span class="text-slate-500">ป้ายปัจจุบัน:</span>
+					<span class="text-slate-500">รหัสที่นั่งปัจจุบัน:</span>
 					<div class="flex items-center gap-1.5">
 						<span class="font-mono font-bold text-slate-800">
-							{currentLabel || (selectedObjects.length > 1 ? '(หลายค่า)' : 'ยังไม่มีป้าย')}
+							{currentSeatId || (selectedObjects.length > 1 ? '(หลายค่า)' : 'ยังไม่มีรหัส')}
 						</span>
 						{#if hasManualLabel}
 							<span class="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5" title="ป้ายนี้ถูกล็อกไว้จากการรัน Auto Label">
@@ -342,4 +393,79 @@
 			</div>
 		{/if}
 	</div>
+	<details class="border-t border-slate-200 px-4 py-3">
+		<summary class="cursor-pointer text-[11px] font-medium text-slate-500 hover:text-slate-700">
+			ตัวเลือกขั้นสูง
+		</summary>
+		<div class="mt-2">
+			<button
+				type="button"
+				onclick={zoneState.handleResetToPlaceLayout}
+				disabled={zoneState.isSaving}
+				class="text-left text-[11px] text-slate-500 transition-colors hover:text-red-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+				title="แทนที่ข้อมูลในตัวแก้ไขด้วยผังปัจจุบันของสถานที่"
+			>
+				{#if zoneState.isResetting}
+					<span class="inline-flex items-center gap-1.5" aria-live="polite">
+						<svg class="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+						</svg>
+						กำลังโหลดผังจากสถานที่...
+					</span>
+				{:else}
+					รีเซ็ตจากผังสถานที่
+				{/if}
+			</button>
+			<p class="mt-1 text-[10px] leading-relaxed text-slate-400">
+				แทนที่ข้อมูลในตัวแก้ไขด้วยผังปัจจุบันของสถานที่
+			</p>
+		</div>
+	</details>
 </aside>
+
+{#if previewSeatType}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="seat-type-preview-title"
+			tabindex="-1"
+			class="w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl"
+		>
+			<header class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+				<div class="flex min-w-0 items-center gap-2">
+					<span
+						class="h-4 w-4 shrink-0 rounded border border-black/20"
+						style={`background-color: ${previewSeatType.color}`}
+						aria-hidden="true"
+					></span>
+					<h2 id="seat-type-preview-title" class="truncate text-base font-semibold text-slate-800">
+						{previewSeatType.name}
+					</h2>
+				</div>
+				<button
+					type="button"
+					onclick={() => (previewSeatType = null)}
+					class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-indigo-500 cursor-pointer"
+				>
+					ปิด
+				</button>
+			</header>
+			<div class="flex min-h-56 items-center justify-center bg-slate-50 p-5">
+				{#if previewSeatType.picture}
+					<img
+						src={previewSeatType.picture}
+						alt={`รูปภาพประเภทที่นั่ง ${previewSeatType.name}`}
+						class="max-h-[65vh] max-w-full rounded-lg object-contain"
+					/>
+				{:else}
+					<p class="text-sm text-slate-500">ประเภทที่นั่งนี้ยังไม่มีรูปภาพ</p>
+				{/if}
+			</div>
+			{#if previewSeatType.description}
+				<p class="px-5 py-4 text-sm text-slate-600">{previewSeatType.description}</p>
+			{/if}
+		</div>
+	</div>
+{/if}

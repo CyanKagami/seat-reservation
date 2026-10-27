@@ -58,6 +58,12 @@
                     >
                         กิจกรรมที่จัด
                     </a>
+                    <a
+                        href="/reserved-event"
+                        class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                    >
+                        ที่นั่งของฉัน
+                    </a>
                 {:else}
                     <a 
                         href="/reserved-event" 

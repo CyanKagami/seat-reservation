@@ -52,7 +52,7 @@ export const PUT: RequestHandler = async (event) => {
         let seatTypes: {name:string,color:string, description:string,picture:string}[]
         = Object.values(seatmap.seatTypes);
         let keepKeys = new Set(seatTypes.filter((v) => !isValidDataUrl(v.picture || '')).map((v) => `layouts/place/${placeId}/${v.name}.webp`));
-        deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys);
+        await deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys);
         for (const value of seatTypes){
             if (!value.picture) continue;
             let buffer: Buffer;

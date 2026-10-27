@@ -17,6 +17,7 @@ export class SeatEditorState {
 	gridWidth = $state(80);
 	gridHeight = $state(60);
 	isUneditable = $state(false);
+	isSaving = $state(false);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
@@ -365,24 +366,27 @@ export class SeatEditorState {
 	};
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
+		if (this.isSaving) return;
 		await this.uploadToAPI()
 	}
 
 	async uploadToAPI(apiEndpoint = '/api/place/layout') {
+		if (this.isSaving) return;
+		this.isSaving = true;
 		this.isUneditable = true;
-		this.selectedIds.clear();
-		const binaryData = this.exportToMessagePack();
-
-		const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
-		const file = new File([blob], `${this.locationId}.msgpack`, {
-			type: blob.type,
-			lastModified: Date.now()
-		});
-		const formData = new FormData();
-		formData.append('layoutFile', file);
-		formData.append('placeId', this.locationId);
 
 		try {
+			this.selectedIds.clear();
+			const binaryData = this.exportToMessagePack();
+			const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
+			const file = new File([blob], `${this.locationId}.msgpack`, {
+				type: blob.type,
+				lastModified: Date.now()
+			});
+			const formData = new FormData();
+			formData.append('layoutFile', file);
+			formData.append('placeId', this.locationId);
+
 			const res = await apiFetch("/place/layout", {
 				method: "PUT",
 				body: formData
@@ -397,6 +401,7 @@ export class SeatEditorState {
 		} catch (err) {
 			alertModal.failure("ล้มเหลว", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ")
 		} finally {
+			this.isSaving = false;
 			this.isUneditable = false;
 		}	
 	}

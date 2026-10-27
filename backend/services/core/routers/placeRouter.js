@@ -101,7 +101,7 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
             .filter((v) => v.picture && !isValidDataUrl(v.picture))
             .map((v) => `layouts/place/${placeId}/${v.name}.webp`)
         );
-        await deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys).catch(() => {});
+        await deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys);
 
         for (const value of seatTypes) {
           if (!value.picture || !isValidDataUrl(value.picture)) continue;

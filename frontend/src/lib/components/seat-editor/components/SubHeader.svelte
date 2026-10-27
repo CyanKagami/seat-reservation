@@ -15,9 +15,19 @@
 	<button 
         id="save-button"
 		onclick={state.handleSaveButtonClick}
-		disabled={state.overlappingIds.size > 0}
+		disabled={state.overlappingIds.size > 0 || state.isSaving}
 		class="px-6 py-1.5 bg-[#1c6b80] hover:bg-[#165566] text-white font-medium text-sm rounded shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 	>
-		บันทึก
+		{#if state.isSaving}
+			<span class="inline-flex items-center gap-2" aria-live="polite">
+				<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+				</svg>
+				กำลังบันทึก...
+			</span>
+		{:else}
+			บันทึก
+		{/if}
 	</button>
 </div>

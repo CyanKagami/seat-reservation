@@ -118,7 +118,7 @@
 		const seatId = getSeatId(seat)
 		const isReserved = reservedIds.has(seatId);
 
-		if (!isZoneSeat || status === "unavailable" || isReserved) return;
+		if (!isZoneSeat || status === "unavailable" || !seatId || isReserved) return;
 
 
 		if (selectedSeatIds.includes(seat.id)) {
@@ -197,7 +197,7 @@
 
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'
-						: status === 'unavailable'
+						: status === 'unavailable' || !seatId
 							? 'fill-stone-700 stroke-stone-600'
 							: isReserved
 								? 'fill-stone-700 stroke-stone-900'
@@ -211,7 +211,7 @@
 						class="transition-colors focus:outline-none 
 							{!isZoneObject 
 								? 'pointer-events-none' 
-								: status === 'unavailable' 
+								: status === 'unavailable' || !seatId
 									? 'cursor-not-allowed opacity-60 pointer-events-auto' 
 									: 'cursor-pointer pointer-events-auto'}"
 					>
@@ -330,7 +330,7 @@
 				{:else}
 					{#each selectedSeats as s}
 						<span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] font-semibold">
-							{s.metadata?.label || s.id}
+							{getSeatId(s)}
 						</span>
 					{/each}
 				{/if}

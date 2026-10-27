@@ -1,20 +1,10 @@
 // src/routes/api/auth/me/+server.ts
 // GET /api/auth/me - return the user decoded from the Bearer token
 import { json, type RequestHandler } from '@sveltejs/kit';
-import jwt from 'jsonwebtoken';
-import { env } from '$env/dynamic/private';
+import { guard } from '$lib/scripts/server/guard';
 
-export const GET: RequestHandler = ({ request }) => {
-  const token = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
-
-  if (!token) {
-    return json({ body: null }, { status: 401 });
-  }
-
-  try {
-    const user = jwt.verify(token, env.JWT_SECRET!);
-    return json({ body: user });
-  } catch {
-    return json({ body: null }, { status: 401 });
-  }
+export const GET: RequestHandler = async (event) => {
+  const user = await guard(event, undefined, { live: true, allowRoleChange: true });
+  if (user instanceof Response) return json({ body: null }, { status: user.status });
+  return json({ body: user });
 };

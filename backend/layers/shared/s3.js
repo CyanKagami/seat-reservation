@@ -96,8 +96,8 @@ export async function deleteFile(folder, filename) {
   }
 }
 
-// deleteObjectsWithPrefix(prefix) — batch-deletes all objects under prefix.
-export async function deleteObjectsWithPrefix(prefix) {
+// deleteObjectsWithPrefix(prefix, keepKeys) — batch-deletes objects under a prefix except preserved keys.
+export async function deleteObjectsWithPrefix(prefix, keepKeys = new Set()) {
   let isTruncated = true;
   let continuationToken = undefined;
 
@@ -110,16 +110,22 @@ export async function deleteObjectsWithPrefix(prefix) {
 
     if (!listResponse.Contents || listResponse.Contents.length === 0) break;
 
-    const objectsToDelete = listResponse.Contents.map((obj) => ({ Key: obj.Key }));
-    await s3Client.send(new DeleteObjectsCommand({
-      Bucket: BUCKET,
-      Delete: { Objects: objectsToDelete, Quiet: true }
-    }));
-    logInfo('Deleted S3 objects', {
-      bucketName: BUCKET,
-      prefix,
-      objectCount: objectsToDelete.length
-    });
+    const objectsToDelete = listResponse.Contents
+      .filter((obj) => !keepKeys.has(obj.Key))
+      .map((obj) => ({ Key: obj.Key }));
+    if (objectsToDelete.length > 0) {
+      await s3Client.send(new DeleteObjectsCommand({
+        Bucket: BUCKET,
+        Delete: { Objects: objectsToDelete, Quiet: true }
+      }));
+    }
+    if (objectsToDelete.length > 0) {
+      logInfo('Deleted S3 objects', {
+        bucketName: BUCKET,
+        prefix,
+        objectCount: objectsToDelete.length
+      });
+    }
 
     isTruncated = listResponse.IsTruncated || false;
     continuationToken = listResponse.NextContinuationToken;

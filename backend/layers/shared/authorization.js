@@ -48,24 +48,54 @@ export function getUser(req) {
 }
 
 export function requireRole(...allowedRoles) {
-  return (req, res, next) => {
-    const user = getUser(req);
-    if (!user.email) {
+  return async (req, res, next) => {
+    const tokenUser = getUser(req);
+    if (!tokenUser.email) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    if (!allowedRoles.includes(user.role)) {
-      return res.status(403).json({ error: 'Access denied' });
+
+    try {
+      const currentUser = await fetchUser(tokenUser.email);
+      if (!currentUser) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      if ((tokenUser.role || '') !== (currentUser.role || '')) {
+        return res.status(403).json({
+          error: 'Your role has changed. Refresh your access and try again.',
+          code: 'ROLE_CHANGED'
+        });
+      }
+      if (!currentUser || !allowedRoles.includes(currentUser.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      req.user = { ...tokenUser, ...currentUser, role: currentUser.role || '' };
+      next();
+    } catch (error) {
+      next(error);
     }
-    req.user = user;
-    next();
   };
 }
 
-export function requireAuth(req, res, next) {
-  const user = getUser(req);
-  if (!user.email) {
+export async function requireAuth(req, res, next) {
+  const tokenUser = getUser(req);
+  if (!tokenUser.email) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  req.user = user;
-  next();
+
+  try {
+    const currentUser = await fetchUser(tokenUser.email);
+    if (!currentUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if ((tokenUser.role || '') !== (currentUser.role || '')) {
+      return res.status(403).json({
+        error: 'Your role has changed. Refresh your access and try again.',
+        code: 'ROLE_CHANGED'
+      });
+    }
+    req.user = { ...tokenUser, ...currentUser, role: currentUser.role || '' };
+    next();
+  } catch (error) {
+    next(error);
+  }
 }

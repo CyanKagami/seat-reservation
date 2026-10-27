@@ -29,7 +29,7 @@ function registrationOpen(ev: Event, now = new Date()) {
 // Everyone gets { seatId, zone, seat, mine }; admin/organizer also get the full record
 // (status, googleId, reservedAt) plus the booker's name and email.
 export const GET: RequestHandler = async (event) => {
-  const user = await guard(event);
+  const user = await guard(event, undefined, { live: true });
   if (user instanceof Response) return user;
 
   const eventId = event.url.searchParams.get('eventId');
@@ -82,7 +82,7 @@ export const POST: RequestHandler = async (event) => {
 
 // DELETE /api/booking?eventId=...&seatId=... - cancel (own seat, or any seat for admin)
 export const DELETE: RequestHandler = async (event) => {
-  const user = await guard(event);
+  const user = await guard(event, undefined, { live: true });
   if (user instanceof Response) return user;
 
   const eventId = event.url.searchParams.get('eventId');

@@ -8,8 +8,8 @@ Resources:
   # Data layer (from your original appTemplate.yml)
   # ---------------------------------------------------------------
   # One bucket for all uploads:
-  #   pictures/place/*, pictures/event/*  -> public read (used by <img> tags)
-  #   layouts/place/*,  layouts/event/*   -> private (only Lambda reads/writes)
+  #   pictures/* and place seat-type WebP files -> public read (used by <img> tags)
+  #   all other layout files -> private (only Lambda reads/writes)
   KSeatS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -30,6 +30,10 @@ Resources:
             Principal: '*'
             Action: s3:GetObject
             Resource: !Sub '${KSeatS3Bucket.Arn}/pictures/*'
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${KSeatS3Bucket.Arn}/layouts/place/*/*.webp'
 
   UsersTable:
     Type: AWS::DynamoDB::Table

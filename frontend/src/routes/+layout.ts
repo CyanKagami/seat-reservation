@@ -8,11 +8,6 @@ export const load: LayoutLoad = async ({ fetch, url }) => {
     if (url.pathname === "/login") {
         return {user: null};
     }
-    if (userStore.currentUser) {
-        return {
-            user: userStore.currentUser,
-        };
-    }
     let response = await apiFetch(`/auth/me`, {
         method: "GET",
     }, fetch);
