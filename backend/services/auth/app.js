@@ -4,10 +4,12 @@ import cors from 'cors';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { addUser, fetchUser } from '/opt/nodejs/dynamo.js';
+import { logError, requestLogger, requestLogContext } from '/opt/nodejs/logger.js';
 
 const app = express();
 const allowedOrigins = [process.env.FRONTEND_ORIGIN, 'http://localhost:5173'].filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(requestLogger('auth'));
 app.use(express.json());
 
 const router = express.Router();
@@ -102,7 +104,7 @@ router.get('/google/callback', async (req, res) => {
     // Token goes in the URL fragment (#) — never reaches server/logs.
     return res.redirect(`${frontendUrl}/auth/callback#token=${signedToken}`);
   } catch (err) {
-    console.error('OAuth Callback Error:', err);
+    logError('OAuth callback failed', err, requestLogContext(req));
     return res.redirect(`${frontendUrl}/login?error=auth_failed`);
   }
 });

@@ -262,7 +262,7 @@
     <span class="truncate font-semibold text-dark-muted">เพิ่มกิจกรรม</span>
   </nav>
   <header class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-dark sm:text-3xl">เพิ่มกิจกรรม</h1>
+    <h1 class="text-2xl font-bold tracking-tight text-dark sm:text-3xl">เพิ่มกิจกรรม</h1>
     <p class="mt-1 text-sm text-dark-soft">กรอกข้อมูลกิจกรรมและกำหนดรายละเอียดการเข้าร่วม</p>
   </header>
   <form
@@ -501,7 +501,7 @@
       <button 
         type="submit" 
         disabled={isSubmitting} 
-        class="inline-flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-40"
+        class="inline-flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-40 cursor-pointer"
       >
         {isSubmitting ? "กำลังบันทึก..." : "สร้าง"}
       </button>

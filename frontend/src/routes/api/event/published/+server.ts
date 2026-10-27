@@ -15,7 +15,6 @@ export const POST: RequestHandler = async (event) => {
     await updateAllAttributes('events', { eventId }, {status:'Published'});
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error publishing event:', error);
     return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
   }
 };
@@ -32,7 +31,6 @@ export const DELETE: RequestHandler = async (event) => {
     await updateAllAttributes('events', { eventId }, {status:'Created'});
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error unpublishing event:', error);
     return json({ error: 'Internal Server Error'  }, { status: 500 });
   }
 };

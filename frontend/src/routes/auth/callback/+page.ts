@@ -7,7 +7,6 @@ export function load() {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.hash.slice(1)); // strip leading '#'
     const token = params.get('token');
-    console.log('Token from callback:', token);
     if (token) {
       saveToken(token);
       window.location.replace('/'); // go to the app, and replace() drops the token from history

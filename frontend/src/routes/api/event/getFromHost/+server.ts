@@ -12,7 +12,6 @@ export const GET: RequestHandler = async (event) => {
         const data = await fetchEventFromHost(user.email);
         return json({ body: data });
     } catch (error) {
-        console.error('Error fetching events for host:', error);
         return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
 };

@@ -74,7 +74,7 @@
         <span aria-hidden="true">/</span>
         <span class="truncate font-semibold text-dark-muted">บัญชีผู้ใช้</span>
     </nav>
-    <h1 class="mb-6 text-3xl font-extrabold tracking-tight text-dark sm:text-4xl">บัญชีผู้ใช้</h1>
+    <h1 class="mb-6 text-3xl font-bold tracking-tight text-dark sm:text-4xl">บัญชีผู้ใช้</h1>
     <div class="mb-5 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:flex-row sm:items-end sm:justify-between sm:p-5">
         <div class="w-full sm:max-w-xs">
             <label for="user-search" class="mb-2 block text-sm font-semibold text-dark">ค้นหาผู้ใช้</label>
@@ -112,14 +112,14 @@
                                 </td>
                                 <td class="border border-border-strong px-4 py-4 sm:px-5">
                                     <div class="flex min-w-40 gap-2">
-                                        <button onclick={() => {editing = {index: -1, role: ''};}} class="w-1/2 rounded-lg border border-border-strong bg-white px-3 py-2 font-medium text-dark transition-colors hover:bg-surface-subtle">ยกเลิก</button>
-                                        <button onclick={() => {saveRole(index)}} class="w-1/2 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover">บันทึก</button>
+                                        <button onclick={() => {editing = {index: -1, role: ''};}} class="w-1/2 rounded-lg border border-border-strong bg-white px-3 py-2 font-medium text-dark transition-colors hover:bg-surface-subtle cursor-pointer">ยกเลิก</button>
+                                        <button onclick={() => {saveRole(index)}} class="w-1/2 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">บันทึก</button>
                                     </div>
                                 </td>
                             {:else}
                                 <td class="border border-border-strong px-4 py-4 sm:px-5">{user.role}</td>
                                 <td class="border border-border-strong px-4 py-4 sm:px-5">
-                                    <button onclick={() => editRole(index)} class="w-full min-w-40 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover">แก้ไขบทบาท</button>
+                                    <button onclick={() => editRole(index)} class="w-full min-w-40 rounded-lg bg-secondary px-3 py-2 font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">แก้ไขบทบาท</button>
                                 </td>
                             {/if}
                         </tr>

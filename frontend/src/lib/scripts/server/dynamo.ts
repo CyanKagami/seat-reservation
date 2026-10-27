@@ -39,13 +39,7 @@ export async function createMyTable() {
     BillingMode: "PAY_PER_REQUEST" // On-demand scaling (recommended)
   });
 
-  try {
-    const response = await client.send(command);
-    // @ts-ignore
-    console.log("Table creation initiated successfully:", response.TableDescription.TableStatus);
-  } catch (error) {
-    console.error("Error creating table:", error);
-  }
+  await client.send(command);
 }
 
 function removeInvalidXmlCharacters(str:string) {
@@ -71,24 +65,15 @@ export async function addData(tableName:string, item:Object) {
     },
     ConditionExpression: "attribute_not_exists(eventId)",
   };
-  console.log(uniqueId)
-
-
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
+    await docClient.send(new PutCommand(params));
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
       console.warn("Collision detected! Retrying with a new ID...");
-      addData(tableName, item); // Recursive retry strategy
+      await addData(tableName, item);
+      return;
     }
-    if (error.$responseBodyText) {
-      console.error("Dynamo Raw response text:", error.$responseBodyText);
-    }
-  // Inspect the full HTTP response object
-    if (error.$response) {
-      console.error("Dynamo HTTP Status Code:", error.$response);
-    }
+    throw error;
   }
 }
 
@@ -115,19 +100,12 @@ export async function addDataUniqueId(
   };
 
   try {
-    const data = await docClient.send(new PutCommand(params));
+    await docClient.send(new PutCommand(params));
     return uniqueId;
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
       console.warn("Collision detected! Retrying with a new ID...");
       addDataUniqueId(tableName, item, primaryKey); // Recursive retry strategy
-    }
-    if (error.$responseBodyText) {
-      console.error("Dynamo Raw response text:", error.$responseBodyText);
-    }
-  // Inspect the full HTTP response object
-    if (error.$response) {
-      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
     }
     throw error
   }
@@ -146,19 +124,11 @@ export async function addDataIfNotExists(tableName:string, item:Object, primaryK
   };
 
   try {
-    const data = await docClient.send(new PutCommand(params));
-    console.log('result : ' + JSON.stringify(data));
+    await docClient.send(new PutCommand(params));
     return 0; // Item added successfully
   } catch (error:any) {
     if (error.name === "ConditionalCheckFailedException") {
       return 1; // Item already exists
-    }
-    if (error.$responseBodyText) {
-      console.error("Dynamo Raw response text:", error.$responseBodyText);
-    }
-  // Inspect the full HTTP response object
-    if (error.$response) {
-      console.error("Dynamo HTTP Status Code:", error.$response.statusCode);
     }
     return -1; // Error occurred
   }
@@ -215,7 +185,6 @@ export async function fetchAllData(
 
     return allItems;
   } catch (error) {
-    console.error("Error fetching data from DynamoDB table:", error);
     throw error;
   }
 }
@@ -238,7 +207,6 @@ export async function fetchEventFromHost(creatorId:string) {
     }
   }
 
-  console.log("Total items matching filter:", allItems.length);
   return allItems;
 }
 
@@ -302,7 +270,6 @@ export async function updateAllAttributes(tableName:string, primaryKey:Key, attr
     const response = await docClient.send(new UpdateCommand(params));
     return response.Attributes;
   } catch (error) {
-    console.error("Error updating item:", error);
     throw error;
   }
 }
@@ -321,8 +288,6 @@ export async function addUser(user:Object) {
       console.warn('User already exists, not overwriting.');
       return;
     }
-    if (error.$responseBodyText) console.error('Dynamo Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('Dynamo HTTP Status Code:', error.$response.statusCode);
     throw error;
   }
 }
@@ -335,20 +300,16 @@ export async function fetchUser(email:string) {
       email: email, // Partition Key (HASH)
     },
   };
-  console.log("Fetching user with params:", params);
   try {
     const command = new GetCommand(params);
     const response = await docClient.send(command);
 
     if (response.Item) {
-      console.log('Item found:', response.Item);
       return response.Item;
     } else {
-      console.log('No item found with the specified key.');
       return null;
     }
   } catch (error) {
-    console.error('Error getting item:', error);
     throw error;
   }
 }
@@ -369,7 +330,6 @@ export async function fetchData(tablename:string, key:Key) {
       return null;
     }
   } catch (error) {
-    console.error('Error getting item:', error);
     throw error;
   }
 }
@@ -412,7 +372,6 @@ export async function deleteItem(tablename:string, key:Key){
     const response = await docClient.send(command);
     return response;
   } catch (error) {
-    console.error('Error deleting item:', error);
     throw error;
   }
 }

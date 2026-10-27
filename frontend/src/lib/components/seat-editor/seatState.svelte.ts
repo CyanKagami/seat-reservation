@@ -455,7 +455,7 @@ export class SeatEditorState {
 			this.clearHistory();
 			this.commitHistory();
 		} catch (err) {
-			console.error("Failed to parse MessagePack layout file:", err);
+			alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ผังที่นั่งได้");
 		}
 	}
 
@@ -801,7 +801,6 @@ export class SeatEditorState {
 			.filter(o => this.selectedIds.has(o.id))
 			.map(o => ({ ...o }));
 
-		console.log(this.copiedObjects)
 	};
 
 	pasteSquares = () => {
@@ -834,8 +833,6 @@ export class SeatEditorState {
 			});
 			nextSelected.add(newId);
 		});
-		console.log("existing objects:", this.objects);
-		console.log("Pasting objects:", nextBatch);
 		this.objects = [...this.objects, ...nextBatch];
 		this.selectedIds = nextSelected;
 		this.copiedObjects = nextBatch.map(s => ({ ...s }));
@@ -1008,12 +1005,6 @@ export class SeatEditorState {
 
 					// 5. Update rotation orientation
 					const newRot = (init.rotation + deltaAngle) % 360;
-										console.log({
-						...obj,
-						x: newX,
-						y: newY,
-						rotation: newRot < 0 ? newRot + 360 : newRot
-					});
 					return {
 						...obj,
 						x: newX,

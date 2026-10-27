@@ -1,11 +1,18 @@
 <script lang='ts'>
+  import { onMount } from 'svelte';
   import { invalidate } from '$app/navigation';
   import { ApiError } from '$lib/scripts/api.js';
   import { checkInSeat, getReservation } from '$lib/scripts/booking.js';
+  import { alertModal } from '$lib/store/alert.svelte';
   import type { SeatParts } from '$lib/scripts/seat.js';
   import type { Reservation } from '$lib/type/reservation.js';
 
     const {data, params} = $props();
+    onMount(() => {
+        if (data.loadError) {
+            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลการเข้าร่วมได้ กรุณาลองอีกครั้ง");
+        }
+    });
     const percentage = $derived((data.checkInCount / (data.totalCount || 1)) * 100)
     let identifier: string = $state('');
     let reservationData: Reservation & SeatParts | null = $state(null);
@@ -60,7 +67,7 @@
         <span aria-hidden="true">/</span>
         <span class="truncate font-semibold text-dark-muted">ตรวจสอบการเข้าร่วม</span>
     </nav>
-    <h1 class="mb-6 text-3xl font-extrabold tracking-tight text-dark sm:text-4xl">ข้อมูลการเข้าร่วมกิจกรรม</h1>
+    <h1 class="mb-6 text-3xl font-bold tracking-tight text-dark sm:text-4xl">ข้อมูลการเข้าร่วมกิจกรรม</h1>
     <div class="grid w-full grid-cols-1 gap-4 rounded-lg py-5 md:grid-cols-3 md:gap-5 md:py-10">
         <div class="col-span-1 flex min-w-0 flex-col gap-3 overflow-hidden rounded-lg border border-accent bg-white shadow-xs sm:flex-row md:col-span-2">
             <div class="flex shrink-0 items-center justify-center bg-accent px-5 py-4 sm:rounded-l-lg sm:px-7 sm:py-0">

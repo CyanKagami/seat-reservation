@@ -271,14 +271,15 @@
     <span class="truncate font-semibold text-dark-muted">แก้ไขกิจกรรม</span>
   </nav>
   <header class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-dark sm:text-3xl">แก้ไขกิจกรรม</h1>
+    <h1 class="text-2xl font-bold tracking-tight text-dark sm:text-3xl">แก้ไขกิจกรรม</h1>
     <p class="mt-1 text-sm text-dark-soft">ปรับปรุงข้อมูลกิจกรรมและกำหนดรายละเอียดการเข้าร่วม</p>
   </header>
   <form
-    class="flex w-full flex-col gap-6"
+    class="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
     onsubmit={handleSubmit}
     enctype="multipart/form-data"
   >
+    <div class="flex min-w-0 flex-col gap-6">
     <section class="rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-6">
       <div class="mb-5 border-b border-border-subtle pb-4">
         <h2 class="text-lg font-bold text-dark sm:text-xl">ข้อมูลกิจกรรม</h2>
@@ -497,27 +498,11 @@
         {/each}
       </div>
 
-        <!-- Action Buttons -->
-      <div class="flex flex-col-reverse sm:flex-row w-full justify-end gap-3">
-        <a 
-          href="/my-event" 
-          class="inline-flex w-full items-center justify-center rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle sm:w-auto sm:min-w-32"
-        >
-          ยกเลิก
-        </a>
-        <button 
-          type="submit" 
-          disabled={isSubmitting} 
-          class="inline-flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-40"
-        >
-          {isSubmitting ? "กำลังบันทึก..." : "อัพเดท"}
-        </button>
-      </div>
-    </section>
 
-    
-  </form>
-  <section class="flex flex-col gap-4 rounded-2xl border my-6 border-border-subtle bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-6">
+    </section>
+    </div>
+    <aside class="min-w-0 lg:sticky lg:top-[calc(var(--nav-h,4rem)+1.5rem)]">
+      <section class="flex flex-col gap-5 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-6">
         <div class="flex min-w-0 items-center gap-4">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary-subtle/70 text-secondary">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -526,17 +511,35 @@
           </div>
           <div class="min-w-0">
             <h2 class="font-bold text-dark">แผนผังที่นั่ง</h2>
-            <p class="mt-1 text-sm text-dark-soft">จัดการผังและกำหนดที่นั่งของสถานที่นี้</p>
+            <p class="mt-1 text-sm text-dark-soft">จัดการผังที่นั่งของสถานที่นี้</p>
           </div>
         </div>
         <a
           href="/my-event/update-event/{params.eventId}/seatmap"
-          class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-secondary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover"
+          class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-secondary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover"
         >
           แก้ไขแผนผัง
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7 7 7-7 7" />
           </svg>
         </a>
+        <div class="flex flex-col-reverse gap-3 border-t border-border-subtle pt-5">
+          <a
+            href="/my-event"
+            class="inline-flex w-full items-center justify-center rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle"
+          >
+            ยกเลิก
+          </a>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            class="inline-flex w-full items-center justify-center rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          >
+            {isSubmitting ? "กำลังบันทึก..." : "อัพเดท"}
+          </button>
+        </div>
       </section>
+    </aside>
+  </form>
+
 </div>

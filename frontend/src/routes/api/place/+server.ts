@@ -70,7 +70,6 @@ export const GET: RequestHandler = async (event) => {
         const data = await fetchAllData('places');
         return json({ body: { data } });
     } catch (error) {
-        console.error('Error fetching places:', error);
         return json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -119,7 +118,6 @@ export const POST: RequestHandler = async (event) => {
  
     return json({ body: { message: 'ok', placeId: uniqueId } });
   } catch (error) {
-    console.error('Error creating place:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -147,7 +145,6 @@ export const PATCH: RequestHandler = async (event) => {
  
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error updating place:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 };
@@ -166,7 +163,6 @@ export const DELETE: RequestHandler = async (event) => {
     await deleteObjectsWithPrefix(`layouts/place/${placeId}`);
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error deleting place:', error);
     return json({ error: 'Internal Server Error'  }, { status: 500 });
   }
 };

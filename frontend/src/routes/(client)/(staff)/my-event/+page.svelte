@@ -3,6 +3,7 @@
     import { apiFetch } from "$lib/scripts/api";
     import type { Event } from "$lib/type/event";
     import { onMount } from "svelte";
+    import { alertModal } from "$lib/store/alert.svelte";
 
     let events: Event[] = $state([]);
     let isLoading = $state(true);
@@ -12,10 +13,11 @@
         try {
             isLoading = true;
             const res = await apiFetch('/event/getFromHost', { method: "GET" });
+            if (!res.ok) throw new Error("Unable to load organizer events.");
             const data = await res.json();
             events = data.body || [];
         } catch (err) {
-            console.error("Failed to load organizer events:", err);
+            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดกิจกรรมที่จัดได้ กรุณาลองอีกครั้ง");
         } finally {
             isLoading = false;
         }
@@ -36,7 +38,7 @@
     <!-- Header & Action Toolbar -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-border-subtle">
         <div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight">
                 กิจกรรมที่ฉันจัด
             </h1>
             <p class="text-xs sm:text-sm text-dark-soft mt-1">

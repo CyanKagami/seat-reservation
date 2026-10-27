@@ -63,7 +63,7 @@
 		<button 
 			onclick={state.undo}
 			disabled={!state.canUndo}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 			title="Undo (Ctrl+Z)"
 		>
 			Undo
@@ -71,7 +71,7 @@
 		<button 
 			onclick={state.redo}
 			disabled={!state.canRedo}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 			title="Redo (Ctrl+Y)"
 		>
 			Redo
@@ -80,14 +80,14 @@
 		<button 
 			onclick={state.copySelected}
 			disabled={state.selectedIds.size === 0}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Copy
 		</button>
 		<button 
 			onclick={state.pasteSquares}
 			disabled={state.copiedObjects.length === 0}
-			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold"
+			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Paste
 		</button>
@@ -95,7 +95,7 @@
             id="delete-button"
 			onclick={state.removeSelected}
 			disabled={state.selectedIds.size === 0}
-			class="px-2 h-7 bg-red-100 border border-red-300 text-red-700 rounded hover:bg-red-200 disabled:opacity-40 text-[11px] font-semibold"
+			class="px-2 h-7 bg-red-100 border border-red-300 text-red-700 rounded hover:bg-red-200 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Delete
 		</button>
@@ -103,9 +103,9 @@
 
 	<!-- Zoom Controls -->
 	<div class="ml-auto flex items-center gap-1 text-xs">
-		<button onclick={state.zoomOut} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100">-</button>
+		<button onclick={state.zoomOut} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer">-</button>
 		<span class="w-10 text-center font-mono text-[11px]">{Math.round(state.scale * 100)}%</span>
-		<button onclick={state.zoomIn} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100">+</button>
-		<button onclick={state.resetZoom} class="px-1.5 h-6 bg-white border border-slate-300 rounded text-[10px] hover:bg-slate-100">Center</button>
+		<button onclick={state.zoomIn} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer">+</button>
+		<button onclick={state.resetZoom} class="px-1.5 h-6 bg-white border border-slate-300 rounded text-[10px] hover:bg-slate-100 cursor-pointer">Center</button>
 	</div>
 </div>

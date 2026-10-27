@@ -12,6 +12,7 @@ import {
 import { docClient, fetchData, updateAllAttributes } from './dynamo.js';
 import { parseSeatId, isValidSeatId } from './seat.js';
 import { classifyIdentifier } from './checkIn.js';
+import { logError } from './logger.js';
 
 export { isValidSeatId };
 
@@ -38,11 +39,11 @@ const BOOKING_HTTP_STATUS = {
   FORBIDDEN: 403
 };
 
-export function bookingErrorResponse(error) {
+export function bookingErrorResponse(error, context = {}) {
   if (error instanceof BookingError) {
     return { status: BOOKING_HTTP_STATUS[error.code], body: { error: error.message, code: error.code } };
   }
-  console.error('Booking error:', error);
+  logError('Unexpected booking operation failure', error, context);
   return { status: 500, body: { error: 'Internal server error' } };
 }
 
@@ -61,11 +62,11 @@ const CHECK_IN_HTTP_STATUS = {
   NOT_FOUND: 404
 };
 
-export function checkInErrorResponse(error) {
+export function checkInErrorResponse(error, context = {}) {
   if (error instanceof CheckInError) {
     return { status: CHECK_IN_HTTP_STATUS[error.code], body: { error: error.message, code: error.code } };
   }
-  console.error('Check-in error:', error);
+  logError('Unexpected check-in operation failure', error, context);
   return { status: 500, body: { error: 'Internal server error' } };
 }
 

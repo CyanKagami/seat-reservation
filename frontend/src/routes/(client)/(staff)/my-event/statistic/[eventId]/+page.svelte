@@ -1,5 +1,12 @@
 <script lang='ts'>
+    import { onMount } from "svelte";
+    import { alertModal } from "$lib/store/alert.svelte";
     const {data, params} = $props();
+    onMount(() => {
+        if (data.loadError) {
+            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดสถิติการเข้าร่วมได้ กรุณาลองอีกครั้ง");
+        }
+    });
     const percentage = $derived(data.checkedInCount / (data.totalReservation || 1) * 100);
     const zones = $derived(
         Object.entries(data.zoneData).filter(([, zone]) => zone.capacity && zone.id !== "zone-unavailable"),
@@ -14,7 +21,7 @@
         <span aria-hidden="true">/</span>
         <span class="truncate font-semibold text-dark-muted">สถิติการเข้าร่วม</span>
     </nav>
-    <h1 class="mb-6 text-3xl font-extrabold tracking-tight text-dark sm:text-4xl">สถิติการเข้าร่วม</h1>
+    <h1 class="mb-6 text-3xl font-bold tracking-tight text-dark sm:text-4xl">สถิติการเข้าร่วม</h1>
     <div class="grid w-full grid-cols-1 gap-4 rounded-lg pt-5 md:grid-cols-3 md:gap-5">
         <div class="flex h-full w-full min-w-0 flex-col gap-3 overflow-hidden rounded-lg border border-accent bg-white drop-shadow-md sm:flex-row md:col-span-2">
             <div class="flex shrink-0 items-center justify-center bg-accent px-5 py-4 sm:rounded-l-lg sm:px-7 sm:py-0">

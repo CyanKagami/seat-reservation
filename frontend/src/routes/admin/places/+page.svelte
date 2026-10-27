@@ -34,7 +34,6 @@
       places = placesData.body.data;
       locations = locationsData.body.data;
     } catch (error) {
-      console.error("Failed to load admin places:", error);
       loadError = "ไม่สามารถโหลดข้อมูลสถานที่ได้ กรุณาลองอีกครั้ง";
     } finally {
       isLoading = false;
@@ -111,7 +110,6 @@
       }
     } catch (err) {
       alertModal.failure("เกิดข้อผิดพลาด", `ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ: ${String(err)}`);
-      console.error(err);
     } finally {
       isSubmitting = false;
       isCreatePopupOpen = false;
@@ -126,7 +124,7 @@
     </nav>
     <div class="flex flex-col gap-4 border-b border-border-subtle pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h1 class="text-2xl font-extrabold tracking-tight text-dark sm:text-3xl">สถานที่จัดงาน</h1>
+            <h1 class="text-2xl font-bold tracking-tight text-dark sm:text-3xl">สถานที่จัดงาน</h1>
             <p class="mt-1 text-sm text-dark-soft">จัดการสถานที่และผังที่นั่งสำหรับกิจกรรม</p>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -171,7 +169,7 @@
         {:else if loadError}
             <div class="rounded-2xl border border-border-subtle bg-white px-6 py-10 text-center">
                 <p class="text-sm text-dark-muted">{loadError}</p>
-                <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover">ลองอีกครั้ง</button>
+                <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">ลองอีกครั้ง</button>
             </div>
         {:else if filteredPlaces.length === 0}
             <div class="mx-auto my-8 flex max-w-md flex-col items-center rounded-2xl border border-border-subtle bg-white p-10 text-center">
@@ -188,7 +186,7 @@
                     <button
                         type="button"
                         onclick={() => {isCreatePopupOpen = true;}}
-                        class="mt-5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                        class="mt-5 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover cursor-pointer"
                     >
                         + เพิ่มสถานที่แรก
                     </button>
@@ -246,8 +244,8 @@
                 </select>
             </div>
             <div class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" class="rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle sm:min-w-28" onclick={() => {isCreatePopupOpen = false}}>ยกเลิก</button>
-                <button type="submit" disabled={isSubmitting} class="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-28">
+                <button type="button" class="rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle sm:min-w-28 cursor-pointer" onclick={() => {isCreatePopupOpen = false}}>ยกเลิก</button>
+                <button type="submit" disabled={isSubmitting} class="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-28 cursor-pointer">
                     {isSubmitting ? "กำลังบันทึก..." : "สร้างสถานที่"}
                 </button>
             </div>

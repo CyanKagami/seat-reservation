@@ -3,6 +3,7 @@
     import { apiFetch } from "$lib/scripts/api";
     import type { ReservationWithEvent } from "$lib/type/reservation";
     import { onMount } from "svelte";
+    import { alertModal } from "$lib/store/alert.svelte";
 
     let events: ReservationWithEvent[] = $state([]);
     let isLoading = $state(true);
@@ -12,10 +13,11 @@
         try {
             isLoading = true;
             const res = await apiFetch('/booking/mine', { method: "GET" });
+            if (!res.ok) throw new Error("Unable to load reservations.");
             const data = await res.json();
             events = data.body || [];
         } catch (err) {
-            console.error("Failed to fetch reservations:", err);
+            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลการจองได้ กรุณาลองอีกครั้ง");
         } finally {
             isLoading = false;
         }
@@ -41,10 +43,7 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-border-subtle">
         <div>
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-pale-soft text-dark-secondary border border-pale inline-block mb-2">
-                บัตรเข้าร่วมกิจกรรม
-            </span>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight">
                 ที่นั่งที่ฉันจองไว้
             </h1>
             <p class="text-xs sm:text-sm text-dark-soft mt-1">
@@ -81,7 +80,7 @@
                 {/each}
             </div>
         {:else if filteredEvents.length === 0}
-            <div class="bg-white rounded-2xl border border-border-subtle p-12 text-center flex flex-col items-center max-w-md mx-auto my-8">
+            <div class="bg-white rounded-2xl border border-border-subtle p-12 text-center flex flex-col items-center max-w-lg mx-auto my-8">
                 <div class="w-12 h-12 rounded-full bg-pale-soft flex items-center justify-center text-secondary mb-4">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>

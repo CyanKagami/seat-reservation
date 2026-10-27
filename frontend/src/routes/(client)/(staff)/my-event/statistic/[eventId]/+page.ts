@@ -1,18 +1,15 @@
 import type { PageLoad } from './$types';
 import { getReservationStatistic } from '$lib/scripts/booking';
-import { ApiError } from '$lib/scripts/api';
 
 export const load: PageLoad = async ({ fetch, params, depends }) => {
     depends('change:seatmap')
     try {
         let result = await getReservationStatistic(params.eventId, fetch);
-        return result;
+        return { ...result, loadError: false };
     }
     catch (err) {
-        if (err instanceof ApiError){
-            console.error(err.message)
-        }
         return {
+            loadError: true,
             zoneData: {},
             totalReservation:0,
             totalCapacity:0,

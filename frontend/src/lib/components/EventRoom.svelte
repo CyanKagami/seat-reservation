@@ -14,7 +14,6 @@
   }
 
   function reserve(index: number) {
-    console.log(index);
     if (selectedSeat === index) {
       seats[selectedSeat].selected = false;
       selectedSeat = -1;
@@ -41,7 +40,7 @@
 </div>
 
 <a href="/" class="justify-center items-center flex">
-  <button class="rounded-xl bg-pink-500 w-24 h-12 self-center mt-5 text-white">
+  <button class="rounded-xl bg-pink-500 w-24 h-12 self-center mt-5 text-white cursor-pointer">
     จับจอง
   </button>
 </a>

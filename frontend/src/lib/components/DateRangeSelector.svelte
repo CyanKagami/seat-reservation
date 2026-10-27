@@ -158,7 +158,7 @@
   <button
     type="button"
     onclick={() => (isOpen = !isOpen)}
-    class="w-full flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-secondary/20"
+    class="w-full flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-secondary/20 cursor-pointer"
   >
     <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -178,7 +178,7 @@
           <button
             type="button"
             onclick={() => changeMonth(-1)}
-            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 cursor-pointer"
           >
             <svg class="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           </button>
@@ -188,7 +188,7 @@
           <button
             type="button"
             onclick={() => changeMonth(1)}
-            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 cursor-pointer"
           >
             <svg class="h-5 w-5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </button>
@@ -220,7 +220,7 @@
                 class="h-9 w-9 sm:h-8 sm:w-8 rounded-full text-xs font-medium transition-all
                 {!isCurrentMonth ? 'text-slate-300' : 'text-slate-700'}
                 {isStart || isEnd ? '!bg-secondary !text-white shadow-md' : 'hover:bg-slate-100'}
-                {inRange ? 'font-semibold text-secondary' : ''}"
+                {inRange ? 'font-semibold text-secondary' : ''} cursor-pointer"
               >
                 {date.getDate()}
               </button>

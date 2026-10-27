@@ -19,6 +19,9 @@ import {
   getLocation,
   requireRole,
   requireAuth,
+  logError,
+  logWarn,
+  requestLogContext,
 } from '/opt/nodejs/index.js';
 
 const router = Router();
@@ -76,7 +79,7 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
     });
     return res.status(200).send(Buffer.from(fileContent));
   } catch (err) {
-    console.error(err);
+    logError('Failed to load place layout', err, requestLogContext(req, { placeId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -108,20 +111,28 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
             const imgURL = await addFile(`layouts/place/${placeId}`, `${value.name}.webp`, convertedImg);
             seatmap.seatTypes[value.name].picture = imgURL;
           } catch (err) {
-            console.error('Error converting seatType image:', err);
+            logError('Failed to convert seat type image', err, requestLogContext(req, {
+              placeId,
+              seatType: value.name
+            }));
           }
         }
         layoutBuffer = Buffer.from(encode(seatmap));
       }
     } catch (decodeErr) {
-      console.warn('Layout is not valid msgpack with seatTypes, uploading as raw buffer:', decodeErr);
+      logWarn('Layout could not be decoded as MessagePack; uploading original buffer', {
+        requestId: req.requestId,
+        placeId,
+        errorName: decodeErr?.name,
+        errorMessage: decodeErr?.message
+      });
     }
 
     const layoutURL = await addFile(`layouts/place/${placeId}`, 'layout.msgpack', layoutBuffer);
     await updateAllAttributes('places', { placeId }, { layoutURL });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
-    console.error(err);
+    logError('Failed to save place layout', err, requestLogContext(req, { placeId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -132,7 +143,7 @@ router.get('/', requireRole('admin', 'organizer'), async (req, res) => {
     const data = await fetchAllData('places');
     return res.status(200).json({ body: { data } });
   } catch (error) {
-    console.error('Error fetching places:', error);
+    logError('Failed to fetch places', error, requestLogContext(req));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -174,7 +185,7 @@ router.post('/', requireRole('admin'), upload.single('picture'), async (req, res
 
     return res.status(200).json({ body: { message: 'ok', placeId: uniqueId } });
   } catch (error) {
-    console.error('Error creating place:', error);
+    logError('Failed to create place', error, requestLogContext(req));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -196,7 +207,7 @@ router.patch('/', requireRole('admin'), upload.single('picture'), async (req, re
     await updateAllAttributes('places', { placeId: processData.placeId }, processData);
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error updating place:', error);
+    logError('Failed to update place', error, requestLogContext(req, { placeId: req.body?.placeId }));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -211,7 +222,7 @@ router.delete('/', requireRole('admin'), async (req, res) => {
     await deleteObjectsWithPrefix(`layouts/place/${placeId}`);
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error deleting place:', error);
+    logError('Failed to delete place', error, requestLogContext(req, { placeId }));
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -222,7 +233,7 @@ router.get('/:placeId', requireRole('admin', 'organizer'), async (req, res) => {
     const data = await fetchData('places', { placeId: req.params.placeId });
     return res.status(200).json({ body: { data } });
   } catch (error) {
-    console.error('Error fetching place:', error);
+    logError('Failed to fetch place', error, requestLogContext(req, { placeId: req.params.placeId }));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

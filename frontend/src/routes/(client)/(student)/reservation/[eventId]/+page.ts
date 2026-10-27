@@ -6,14 +6,12 @@ import { apiFetch } from '$lib/scripts/api';
 export const load: PageLoad = async ({ params, fetch }) => {
     const event:Event = await apiFetch(`/event/getFromId/${params.eventId}`, {
             method: "GET",
-            credentials: 'include'
         }, fetch)
         .then(async (response) => {
             return (await response.json()).body[0]
         })
 	let layoutData = await apiFetch(`/event/layout?eventId=${params.eventId}`, {
 			method: 'GET',
-			credentials:'include'
 		}, fetch)
 		.then((response) => {
 			return response.arrayBuffer();

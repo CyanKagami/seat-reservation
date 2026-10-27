@@ -4,6 +4,7 @@
     import { formatThaiDateTime, formatThaiDateTimeShort } from "$lib/scripts/formatTime";
     import { apiFetch } from "$lib/scripts/api.js";
     import { registrationOpen } from '$lib/scripts/booking.js';
+    import { alertModal } from "$lib/store/alert.svelte";
 
     let { params } = $props();
 
@@ -17,6 +18,7 @@
     onMount(async () => {
         try {
             const res = await apiFetch(`/event/getFromId/${params.eventId}`, { method: "GET" });
+            if (!res.ok) throw new Error("Unable to load event details.");
             const data = await res.json();
             if (data.body && data.body.length > 0) {
                 event = data.body[0];
@@ -26,7 +28,7 @@
                 if (event["register-date"]?.end) register_date_end = new Date(event["register-date"].end);
             }
         } catch (err) {
-            console.error("Failed to load event:", err);
+            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดรายละเอียดกิจกรรมได้ กรุณาลองอีกครั้ง");
         } finally {
             isLoading = false;
         }
@@ -75,7 +77,7 @@
                         <span>{formatThaiDateTimeShort(start_date, end_date)}</span>
                     </div>
 
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight leading-tight">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight leading-tight">
                         {event.name || "ไม่มีชื่อกิจกรรม"}
                     </h1>
 

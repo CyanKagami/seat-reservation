@@ -39,10 +39,8 @@ export const GET: RequestHandler = async (event) => {
         try {
             return msgpackResponse(await getLayoutFromPlace(eventId));
         } catch (fallbackErr) {
-            console.error(fallbackErr);
         }
         } else {
-        console.error(error);
         }
         return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
@@ -66,7 +64,6 @@ export const PUT: RequestHandler = async (event) => {
         await updateAllAttributes('events', { eventId }, { layoutURL });
         return json({ body: { message: 'OK' } });
     } catch (err) {
-        console.error(err);
         return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
 };

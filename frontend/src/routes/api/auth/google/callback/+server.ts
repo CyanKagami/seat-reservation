@@ -74,7 +74,6 @@ export const GET: RequestHandler = async ({ url }) => {
       destination = `/auth/callback#token=${token}`;
     }
   } catch (err) {
-    console.error('OAuth Callback Error:', err);
     destination = '/login?error=auth_failed';
   }
 

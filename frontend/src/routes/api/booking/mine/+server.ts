@@ -17,7 +17,6 @@ export const GET: RequestHandler = async (event) => {
       body: reservations.map((r) => withSeatParts({ ...r, event: events.get(r.eventId) ?? null }))
     });
   } catch (error) {
-    console.error('Error fetching reservations:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 };

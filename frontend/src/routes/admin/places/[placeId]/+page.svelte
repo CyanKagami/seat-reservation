@@ -44,7 +44,6 @@
       place = placeResult.body.data;
       locations = locationsResult.body.data;
     } catch (error) {
-      console.error("Failed to load place details:", error);
       loadError = "ไม่สามารถโหลดข้อมูลสถานที่ได้ กรุณาลองอีกครั้ง";
     } finally {
       isLoading = false;
@@ -109,7 +108,6 @@
       previewUrl = null;
       await fetchPageData();
     } catch (error) {
-      console.error("Failed to update place:", error);
       alertModal.failure("เกิดข้อผิดพลาด", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
     } finally {
       isSubmitting = false;
@@ -127,7 +125,7 @@
   </nav>
 
   <header class="mb-6">
-    <h1 class="text-2xl font-extrabold tracking-tight text-dark sm:text-3xl">จัดการสถานที่</h1>
+    <h1 class="text-2xl font-bold tracking-tight text-dark sm:text-3xl">จัดการสถานที่</h1>
     <p class="mt-1 text-sm text-dark-soft">แก้ไขข้อมูลสถานที่และจัดการแผนผังที่นั่ง</p>
   </header>
 
@@ -142,7 +140,7 @@
   {:else if loadError}
     <div class="rounded-2xl border border-border-subtle bg-white px-6 py-10 text-center">
       <p class="text-sm text-dark-muted">{loadError}</p>
-      <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover">ลองอีกครั้ง</button>
+      <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">ลองอีกครั้ง</button>
     </div>
   {:else if place}
     <form onsubmit={handleSubmit} enctype="multipart/form-data" class="flex flex-col gap-6">

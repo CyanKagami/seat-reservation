@@ -29,7 +29,6 @@ export const GET: RequestHandler = async (event) => {
         })
     }
     catch (err) {
-        console.error(err);
         return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
     
@@ -52,7 +51,6 @@ export const PUT: RequestHandler = async (event) => {
         const seatmap = decode(fileBuffer);
         let seatTypes: {name:string,color:string, description:string,picture:string}[]
         = Object.values(seatmap.seatTypes);
-        console.log(seatTypes)
         let keepKeys = new Set(seatTypes.filter((v) => !isValidDataUrl(v.picture || '')).map((v) => `layouts/place/${placeId}/${v.name}.webp`));
         deleteObjectsWithPrefix(`layouts/place/${placeId}`, keepKeys);
         for (const value of seatTypes){
@@ -83,7 +81,6 @@ export const PUT: RequestHandler = async (event) => {
         return json({ body: { message: 'OK' } });
     }
     catch (err) {
-        console.error(err);
         return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
     }
 }

@@ -16,7 +16,7 @@
 	class="w-8 h-8 border rounded flex items-center justify-center transition-colors relative
 		{isActive 
 			? 'bg-slate-300 border-slate-400 text-slate-900 shadow-inner' 
-			: 'bg-[#e2e8f0] border-slate-300 text-slate-700 hover:bg-slate-300'}"
+			: 'bg-[#e2e8f0] border-slate-300 text-slate-700 hover:bg-slate-300'} cursor-pointer"
 	title="{tool.label} {tool.shortcut ? `(${tool.shortcut})` : ''}"
 >
 	{#if tool.icon === 'pointer'}

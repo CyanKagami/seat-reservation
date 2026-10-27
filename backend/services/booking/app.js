@@ -28,11 +28,15 @@ import {
   isValidSeatId,
   classifyIdentifier,
   FACULTY_MAP,
+  requestLogger,
+  requestLogContext,
+  logError,
 } from '/opt/nodejs/index.js';
 
 const app = express();
 const allowedOrigins = [process.env.FRONTEND_ORIGIN, 'http://localhost:5173'].filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(requestLogger('booking'));
 app.use(express.json());
 
 // All booking routes require authentication.
@@ -123,7 +127,7 @@ router.post('/check-in', requireRole('organizer', 'admin'), async (req, res) => 
 
     return res.status(201).json({ message: 'Check-in completed', reservation: withSeatParts(reservation) });
   } catch (error) {
-    const result = checkInErrorResponse(error);
+    const result = checkInErrorResponse(error, requestLogContext(req, { eventId: input.eventId }));
     return res.status(result.status).json(result.body);
   }
 });
@@ -137,7 +141,7 @@ router.get('/mine', async (req, res) => {
       body: reservations.map((r) => withSeatParts({ ...r, event: events.get(r.eventId) ?? null }))
     });
   } catch (error) {
-    console.error('Error fetching reservations:', error);
+    logError('Failed to fetch user reservations', error, requestLogContext(req));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -151,7 +155,7 @@ router.get('/registered/me', async (req, res) => {
     if (!seat && req.user.googleId) seat = await getUserSeat(eventId, req.user.googleId);
     return res.status(200).json({ body: seat ? { registered: true, ...seat } : { registered: false } });
   } catch (error) {
-    const result = checkInErrorResponse(error);
+    const result = checkInErrorResponse(error, requestLogContext(req, { eventId }));
     return res.status(result.status).json(result.body);
   }
 });
@@ -183,7 +187,7 @@ router.get('/registered', requireRole('organizer', 'admin'), async (req, res) =>
 
     return res.status(400).json({ error: 'Malformed Identifier', code: 'BAD_REQUEST' });
   } catch (error) {
-    console.error('Error fetching registered seat:', error);
+    logError('Failed to fetch registered seat', error, requestLogContext(req, { eventId }));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -202,6 +206,7 @@ router.get('/statistic/attendance', requireRole('organizer', 'admin'), async (re
     const totalCount = all.length;
     return res.status(200).json({ body: { checkInCount, totalCount } });
   } catch (error) {
+    logError('Failed to fetch attendance statistics', error, requestLogContext(req, { eventId }));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -258,6 +263,7 @@ router.get('/statistic/seating', requireRole('organizer', 'admin'), async (req, 
       }
     });
   } catch (error) {
+    logError('Failed to fetch seating statistics', error, requestLogContext(req, { eventId }));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -282,7 +288,7 @@ router.get('/', async (req, res) => {
 
     return res.status(200).json({ body: { reservations, myReservation } });
   } catch (error) {
-    const result = bookingErrorResponse(error);
+    const result = bookingErrorResponse(error, requestLogContext(req));
     return res.status(result.status).json(result.body);
   }
 });
@@ -300,7 +306,7 @@ router.post('/', async (req, res) => {
     const reservation = await reserveSeat(input.eventId, input.seatId, req.user);
     return res.status(201).json({ body: { message: 'Seat reserved', reservation: withSeatParts(reservation) } });
   } catch (error) {
-    const result = bookingErrorResponse(error);
+    const result = bookingErrorResponse(error, requestLogContext(req, { eventId: input.eventId }));
     return res.status(result.status).json(result.body);
   }
 });
@@ -315,7 +321,7 @@ router.delete('/', async (req, res) => {
     await cancelSeat(eventId, seatId, req.user);
     return res.status(200).json({ body: { message: 'Reservation cancelled' } });
   } catch (error) {
-    const result = bookingErrorResponse(error);
+    const result = bookingErrorResponse(error, requestLogContext(req, { eventId }));
     return res.status(result.status).json(result.body);
   }
 });

@@ -5,6 +5,7 @@
   import ZoneSeatPicker from "$lib/components/zone-editor/components/ZoneSeatPicker.svelte";
   import type { CanvasObject } from "$lib/components/canvas-shared/types";
   import { getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
+  import { ApiError } from "$lib/scripts/api.js";
   import { onMount } from "svelte";
   import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
   import { alertModal } from "$lib/store/alert.svelte.js";
@@ -36,10 +37,8 @@
   async function pollForSeats() {
     try {
       reservationMap = await getSeatMap(data.event.eventId);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        console.error(err.message);
-      }
+    } catch {
+      // Seat availability refreshes periodically; avoid interrupting the user with repeated dialogs.
     }
   }
 
@@ -87,7 +86,7 @@
     <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-pale-soft text-dark-secondary border border-pale inline-block mb-2">
       ระบบจองที่นั่งออนไลน์
     </span>
-    <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight">
+    <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight">
       {data.event.name}
     </h1>
   </div>

@@ -5,7 +5,9 @@ import {
   updateAllAttributes,
   requireRole,
   requireAuth,
-  verifyAccess
+  verifyAccess,
+  logError,
+  requestLogContext
 } from '/opt/nodejs/index.js';
 
 const router = Router();
@@ -19,7 +21,7 @@ router.get('/', requireRole('admin'), async (req, res) => {
     const { items, nextToken } = await paginateReadData('users', 25, page);
     return res.status(200).json({ body: { items, nextToken } });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logError('Failed to fetch users', error, requestLogContext(req));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -47,7 +49,7 @@ router.post('/editRole', requireAuth, async (req, res) => {
     const newAttributes = await updateAllAttributes('users', { email }, { role });
     return res.status(200).json({ body: { message: 'User role updated successfully', updatedUser: newAttributes, newAttributes } });
   } catch (error) {
-    console.error('Error updating role:', error);
+    logError('Failed to update user role', error, requestLogContext(req));
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

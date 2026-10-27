@@ -185,7 +185,6 @@ export class ZoneEditorState {
 
 	handleSaveButtonClick = async (event:MouseEvent) => {
 		if (!this.objects.filter((o) => o.type === 'seat').every((o)=> {
-			console.log(o.metadata)
 			return o.metadata && o.metadata.zone || o.metadata && o.metadata.status === 'unavailable'
 		})){
 			alertModal.warning('ที่นั่งบางที่ไม่ถูกกำหนดโซน','กรุณากำหนดโซนให้ครบทุกที่นั่ง')
@@ -283,7 +282,7 @@ export class ZoneEditorState {
 			}
 			this.centerGrid();
 		} catch (err) {
-			console.error("Failed to parse MessagePack layout file:", err);
+			alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ผังที่นั่งได้");
 		}
 	}
 
@@ -711,7 +710,6 @@ export class ZoneEditorState {
 	// 		.filter(o => this.selectedIds.has(o.id))
 	// 		.map(o => ({ ...o }));
 
-	// 	console.log(this.copiedObjects)
 	// };
 
 	// pasteSquares = () => {
@@ -741,7 +739,6 @@ export class ZoneEditorState {
 	// 	});
 
 	// 	this.objects = [...this.objects, ...nextBatch];
-	// 	console.log(this.objects)
 	// 	this.selectedIds = nextSelected;
 	// 	this.copiedObjects = nextBatch.map(s => ({ ...s }));
 	// };

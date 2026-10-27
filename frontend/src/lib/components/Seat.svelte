@@ -4,11 +4,11 @@
 </script>
 
 {#if isReserve}
-<button class="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-400 ">
+<button class="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-400  cursor-pointer">
     <p>{position}</p>
 </button>
 {:else}
-<button class="w-12 h-12 rounded-xl flex items-center justify-center {selected ? "bg-pink-500" : "bg-blue-400"} "
+<button class="w-12 h-12 rounded-xl flex items-center justify-center {selected ? "bg-pink-500" : "bg-blue-400"}  cursor-pointer"
     onclick={() => handler(index)}>
     <p>{position}</p>
 </button>

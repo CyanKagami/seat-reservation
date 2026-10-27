@@ -21,10 +21,9 @@
     $effect(() => {
         eventStatus = event.status ?? "Created";
     });
-    const places: Place[] = $derived(data.places);
     const timetable: Daytable[] = $derived(data.event.timetable ?? []);
     const place = $derived(
-        places.find((p) => p.placeId === event.place?.placeId),
+        data.event.place
     );
 
     // ปรับ path ให้ตรงกับ route จริงของหน้า update-event
@@ -90,7 +89,7 @@
     </nav>
 
     <main class="order-2 min-w-0 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-8 md:order-1">
-        <h1 class="mb-5 text-4xl font-extrabold leading-tight tracking-tight text-dark">รายละเอียดกิจกรรม</h1>
+        <h1 class="mb-5 text-4xl font-bold leading-tight tracking-tight text-dark">รายละเอียดกิจกรรม</h1>
 
         <div class="flex min-w-0 flex-col gap-4">
             <div class="aspect-[16/7] w-full overflow-hidden rounded-2xl border border-border-subtle bg-surface-subtle max-md:aspect-video">
@@ -102,7 +101,7 @@
             </div>
 
             <div class="py-5">
-                <h2 class="mb-4 text-3xl font-extrabold leading-tight text-dark wrap-break-word">
+                <h2 class="mb-4 text-3xl font-bold leading-tight text-dark wrap-break-word">
                     {event.name || "ไม่มีชื่อกิจกรรม"}
                 </h2>
                 <p class="mt-2 flex items-start gap-2.5 text-base leading-relaxed text-dark-muted">
@@ -179,14 +178,6 @@
                 {:else}
                     <p class="m-0 text-sm text-dark-muted">ยังไม่มีตารางกิจกรรม</p>
                 {/each}
-            </section>
-
-            <section class="rounded-2xl border border-border-subtle bg-white p-5 sm:p-6">
-                <h3 class="mb-3 border-b border-border-subtle pb-3 text-lg font-bold text-dark">แผนผังที่นั่ง</h3>
-                <!-- TODO: ต้องรู้โครงสร้างข้อมูลที่นั่งของ place ก่อนถึงจะวาดได้ -->
-                <p class="m-0 text-sm leading-relaxed text-dark-muted">
-                    ยังไม่ได้เชื่อมข้อมูลที่นั่ง
-                </p>
             </section>
         </div>
     </main>

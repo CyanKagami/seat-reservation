@@ -11,6 +11,7 @@ import {
   BatchGetCommand
 } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
+import { logError, logInfo, logWarn } from './logger.js';
 
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
 
@@ -58,9 +59,12 @@ export async function createMyTable() {
   });
   try {
     const response = await client.send(command);
-    console.log('Table creation initiated successfully:', response.TableDescription.TableStatus);
+    logInfo('DynamoDB table creation initiated', {
+      tableName: 'products',
+      status: response.TableDescription.TableStatus
+    });
   } catch (error) {
-    console.error('Error creating table:', error);
+    logError('Failed to create DynamoDB table', error, { tableName: 'products' });
   }
 }
 
@@ -115,6 +119,7 @@ export async function addDataIfNotExists(tableName, item, primaryKey) {
     return 0;
   } catch (error) {
     if (error.name === 'ConditionalCheckFailedException') return 1;
+    logError('Failed to insert DynamoDB item if absent', error, { tableName });
     return -1;
   }
 }
@@ -162,7 +167,10 @@ export async function fetchAllData(tableName, filter) {
 
     return allItems;
   } catch (error) {
-    console.error('Error scanning DynamoDB table:', error);
+    logError('Failed to scan DynamoDB table', error, {
+      tableName,
+      filtered: hasFilter
+    });
     throw error;
   }
 }
@@ -223,7 +231,7 @@ export async function updateAllAttributes(tableName, primaryKey, attributesToUpd
     const response = await docClient.send(new UpdateCommand(params));
     return response.Attributes;
   } catch (error) {
-    console.error('Error updating item:', error);
+    logError('Failed to update DynamoDB item', error, { tableName });
     throw error;
   }
 }
@@ -239,7 +247,7 @@ export async function addUser(user) {
     await docClient.send(new PutCommand(params));
   } catch (error) {
     if (error.name === 'ConditionalCheckFailedException') {
-      console.warn('User already exists, not overwriting.');
+      logWarn('User already exists; existing record was preserved', { tableName: 'users' });
       return;
     }
     throw error;
@@ -253,7 +261,7 @@ export async function fetchUser(email) {
     const response = await docClient.send(new GetCommand(params));
     return response.Item ?? null;
   } catch (error) {
-    console.error('Error getting item:', error);
+    logError('Failed to fetch user from DynamoDB', error, { tableName: 'users' });
     throw error;
   }
 }
@@ -264,7 +272,7 @@ export async function fetchData(tablename, key) {
     const response = await docClient.send(new GetCommand(params));
     return response.Item ?? null;
   } catch (error) {
-    console.error('Error getting item:', error);
+    logError('Failed to fetch DynamoDB item', error, { tableName: tablename });
     throw error;
   }
 }
@@ -274,7 +282,7 @@ export async function deleteItem(tableName, key) {
   try {
     await docClient.send(new DeleteCommand(params));
   } catch (error) {
-    console.error('Error deleting item:', error);
+    logError('Failed to delete DynamoDB item', error, { tableName });
     throw error;
   }
 }

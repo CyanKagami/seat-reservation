@@ -59,7 +59,6 @@ export function bookingErrorResponse(error: unknown) {
   if (error instanceof BookingError) {
     return json({ error: error.message, code: error.code }, { status: BOOKING_HTTP_STATUS[error.code] });
   }
-  console.error('Booking error:', error);
   return json({ error: 'Internal server error' }, { status: 500 });
 }
 
@@ -83,7 +82,6 @@ export function checkInErrorResponse(error: unknown) {
   if (error instanceof CheckInError) {
     return json({ error: error.message, code: error.code }, { status: CHECK_IN_HTTP_STATUS[error.code] });
   }
-  console.error('check-in error:', error);
   return json({ error: 'Internal server error' }, { status: 500 });
 }
 

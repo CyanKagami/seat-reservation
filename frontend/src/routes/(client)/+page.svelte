@@ -5,6 +5,7 @@
   import { apiFetch } from "$lib/scripts/api";
   import { registrationOpen } from "$lib/scripts/booking";
   import { formatThaiDateTimeShort } from "$lib/scripts/formatTime";
+  import { alertModal } from "$lib/store/alert.svelte";
 
   let events: Event[] = $state([]);
   let isLoading = $state(true);
@@ -14,10 +15,11 @@
   onMount(async () => {
     try {
       const response = await apiFetch("/event/", { method: "GET" });
+      if (!response.ok) throw new Error("Unable to load events.");
       const data = await response.json();
       events = data.body || [];
     } catch (err) {
-      console.error("Failed to fetch events:", err);
+      alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลกิจกรรมได้ กรุณาลองอีกครั้ง");
     } finally {
       isLoading = false;
     }
@@ -27,7 +29,7 @@
   const featuredEvent = $derived.by(() => {
     if (events.length === 0) return null;
     const openEvent = events.find((e) => registrationOpen(e));
-    return openEvent || events[0];
+    return openEvent;
   });
 
   // Reactive event filter
@@ -89,7 +91,7 @@
                 <time>{formatThaiDateTimeShort(new Date(featuredEvent.date?.start || Date.now()), new Date(featuredEvent.date?.end || Date.now()))}</time>
               </div>
 
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-dark tracking-tight leading-tight">
+              <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight leading-tight">
                 {featuredEvent.name}
               </h1>
 
@@ -138,7 +140,7 @@
           <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-pale-soft text-dark-secondary border border-pale inline-block mb-3">
             KMITL Seat Reservation Platform
           </span>
-          <h1 class="text-3xl sm:text-4xl font-extrabold text-dark tracking-tight leading-tight">
+          <h1 class="text-3xl sm:text-4xl font-bold text-dark tracking-tight leading-tight">
             ระบบจองและจัดการที่นั่งกิจกรรม สจล.
           </h1>
           <p class="text-base text-dark-muted mt-3 leading-relaxed">

@@ -39,7 +39,7 @@
         
 
         <!-- Big Display Headline -->
-        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
           ระบบสำรองที่นั่งกิจกรรม <br class="hidden sm:inline" />
           <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-pale to-slate-200">
             K-SEAT Platform
@@ -91,7 +91,7 @@
         <!-- Brand Logo Header -->
         <div class="flex items-center justify-between mb-8">
           <a href="/" class="flex items-center gap-2 group">
-            <span class="text-3xl font-extrabold tracking-tight text-dark">
+            <span class="text-3xl font-bold tracking-tight text-dark">
               K-<span class="text-accent">SEAT</span>
             </span>
           </a>

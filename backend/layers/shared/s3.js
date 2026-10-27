@@ -8,6 +8,7 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand
 } from '@aws-sdk/client-s3';
+import { logError, logInfo } from './logger.js';
 
 export const BUCKET = process.env.S3_BUCKET || 'k-seat-object';
 const localstackUrl = process.env.AWS_LOCALSTACK_URL;
@@ -23,9 +24,12 @@ export const s3Client = new S3Client({
 export async function createBucket(bucketName) {
   try {
     const response = await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
-    console.log(`Bucket "${bucketName}" created successfully!`, response);
+    logInfo('S3 bucket created', {
+      bucketName,
+      httpStatusCode: response.$metadata?.httpStatusCode
+    });
   } catch (error) {
-    console.error('Error creating bucket:', error);
+    logError('Failed to create S3 bucket', error, { bucketName });
   }
 }
 
@@ -75,8 +79,7 @@ export async function addFile(folder, filename, fileBuffer) {
     if (localstackUrl) return `${localstackUrl}/${BUCKET}/${key}`;
     return `https://${BUCKET}.s3.${region}.amazonaws.com/${key}`;
   } catch (error) {
-    if (error.$responseBodyText) console.error('S3 Raw response text:', error.$responseBodyText);
-    if (error.$response) console.error('S3 HTTP Status Code:', error.$response.statusCode);
+    logError('Failed to upload S3 object', error, { bucketName: BUCKET, key });
     throw error;
   }
 }
@@ -88,7 +91,7 @@ export async function deleteFile(folder, filename) {
   try {
     await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
   } catch (error) {
-    console.error('Error deleting file from S3:', error);
+    logError('Failed to delete S3 object', error, { bucketName: BUCKET, key });
     throw error;
   }
 }
@@ -112,7 +115,11 @@ export async function deleteObjectsWithPrefix(prefix) {
       Bucket: BUCKET,
       Delete: { Objects: objectsToDelete, Quiet: true }
     }));
-    console.log(`Deleted ${objectsToDelete.length} objects with prefix "${prefix}".`);
+    logInfo('Deleted S3 objects', {
+      bucketName: BUCKET,
+      prefix,
+      objectCount: objectsToDelete.length
+    });
 
     isTruncated = listResponse.IsTruncated || false;
     continuationToken = listResponse.NextContinuationToken;
@@ -127,7 +134,7 @@ export async function readFileAsString(fileKey) {
     if (response.Body) return await response.Body.transformToString();
     return '';
   } catch (error) {
-    console.error('Error reading file from S3:', error);
+    logError('Failed to read S3 object as text', error, { bucketName: BUCKET, key: fileKey });
     return '';
   }
 }
@@ -140,7 +147,7 @@ export async function readFileAsByteArray(fileKey) {
     if (response.Body) return await response.Body.transformToByteArray();
     return new Uint8Array();
   } catch (error) {
-    console.error('Error reading file from S3:', error);
+    logError('Failed to read S3 object as bytes', error, { bucketName: BUCKET, key: fileKey });
     throw error;
   }
 }

@@ -18,6 +18,8 @@ import {
   fetchEventFromHost,
   requireRole,
   requireAuth,
+  logError,
+  requestLogContext,
 } from '/opt/nodejs/index.js';
 
 const router = Router();
@@ -107,7 +109,7 @@ router.post('/published', requireRole('admin', 'organizer'), async (req, res) =>
     await updateAllAttributes('events', { eventId }, { status: 'Published' });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
-    console.error(err);
+    logError('Failed to publish event', err, requestLogContext(req, { eventId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -120,7 +122,7 @@ router.delete('/published', requireRole('admin', 'organizer'), async (req, res) 
     await updateAllAttributes('events', { eventId }, { status: 'Created' });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
-    console.error(err);
+    logError('Failed to unpublish event', err, requestLogContext(req, { eventId }));
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -144,12 +146,12 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
         try {
           return await getLayoutFromPlace(eventId, res);
         } catch (fallbackErr) {
-          console.error(fallbackErr);
+          logError('Failed to load event layout from its place', fallbackErr, requestLogContext(req, { eventId }));
           return res.status(500).json({ body: { message: 'Internal Server Error' } });
         }
       }
     }
-    console.error(error);
+    logError('Failed to load event layout', error, requestLogContext(req, { eventId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -162,7 +164,7 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
     await updateAllAttributes('events', { eventId }, { layoutURL });
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (err) {
-    console.error(err);
+    logError('Failed to save event layout', err, requestLogContext(req, { eventId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -173,7 +175,7 @@ router.get('/getFromId/:eventId', requireAuth, async (req, res) => {
     const data = await fetchEventFromEventId(req.params.eventId);
     return res.status(200).json({ body: data });
   } catch (error) {
-    console.error('Error fetching event:', error);
+    logError('Failed to fetch event', error, requestLogContext(req, { eventId: req.params.eventId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -184,7 +186,7 @@ router.get('/getFromHost', requireAuth, async (req, res) => {
     const data = await fetchEventFromHost(req.user.email);
     return res.status(200).json({ body: data });
   } catch (error) {
-    console.error('Error fetching events for host:', error);
+    logError('Failed to fetch events for host', error, requestLogContext(req));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -195,7 +197,7 @@ router.get('/', requireAuth, async (req, res) => {
     const data = await fetchAllData('events', { status: 'Published' });
     return res.status(200).json({ body: data });
   } catch (error) {
-    console.error('Error fetching events:', error);
+    logError('Failed to fetch published events', error, requestLogContext(req));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -222,7 +224,7 @@ router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async 
 
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error creating event:', error);
+    logError('Failed to create event', error, requestLogContext(req));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -242,7 +244,7 @@ router.patch('/', requireRole('admin', 'organizer'), upload.single('img'), async
     await updateAllAttributes('events', { eventId: processData.eventId }, processData);
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error updating event:', error);
+    logError('Failed to update event', error, requestLogContext(req, { eventId: req.body?.eventId }));
     return res.status(500).json({ body: { message: 'Internal Server Error' } });
   }
 });
@@ -259,7 +261,7 @@ router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
     ]).catch(() => {}); // Keep deleting events that have no image or a legacy image.
     return res.status(200).json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error deleting event:', error);
+    logError('Failed to delete event', error, requestLogContext(req, { eventId }));
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });

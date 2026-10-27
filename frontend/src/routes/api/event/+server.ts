@@ -75,7 +75,6 @@ export const GET: RequestHandler = async (event) => {
     const data = await fetchAllData('events', {status:'Published'});
     return json({ body: data });
   } catch (error) {
-    console.error('Error fetching events:', error);
     return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
   }
 };
@@ -115,7 +114,6 @@ export const POST: RequestHandler = async (event) => {
 
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error creating event:', error);
     return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
   }
 };
@@ -145,7 +143,6 @@ export const PATCH: RequestHandler = async (event) => {
 
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error updating event:', error);
     return json({ error: 'Internal Server Error' }, { status: 500 });
   }
 };
@@ -164,7 +161,6 @@ export const DELETE: RequestHandler = async (event) => {
     await deleteFile('pictures/event',`${eventData.eventId}.webp`);
     return json({ body: { message: 'OK' } });
   } catch (error) {
-    console.error('Error deleting event:', error);
     return json({ error: 'Internal Server Error'  }, { status: 500 });
   }
 };

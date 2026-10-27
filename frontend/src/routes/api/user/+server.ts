@@ -13,7 +13,6 @@ export const GET: RequestHandler = async (event) => {
     const { items, nextToken } = await paginateReadData('users', 25, page);
     return json({ body: { items, nextToken } });
   } catch (error) {
-    console.error('Error fetching users:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 };

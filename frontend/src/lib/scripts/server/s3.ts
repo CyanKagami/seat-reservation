@@ -19,15 +19,8 @@ export const s3Client = new S3Client({
 });
 
 export async function createBucket(bucketName:string) {
-  try {
-    // 2. Execute the CreateBucketCommand
-    const command = new CreateBucketCommand({ Bucket: bucketName });
-    const response = await s3Client.send(command);
-
-    console.log(`Bucket "${bucketName}" created successfully!`, response);
-  } catch (error) {
-    console.error("Error creating bucket:", error);
-  }
+  const command = new CreateBucketCommand({ Bucket: bucketName });
+  await s3Client.send(command);
 }
 
 function removeInvalidXmlCharacters(str:string) {
@@ -74,13 +67,6 @@ export async function addFile(folder:string, filename:string, fileBuffer:Buffer)
     return getObjectURL(folder, filename);
   }
   catch (error:any) {
-    if (error.$responseBodyText) {
-      console.error("S3 Raw response text:", error.$responseBodyText);
-    }
-    // Inspect the full HTTP response object
-    if (error.$response) {
-      console.error("S3 HTTP Status Code:", error.$response.statusCode);
-    }
     throw error;
   }
 }
@@ -100,7 +86,6 @@ export async function readFileAsString(folder:string, fileKey:string) {
     }
     return '';
   } catch (error) {
-    console.error("Error reading file from S3:", error);
     return ''
   }
 }
@@ -120,7 +105,6 @@ export async function readFileAsByteArray(folder:string, fileKey:string) {
     }
     return new Uint8Array();
   } catch (error) {
-    console.error("Error reading file from S3:", error);
     throw error
   }
 }
@@ -136,7 +120,6 @@ export async function deleteFile(folder:string, fileKey:string) {
     // 2. Convert the stream to a string directly
     return response
   } catch (error) {
-    console.error("Error deleting file from S3:", error);
     throw error
   }
 }
@@ -156,7 +139,6 @@ export async function deleteObjectsWithPrefix(prefix:string, keepKeys:Set<string
     const listResponse = await s3Client.send(listCommand);
     
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      console.log("No objects found with this prefix.");
       break;
     }
 
@@ -174,13 +156,11 @@ export async function deleteObjectsWithPrefix(prefix:string, keepKeys:Set<string
       },
     });
 
-    const deleteResponse = await s3Client.send(deleteCommand);
-    console.log(`Successfully deleted ${objectsToDelete.length} objects.`);
+    await s3Client.send(deleteCommand);
 
     // 4. Check if there are more objects remaining to process
     isTruncated = listResponse.IsTruncated || false;
     continuationToken = listResponse.NextContinuationToken;
   }
   
-  console.log("Deletion completed successfully.");
 }

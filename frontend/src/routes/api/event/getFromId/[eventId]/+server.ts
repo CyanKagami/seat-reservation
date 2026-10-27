@@ -12,7 +12,6 @@ export const GET: RequestHandler = async (event) => {
     const data = await fetchEventFromEventId(event.params.eventId as string);
     return json({ body: data });
   } catch (error) {
-    console.error('Error fetching event:', error);
     return json({ body: { message: 'Internal Server Error' } }, { status: 500 });
   }
 };
