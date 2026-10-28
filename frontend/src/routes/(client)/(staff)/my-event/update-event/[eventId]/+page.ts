@@ -1,28 +1,22 @@
 import type { PageLoad } from './$types';
-import { apiFetch } from '$lib/scripts/api';
+import { error } from '@sveltejs/kit';
+import { apiFetchJson } from '$lib/scripts/api';
+import type { Event } from '$lib/type/event';
+import type { Place } from '$lib/type/place';
 
 export const load: PageLoad = async ({ fetch, params }) => {
-    const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
-            method: "GET",
-        }, fetch)
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-    if (!event.timetable) {
-        event.timetable = [];
-    }
-    if (!event.picture) {
-        event.picture = null;
-    }
-    const places = await apiFetch('/place', {
-        method:"GET",
-      }, fetch)
-      .then((response) => response.json())
-      .then((data) => {
-        return data.body.data;
-      })
+    const [events, placeResult] = await Promise.all([
+        apiFetchJson<Event[]>(`/event/getFromId/${params.eventId}`, { method: 'GET' }, fetch),
+        apiFetchJson<{ data: Place[] }>('/place', { method: 'GET' }, fetch)
+    ]);
+    const sourceEvent = events[0];
+    if (!sourceEvent) error(404, 'ไม่พบกิจกรรมนี้');
+    const event: Event = {
+        ...sourceEvent,
+        timetable: sourceEvent.timetable ?? []
+    };
     return {
         event,
-        places
+        places: placeResult.data
     };
 };

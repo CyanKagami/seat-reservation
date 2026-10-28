@@ -80,7 +80,7 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
     return res.status(200).send(Buffer.from(fileContent));
   } catch (err) {
     logError('Failed to load place layout', err, requestLogContext(req, { placeId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'ไม่สามารถโหลดแผนผังที่นั่งได้' });
   }
 });
 
@@ -88,7 +88,7 @@ router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
 router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (req, res) => {
   const { placeId } = req.body;
   if (!placeId || !req.file) {
-    return res.status(400).json({ error: 'Missing placeId or layoutFile' });
+    return res.status(400).json({ error: 'กรุณาระบุรหัสสถานที่และไฟล์แผนผังที่นั่ง' });
   }
   try {
     let layoutBuffer = req.file.buffer;
@@ -130,10 +130,10 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
 
     const layoutURL = await addFile(`layouts/place/${placeId}`, 'layout.msgpack', layoutBuffer);
     await updateAllAttributes('places', { placeId }, { layoutURL });
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'บันทึกแผนผังที่นั่งสำเร็จ' } });
   } catch (err) {
     logError('Failed to save place layout', err, requestLogContext(req, { placeId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -144,7 +144,7 @@ router.get('/', requireRole('admin', 'organizer'), async (req, res) => {
     return res.status(200).json({ body: { data } });
   } catch (error) {
     logError('Failed to fetch places', error, requestLogContext(req));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -183,10 +183,10 @@ router.post('/', requireRole('admin'), upload.single('picture'), async (req, res
     };
     await addFile(`layouts/place/${uniqueId}`, 'layout.msgpack', Buffer.from(encode(initialLayout)));
 
-    return res.status(200).json({ body: { message: 'ok', placeId: uniqueId } });
+    return res.status(200).json({ body: { message: 'สร้างสถานที่สำเร็จ', placeId: uniqueId } });
   } catch (error) {
     logError('Failed to create place', error, requestLogContext(req));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -205,25 +205,25 @@ router.patch('/', requireRole('admin'), upload.single('picture'), async (req, re
 
     Object.assign(processData, await formatData(data, req.user));
     await updateAllAttributes('places', { placeId: processData.placeId }, processData);
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'บันทึกข้อมูลสถานที่สำเร็จ' } });
   } catch (error) {
     logError('Failed to update place', error, requestLogContext(req, { placeId: req.body?.placeId }));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // DELETE /?placeId= — delete a place and its assets
 router.delete('/', requireRole('admin'), async (req, res) => {
   const { placeId } = req.query;
-  if (!placeId) return res.status(400).json({ error: 'Missing placeId' });
+  if (!placeId) return res.status(400).json({ error: 'กรุณาระบุรหัสสถานที่' });
   try {
     await deleteItem('places', { placeId });
     await deleteFile('pictures/place', `${placeId}.webp`).catch(() => {});
     await deleteObjectsWithPrefix(`layouts/place/${placeId}`);
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'ลบสถานที่สำเร็จ' } });
   } catch (error) {
     logError('Failed to delete place', error, requestLogContext(req, { placeId }));
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -234,7 +234,7 @@ router.get('/:placeId', requireRole('admin', 'organizer'), async (req, res) => {
     return res.status(200).json({ body: { data } });
   } catch (error) {
     logError('Failed to fetch place', error, requestLogContext(req, { placeId: req.params.placeId }));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 

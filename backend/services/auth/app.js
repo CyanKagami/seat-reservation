@@ -4,12 +4,13 @@ import cors from 'cors';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { addUser, fetchUser } from '/opt/nodejs/dynamo.js';
-import { logError, requestLogger, requestLogContext } from '/opt/nodejs/logger.js';
+import { logError, normalizeJsonApiResponse, requestLogger, requestLogContext } from '/opt/nodejs/index.js';
 
 const app = express();
 const allowedOrigins = [process.env.FRONTEND_ORIGIN, 'http://localhost:5173'].filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(requestLogger('auth'));
+app.use(normalizeJsonApiResponse);
 app.use(express.json());
 
 const router = express.Router();
@@ -115,13 +116,13 @@ router.get('/me', async (req, res) => {
   const token = authHeader.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return res.status(401).json({ body: null });
+    return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบ' });
   }
 
   try {
     const tokenUser = jwt.verify(token, process.env.JWT_SECRET);
     const user = await fetchUser(tokenUser.email);
-    if (!user) return res.status(401).json({ body: null });
+    if (!user) return res.status(401).json({ error: 'ไม่พบบัญชีผู้ใช้' });
     const refreshedToken = jwt.sign(
       {
         googleId: user.googleId,
@@ -136,18 +137,31 @@ router.get('/me', async (req, res) => {
     return res.status(200).json({ body: user, token: refreshedToken });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-      return res.status(401).json({ body: null });
+      return res.status(401).json({ error: 'เซสชันไม่ถูกต้องหรือหมดอายุแล้ว' });
     }
     logError('Failed to load current user', err, requestLogContext(req));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // POST /api/auth/logout — stateless; client deletes the token.
 router.post('/logout', (req, res) => {
-  res.status(200).json({ body: { message: 'Logged out successfully' } });
+  res.status(200).json({ body: { message: 'ออกจากระบบสำเร็จ' } });
 });
 
 app.use('/api/auth', router);
+app.use((req, res) => {
+  res.status(404).json({ error: 'ไม่พบเส้นทาง API ที่ร้องขอ' });
+});
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  const status = Number.isInteger(error.status) && error.status >= 400 ? error.status : 500;
+  if (status >= 500) {
+    logError('Unhandled auth API error', error, requestLogContext(req));
+  }
+  return res.status(status).json({
+    error: status >= 500 ? 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' : 'คำขอไม่ถูกต้อง'
+  });
+});
 
 export default app;

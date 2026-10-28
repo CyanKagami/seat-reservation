@@ -2,11 +2,22 @@
   import { apiFetch } from "$lib/scripts/api";
   import { alertModal } from "$lib/store/alert.svelte";
   import type { User } from "$lib/type/user";
-  import { onMount } from "svelte";
-    let users:User[] = $state([])
+  import { goto } from "$app/navigation";
+  import type { PageData } from "./$types";
+  let { data }: { data: PageData } = $props();
+    let users:User[] = $state([]);
     let currentPage = $state(1);
-    let token:string[] = $state([])
+    let nextToken = $state<string | null>(null);
+    let cursorStack: (string | null)[] = $state([null]);
     let editing = $state({index: -1, role: ''});
+
+    $effect(() => {
+        users = data.users.items;
+        currentPage = data.currentPage;
+        nextToken = data.users.nextToken;
+        cursorStack = data.cursorStack;
+        editing = {index: -1, role: ''};
+    });
 
     function isRecord(value: unknown): value is Record<string, unknown> {
         return typeof value === "object" && value !== null;
@@ -25,43 +36,26 @@
         return fallback;
     }
 
-    onMount(async () => {
-        await apiFetch("/user", {method: 'GET'})
-        .then((res) => res.json())
-        .then((data) => {
-            users = data.body.items;
-            token.push(data.body.nextToken);
-        })
-    })
-
     async function fetchNextPage() {
-        let fetchUrl = "/user?nextToken=" + token[currentPage - 1];
-        if (token[currentPage - 1] === null) return; // No more pages
-        await apiFetch(fetchUrl, {method: 'GET'})
-        .then((res) => res.json())
-        .then((data) => {
-            users = data.body.items;
-            if (currentPage > token.length) {
-                token.push(data.body.nextToken);
-            }
-        })
-        currentPage += 1;
-        editing = {index: -1, role: ''}; // Reset editing state when changing pages
+        if (!nextToken) return;
+        const page = currentPage + 1;
+        const updatedCursorStack = [...cursorStack];
+        updatedCursorStack[page - 1] = nextToken;
+        const query = new URLSearchParams({
+            page: String(page),
+            cursors: JSON.stringify(updatedCursorStack)
+        });
+        await goto(`/admin/users?${query}`);
     }
 
     async function fetchPreviousPage() {
-        if (currentPage === 1) return; // No previous page
-        let fetchUrl = "/api/user?nextToken=" + token[currentPage - 3];
-        if (currentPage === 2) {
-            fetchUrl = "/api/user";
-        }
-        await fetch(fetchUrl, {method: 'GET'})
-        .then((res) => res.json())
-        .then((data) => {
-            users = data.body.items;
-        })
-        currentPage -= 1;
-        editing = {index: -1, role: ''}; // Reset editing state when changing pages
+        if (currentPage === 1) return;
+        const page = currentPage - 1;
+        const query = new URLSearchParams({
+            page: String(page),
+            cursors: JSON.stringify(cursorStack)
+        });
+        await goto(`/admin/users?${query}`);
     }
 
     async function saveRole(index:number) {
@@ -176,7 +170,7 @@
         <p class="text-sm text-dark-soft">หน้า {currentPage}</p>
         <div class="flex justify-end gap-2">
             <button class="rounded-lg border border-border-strong bg-white px-4 py-2 text-dark transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50" onclick={fetchPreviousPage} disabled={currentPage === 1}>ก่อนหน้า</button>
-            <button class="rounded-lg bg-secondary px-4 py-2 text-white transition-colors hover:bg-secondary-hover disabled:cursor-not-allowed disabled:opacity-50" onclick={fetchNextPage} disabled={currentPage > 1 || token[currentPage - 1] === null}>ถัดไป</button>
+            <button class="rounded-lg bg-secondary px-4 py-2 text-white transition-colors hover:bg-secondary-hover disabled:cursor-not-allowed disabled:opacity-50" onclick={fetchNextPage} disabled={!nextToken}>ถัดไป</button>
         </div>
     </div>
 </div>

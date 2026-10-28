@@ -1,44 +1,16 @@
 <script lang="ts">
     import PlaceBox from "$lib/components/admin/PlaceBox.svelte";
   import { apiFetch } from "$lib/scripts/api";
+  import { invalidateAll } from "$app/navigation";
     import { alertModal } from "$lib/store/alert.svelte";
     import type { CampusLocation } from "$lib/type/location";
   import type { Place } from "$lib/type/place";
-  import { onMount } from "svelte";
+  import type { PageData } from "./$types";
 
-  let places: Place[] = $state([]);
-  let locations: CampusLocation[] = $state([]);
+  let { data }: { data: PageData } = $props();
+  let places: Place[] = $derived(data.places);
+  let locations: CampusLocation[] = $derived(data.locations);
   let searchQuery = $state("");
-  let isLoading = $state(true);
-  let loadError = $state<string | null>(null);
-
-  onMount(() => {
-    void fetchPageData();
-  });
-
-  async function fetchPageData() {
-    try {
-      isLoading = true;
-      loadError = null;
-      const [placesResponse, locationsResponse] = await Promise.all([
-        apiFetch("/place", { method: "GET" }),
-        apiFetch("/location", { method: "GET" })
-      ]);
-      if (!placesResponse.ok || !locationsResponse.ok) {
-        throw new Error("Unable to load places and locations.");
-      }
-      const [placesData, locationsData] = await Promise.all([
-        placesResponse.json(),
-        locationsResponse.json()
-      ]);
-      places = placesData.body.data;
-      locations = locationsData.body.data;
-    } catch (error) {
-      loadError = "ไม่สามารถโหลดข้อมูลสถานที่ได้ กรุณาลองอีกครั้ง";
-    } finally {
-      isLoading = false;
-    }
-  }
 
   const filteredPlaces = $derived.by(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -103,7 +75,7 @@
 
       if (res.ok) {
         alertModal.success("สำเร็จ", "บันทึกลง DynamoDB เรียบร้อย!");
-        await fetchPageData();
+        await invalidateAll();
       } else {
         const err = await res.json();
         alertModal.failure("เกิดข้อผิดพลาด", String(err.error));
@@ -156,22 +128,7 @@
     </div>
 
     <div class="pt-8">
-        {#if isLoading}
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {#each Array(3) as _}
-                    <div class="animate-pulse rounded-2xl border border-border-subtle bg-white p-4">
-                        <div class="aspect-video rounded-xl bg-surface-subtle"></div>
-                        <div class="mt-4 h-5 w-3/4 rounded-sm bg-surface-subtle"></div>
-                        <div class="mt-2 h-4 w-1/2 rounded-sm bg-surface-subtle"></div>
-                    </div>
-                {/each}
-            </div>
-        {:else if loadError}
-            <div class="rounded-2xl border border-border-subtle bg-white px-6 py-10 text-center">
-                <p class="text-sm text-dark-muted">{loadError}</p>
-                <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">ลองอีกครั้ง</button>
-            </div>
-        {:else if filteredPlaces.length === 0}
+        {#if filteredPlaces.length === 0}
             <div class="mx-auto my-8 flex max-w-md flex-col items-center rounded-2xl border border-border-subtle bg-white p-10 text-center">
                 <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-secondary-subtle/70 text-secondary">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

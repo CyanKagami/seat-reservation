@@ -64,7 +64,7 @@ export async function cancelSeat(eventId: string, seatId: string, zone: string, 
 }
 
 // Each reservation carries event: { name, date, picture, place } (null if the event was deleted).
-export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promise<{ reservations: ReservationWithEvent[] }> {
+export async function getMyReservations(fetchFunc: typeof fetch = fetch): Promise<ReservationWithEvent[]> {
   return apiFetchJson('/booking/mine', {}, fetchFunc);
 }
 

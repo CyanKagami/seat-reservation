@@ -1,54 +1,32 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { apiFetch } from "$lib/scripts/api.js";
+  import { invalidateAll } from "$app/navigation";
   import { alertModal } from "$lib/store/alert.svelte";
   import type { CampusLocation } from "$lib/type/location";
   import type { Place } from "$lib/type/place";
+  import type { PageData } from "./$types";
 
-  const { params } = $props();
+  const { data, params }: { data: PageData; params: { placeId: string } } = $props();
   let place: Place | null = $state(null);
-  let locations: CampusLocation[] = $state([]);
+  let locations: CampusLocation[] = $derived(data.locations);
   let imageFile = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
-  let isLoading = $state(true);
   let isSubmitting = $state(false);
-  let loadError = $state<string | null>(null);
   let errorMessage = $state<string | null>(null);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+  $effect(() => {
+    place = data.place;
+  });
+
   onMount(() => {
-    void fetchPageData();
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   });
-
-  async function fetchPageData() {
-    try {
-      isLoading = true;
-      loadError = null;
-      const [placeResponse, locationsResponse] = await Promise.all([
-        apiFetch(`/place/${params.placeId}`, { method: "GET" }),
-        apiFetch("/location", { method: "GET" })
-      ]);
-      if (!placeResponse.ok || !locationsResponse.ok) {
-        throw new Error("Unable to load place details.");
-      }
-
-      const [placeResult, locationsResult] = await Promise.all([
-        placeResponse.json(),
-        locationsResponse.json()
-      ]);
-      place = placeResult.body.data;
-      locations = locationsResult.body.data;
-    } catch (error) {
-      loadError = "ไม่สามารถโหลดข้อมูลสถานที่ได้ กรุณาลองอีกครั้ง";
-    } finally {
-      isLoading = false;
-    }
-  }
 
   function handleFileSelect(event: Event): void {
     const target = event.target as HTMLInputElement;
@@ -106,7 +84,7 @@
       imageFile = null;
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       previewUrl = null;
-      await fetchPageData();
+      await invalidateAll();
     } catch (error) {
       alertModal.failure("เกิดข้อผิดพลาด", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
     } finally {
@@ -129,20 +107,7 @@
     <p class="mt-1 text-sm text-dark-soft">แก้ไขข้อมูลสถานที่และจัดการแผนผังที่นั่ง</p>
   </header>
 
-  {#if isLoading}
-    <div class="animate-pulse rounded-2xl border border-border-subtle bg-white p-5 sm:p-8">
-      <div class="h-6 w-40 rounded-sm bg-surface-subtle"></div>
-      <div class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div class="aspect-video rounded-xl bg-surface-subtle"></div>
-        <div class="h-64 rounded-xl bg-surface-subtle"></div>
-      </div>
-    </div>
-  {:else if loadError}
-    <div class="rounded-2xl border border-border-subtle bg-white px-6 py-10 text-center">
-      <p class="text-sm text-dark-muted">{loadError}</p>
-      <button onclick={fetchPageData} class="mt-4 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-secondary-hover cursor-pointer">ลองอีกครั้ง</button>
-    </div>
-  {:else if place}
+  {#if place}
     <form onsubmit={handleSubmit} enctype="multipart/form-data" class="flex flex-col gap-6">
       <section class="rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:p-6">
         <div class="mb-5 border-b border-border-subtle pb-4">

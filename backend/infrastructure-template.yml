@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: K-Seat API Gateway, Lambda functions, and shared layer
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - x86_64
+    Timeout: 10
+    MemorySize: 256
+
+Parameters:
+  JwtSecret:
+    Type: String
+    NoEcho: true
+  GoogleClientId:
+    Type: String
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+  FrontendOrigin:
+    Type: String
+  AdminEmails:
+    Type: String
+    Default: ""
+    Description: Comma-separated emails that get the admin role on first login
+  S3BucketName:
+    Type: String
+    Description: Name of the storage bucket created by storage-template.yml
+
+Resources:
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: shared-lib
+      ContentUri: layers/shared/
+      CompatibleRuntimes:
+        - nodejs20.x
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  SharedApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowCredentials: true
+        AllowOrigins:
+          - !Ref FrontendOrigin
+          - "http://localhost:5173"
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - "*"
+
+  AuthServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/auth/
+      Runtime: nodejs20.x
+      Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        AuthApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/auth/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+          ADMIN_EMAILS: !Ref AdminEmails
+
+  BookingServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/booking/
+      Runtime: nodejs20.x
+      Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        BookingApiBaseRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/booking
+            Method: ANY
+        BookingApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/booking/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+          S3_BUCKET: !Ref S3BucketName
+
+  CoreApiServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/core/
+      Runtime: nodejs20.x
+      Handler: lambda.handler
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        CoreApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SharedApiGateway
+            Path: /api/{proxy+}
+            Method: ANY
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LabRole"
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JwtSecret
+          FRONTEND_ORIGIN: !Ref FrontendOrigin
+          S3_BUCKET: !Ref S3BucketName
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL for the API
+    Value: !GetAtt SharedApiGateway.ApiEndpoint

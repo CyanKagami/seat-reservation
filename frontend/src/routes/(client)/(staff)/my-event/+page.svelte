@@ -1,27 +1,11 @@
 <script lang='ts'>
     import StaffEventBox from "$lib/components/staff/StaffEventBox.svelte";
-    import { apiFetch } from "$lib/scripts/api";
     import type { Event } from "$lib/type/event";
-    import { onMount } from "svelte";
-    import { alertModal } from "$lib/store/alert.svelte";
+    import type { PageData } from "./$types";
 
-    let events: Event[] = $state([]);
-    let isLoading = $state(true);
+    let { data }: { data: PageData } = $props();
+    let events: Event[] = $derived(data.events);
     let searchQuery = $state("");
-
-    onMount(async () => {
-        try {
-            isLoading = true;
-            const res = await apiFetch('/event/getFromHost', { method: "GET" });
-            if (!res.ok) throw new Error("Unable to load organizer events.");
-            const data = await res.json();
-            events = data.body || [];
-        } catch (err) {
-            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดกิจกรรมที่จัดได้ กรุณาลองอีกครั้ง");
-        } finally {
-            isLoading = false;
-        }
-    });
 
     const filteredEvents = $derived.by(() => {
         if (!searchQuery.trim()) return events;
@@ -77,17 +61,7 @@
 
     <!-- Content -->
     <div class="pt-8">
-        {#if isLoading}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                {#each Array(3) as _}
-                    <div class="bg-white rounded-2xl border border-border-subtle p-4 flex flex-col gap-3 animate-pulse">
-                        <div class="w-full aspect-video bg-surface-subtle rounded-xl"></div>
-                        <div class="h-5 bg-surface-subtle rounded-sm w-3/4"></div>
-                        <div class="h-4 bg-surface-subtle rounded-sm w-1/2"></div>
-                    </div>
-                {/each}
-            </div>
-        {:else if filteredEvents.length === 0}
+        {#if filteredEvents.length === 0}
             <div class="bg-white rounded-2xl border border-border-subtle p-10 text-center flex flex-col items-center max-w-md mx-auto my-8">
                 <div class="w-12 h-12 rounded-full bg-pale-soft flex items-center justify-center text-secondary mb-4">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -104,26 +104,26 @@ async function getLayoutFromPlace(eventId, res) {
 // POST /event/published?eventId= — publish an event
 router.post('/published', requireRole('admin', 'organizer'), async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     await updateAllAttributes('events', { eventId }, { status: 'Published' });
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'เผยแพร่กิจกรรมสำเร็จ' } });
   } catch (err) {
     logError('Failed to publish event', err, requestLogContext(req, { eventId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // DELETE /event/published?eventId= — unpublish an event
 router.delete('/published', requireRole('admin', 'organizer'), async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     await updateAllAttributes('events', { eventId }, { status: 'Created' });
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'ยกเลิกการเผยแพร่กิจกรรมสำเร็จ' } });
   } catch (err) {
     logError('Failed to unpublish event', err, requestLogContext(req, { eventId }));
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -147,12 +147,12 @@ router.get('/layout', requireAuth, async (req, res) => {
           return await getLayoutFromPlace(eventId, res);
         } catch (fallbackErr) {
           logError('Failed to load event layout from its place', fallbackErr, requestLogContext(req, { eventId }));
-          return res.status(500).json({ body: { message: 'Internal Server Error' } });
+          return res.status(500).json({ error: 'ไม่สามารถโหลดแผนผังที่นั่งได้' });
         }
       }
     }
     logError('Failed to load event layout', error, requestLogContext(req, { eventId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'ไม่สามารถโหลดแผนผังที่นั่งได้' });
   }
 });
 
@@ -162,10 +162,10 @@ router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (
   try {
     const layoutURL = await addFile('layouts/event', `${eventId}.msgpack`, req.file.buffer);
     await updateAllAttributes('events', { eventId }, { layoutURL });
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'บันทึกแผนผังที่นั่งสำเร็จ' } });
   } catch (err) {
     logError('Failed to save event layout', err, requestLogContext(req, { eventId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -176,7 +176,7 @@ router.get('/getFromId/:eventId', requireAuth, async (req, res) => {
     return res.status(200).json({ body: data });
   } catch (error) {
     logError('Failed to fetch event', error, requestLogContext(req, { eventId: req.params.eventId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -187,7 +187,7 @@ router.get('/getFromHost', requireAuth, async (req, res) => {
     return res.status(200).json({ body: data });
   } catch (error) {
     logError('Failed to fetch events for host', error, requestLogContext(req));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -198,7 +198,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.status(200).json({ body: data });
   } catch (error) {
     logError('Failed to fetch published events', error, requestLogContext(req));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -222,10 +222,10 @@ router.post('/', requireRole('admin', 'organizer'), upload.single('img'), async 
       await updateAllAttributes('events', { eventId }, { layoutURL });
     }
 
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'สร้างกิจกรรมสำเร็จ' } });
   } catch (error) {
     logError('Failed to create event', error, requestLogContext(req));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
@@ -242,27 +242,27 @@ router.patch('/', requireRole('admin', 'organizer'), upload.single('img'), async
     }
 
     await updateAllAttributes('events', { eventId: processData.eventId }, processData);
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'บันทึกข้อมูลกิจกรรมสำเร็จ' } });
   } catch (error) {
     logError('Failed to update event', error, requestLogContext(req, { eventId: req.body?.eventId }));
-    return res.status(500).json({ body: { message: 'Internal Server Error' } });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // DELETE /event?eventId= — delete an event
 router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     await deleteItem('events', { eventId });
     await Promise.all([
       deleteFile('pictures/event', `${eventId}.webp`),
       deleteFile('pictures/event', eventId)
     ]).catch(() => {}); // Keep deleting events that have no image or a legacy image.
-    return res.status(200).json({ body: { message: 'OK' } });
+    return res.status(200).json({ body: { message: 'ลบกิจกรรมสำเร็จ' } });
   } catch (error) {
     logError('Failed to delete event', error, requestLogContext(req, { eventId }));
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 

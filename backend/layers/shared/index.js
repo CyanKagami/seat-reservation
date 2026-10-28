@@ -7,3 +7,4 @@ export * from './checkIn.js';
 export * from './reservation.js';
 export * from './constants.js';
 export * from './logger.js';
+export * from './jsonApi.js';

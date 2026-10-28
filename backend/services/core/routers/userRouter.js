@@ -22,7 +22,7 @@ router.get('/', requireRole('admin'), async (req, res) => {
     return res.status(200).json({ body: { items, nextToken } });
   } catch (error) {
     logError('Failed to fetch users', error, requestLogContext(req));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 

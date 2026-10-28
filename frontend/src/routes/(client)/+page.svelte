@@ -1,29 +1,14 @@
 <script lang="ts">
   import EventBox from "$lib/components/EventBox.svelte";
   import type { Event } from "$lib/type/event";
-  import { onMount } from "svelte";
-  import { apiFetch } from "$lib/scripts/api";
   import { registrationOpen } from "$lib/scripts/booking";
   import { formatThaiDateTimeShort } from "$lib/scripts/formatTime";
-  import { alertModal } from "$lib/store/alert.svelte";
+  import type { PageData } from "./$types";
 
-  let events: Event[] = $state([]);
-  let isLoading = $state(true);
+  let { data }: { data: PageData } = $props();
+  let events: Event[] = $derived(data.events);
   let searchQuery = $state("");
   let activeTab = $state<"all" | "open" | "upcoming">("all");
-
-  onMount(async () => {
-    try {
-      const response = await apiFetch("/event/", { method: "GET" });
-      if (!response.ok) throw new Error("Unable to load events.");
-      const data = await response.json();
-      events = data.body || [];
-    } catch (err) {
-      alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลกิจกรรมได้ กรุณาลองอีกครั้ง");
-    } finally {
-      isLoading = false;
-    }
-  });
 
   // Spotlight featured event: preferentially one that is currently open, else first upcoming/available
   const featuredEvent = $derived.by(() => {
@@ -230,20 +215,8 @@
       </span>
     </div>
 
-    <!-- Event Cards Grid / Skeleton Loading -->
-    {#if isLoading}
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-        {#each Array(6) as _}
-          <div class="bg-white rounded-xl border border-border-subtle p-4 flex flex-col gap-3 animate-pulse">
-            <div class="w-full aspect-video bg-surface-subtle rounded-lg"></div>
-            <div class="h-4 bg-surface-subtle rounded-sm w-1/3"></div>
-            <div class="h-6 bg-surface-subtle rounded-sm w-3/4"></div>
-            <div class="h-4 bg-surface-subtle rounded-sm w-1/2"></div>
-            <div class="h-10 bg-surface-subtle rounded-lg mt-4"></div>
-          </div>
-        {/each}
-      </div>
-    {:else if filteredEvents.length > 0}
+    <!-- Event Cards Grid -->
+    {#if filteredEvents.length > 0}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {#each filteredEvents as event (event.eventId)}
           <EventBox {event} />

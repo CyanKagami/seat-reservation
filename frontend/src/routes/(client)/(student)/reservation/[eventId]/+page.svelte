@@ -18,8 +18,11 @@
   let zone = $state("");
   let seat = $state("");
   let isSubmitting = $state(false);
-  let hasLoadedSeatMap = $state(false);
+  let hasLoadedSeatMap = $state(true);
   let reservationMap: SeatMap = $state({ myReservation: null, reservations: [] });
+  $effect(() => {
+    reservationMap = data.seatMap;
+  });
   let hasExistingReservation = $derived(reservationMap.myReservation !== null);
 
   let reservedId: Record<string, Set<string>> = $derived.by(() => {
@@ -113,7 +116,6 @@
   }
 
   onMount(() => {
-    pollForSeats();
     const interval = setInterval(() => {
       pollForSeats().catch(console.error);
     }, 10000);

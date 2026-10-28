@@ -1,31 +1,13 @@
 <script lang='ts'>
     import ReservedEventBox from "$lib/components/student/ReservedEventBox.svelte";
-    import { apiFetch } from "$lib/scripts/api";
+    import { invalidateAll } from "$app/navigation";
     import type { ReservationWithEvent } from "$lib/type/reservation";
-    import { onMount } from "svelte";
-    import { alertModal } from "$lib/store/alert.svelte";
+    import type { PageData } from "./$types";
 
-    let events: ReservationWithEvent[] = $state([]);
-    let isLoading = $state(true);
+    let { data }: { data: PageData } = $props();
+    let events: ReservationWithEvent[] = $derived(data.events);
     let searchQuery = $state("");
-
-    async function fetchReservations() {
-        try {
-            isLoading = true;
-            const res = await apiFetch('/booking/mine', { method: "GET" });
-            if (!res.ok) throw new Error("Unable to load reservations.");
-            const data = await res.json();
-            events = data.body || [];
-        } catch (err) {
-            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลการจองได้ กรุณาลองอีกครั้ง");
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    onMount(() => {
-        fetchReservations();
-    });
+    const refreshReservations = () => invalidateAll();
 
     const filteredEvents = $derived.by(() => {
         if (!searchQuery.trim()) return events;
@@ -69,17 +51,7 @@
 
     <!-- Content -->
     <div class="pt-8">
-        {#if isLoading}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                {#each Array(3) as _}
-                    <div class="bg-white rounded-2xl border border-border-subtle p-4 flex flex-col gap-3 animate-pulse">
-                        <div class="w-full aspect-video bg-surface-subtle rounded-xl"></div>
-                        <div class="h-5 bg-surface-subtle rounded-sm w-3/4"></div>
-                        <div class="h-4 bg-surface-subtle rounded-sm w-1/2"></div>
-                    </div>
-                {/each}
-            </div>
-        {:else if filteredEvents.length === 0}
+        {#if filteredEvents.length === 0}
             <div class="bg-white rounded-2xl border border-border-subtle p-12 text-center flex flex-col items-center max-w-lg mx-auto my-8">
                 <div class="w-12 h-12 rounded-full bg-pale-soft flex items-center justify-center text-secondary mb-4">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -110,7 +82,7 @@
                             seat={item.seat} 
                             zone={item.zone} 
                             eventId={item.eventId}
-                            onCancelled={fetchReservations}
+                            onCancelled={refreshReservations}
                         />
                     {/if}
                 {/each}

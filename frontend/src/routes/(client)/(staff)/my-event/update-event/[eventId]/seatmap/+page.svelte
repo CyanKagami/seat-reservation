@@ -1,44 +1,21 @@
 <script lang="ts">
   	import ZoneEditor from "$lib/components/zone-editor/components/ZoneEditor.svelte";
 	import { ZoneEditorState } from "$lib/components/zone-editor/zoneState.svelte.js";
-  import { apiFetch } from "$lib/scripts/api.js";
-	import { alertModal } from "$lib/store/alert.svelte";
-		import type { Place } from "$lib/type/place.js";
-	import { onMount } from "svelte";
-	let { params } = $props();
+	import type { Place } from "$lib/type/place.js";
+	import type { PageData } from "./$types";
+	let { data, params }: { data: PageData; params: { eventId: string } } = $props();
 	let seatState: ZoneEditorState | undefined = $state();
-	let isLoading = $state(true);
-	let place:Place | null = $state(null)
-	onMount(async () => {
-		const event = await apiFetch(`/event/getFromId/${params.eventId}`, {
-            method: "GET",
-        })
-        .then(async (response) => {
-            return (await response.json()).body[0]
-        })
-		place = event.place
-		await apiFetch(`/event/layout?eventId=${params.eventId}`, {
-			method: 'GET',
-		})
-		.then((response) => {
-			return response.arrayBuffer();
-		})
-		.then(async (data) => {
-			if (place){
-				seatState = new ZoneEditorState(place.placeId, params.eventId);
-				seatState.loadFromMessagePack(data);
-			}
-		})
-		.catch((err) => {
-			alertModal.failure("เกิดข้อผิดพลาด", String(err));
-		})
-		isLoading = false;
-	})
+	let place: Place = $derived(data.place);
+	$effect(() => {
+		const state = new ZoneEditorState(data.place.placeId, params.eventId);
+		state.loadFromMessagePack(data.layoutData);
+		seatState = state;
+	});
 </script>
-{#if isLoading}
+{#if !seatState}
 	<div class="fixed w-screen h-screen flex items-center justify-center p-8 text-xs text-slate-500">
 		กำลังโหลดผังผืนผ้าใบ... (Loading layout...)
 	</div>
 {:else if place && seatState}
-<ZoneEditor place={place} zoneState={seatState} backLink={`/my-event/update-event/${params.eventId}`}></ZoneEditor>
+<ZoneEditor {place} zoneState={seatState} backLink={`/my-event/update-event/${params.eventId}`}></ZoneEditor>
 {/if}

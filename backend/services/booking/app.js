@@ -31,12 +31,14 @@ import {
   requestLogger,
   requestLogContext,
   logError,
+  normalizeJsonApiResponse,
 } from '/opt/nodejs/index.js';
 
 const app = express();
 const allowedOrigins = [process.env.FRONTEND_ORIGIN, 'http://localhost:5173'].filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(requestLogger('booking'));
+app.use(normalizeJsonApiResponse);
 app.use(express.json());
 
 // All booking routes require authentication.
@@ -65,10 +67,10 @@ function registrationOngoing(ev, now = new Date()) {
 
 
 function parseKmitlEmail(email) {
-  if (typeof email !== 'string') return { isValid: false, error: 'Input must be a string.' };
+  if (typeof email !== 'string') return { isValid: false, error: 'ข้อมูลต้องเป็นข้อความ' };
   const regex = /^(\d{2})(\d{2})(\d{4})@kmitl\.ac\.th$/i;
   const match = email.trim().match(regex);
-  if (!match) return { isValid: false, error: 'Invalid KMITL student email format.' };
+  if (!match) return { isValid: false, error: 'รูปแบบอีเมลนักศึกษาไม่ถูกต้อง' };
   const [, academicYear, departmentCode, studentId] = match;
   return {
     isValid: true,
@@ -125,7 +127,7 @@ router.post('/check-in', requireRole('organizer', 'admin'), async (req, res) => 
       ? checkInWithSeatId(ev.eventId, input.identifier)
       : checkInWithStudentId(ev.eventId, input.identifier));
 
-    return res.status(201).json({ message: 'Check-in completed', reservation: withSeatParts(reservation) });
+    return res.status(201).json({ body: { message: 'เช็คชื่อสำเร็จ', reservation: withSeatParts(reservation) } });
   } catch (error) {
     const result = checkInErrorResponse(error, requestLogContext(req, { eventId: input.eventId }));
     return res.status(result.status).json(result.body);
@@ -142,14 +144,14 @@ router.get('/mine', async (req, res) => {
     });
   } catch (error) {
     logError('Failed to fetch user reservations', error, requestLogContext(req));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // GET /registered/me?eventId=
 router.get('/registered/me', async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     let seat = await getUserSeat(eventId, req.user.email);
     if (!seat && req.user.googleId) seat = await getUserSeat(eventId, req.user.googleId);
@@ -163,13 +165,13 @@ router.get('/registered/me', async (req, res) => {
 // GET /registered?eventId=&identifier=
 router.get('/registered', requireRole('organizer', 'admin'), async (req, res) => {
   const { eventId, identifier } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
-  if (!identifier) return res.status(400).json({ error: 'Missing identifier' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
+  if (!identifier) return res.status(400).json({ error: 'กรุณาระบุข้อมูลสำหรับค้นหา' });
 
   try {
     const selectedEvent = await fetchData('events', { eventId });
     if (!selectedEvent || (selectedEvent.creatorId !== req.user.email && req.user.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดำเนินการนี้' });
     }
 
     const result = classifyIdentifier(identifier);
@@ -185,21 +187,21 @@ router.get('/registered', requireRole('organizer', 'admin'), async (req, res) =>
       return res.status(200).json({ body: withSeatParts(reservation) });
     }
 
-    return res.status(400).json({ error: 'Malformed Identifier', code: 'BAD_REQUEST' });
+    return res.status(400).json({ error: 'รูปแบบข้อมูลสำหรับค้นหาไม่ถูกต้อง', code: 'BAD_REQUEST' });
   } catch (error) {
     logError('Failed to fetch registered seat', error, requestLogContext(req, { eventId }));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // GET /statistic/attendance?eventId=
 router.get('/statistic/attendance', requireRole('organizer', 'admin'), async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     const selectedEvent = await fetchData('events', { eventId });
     if (!selectedEvent || (selectedEvent.creatorId !== req.user.email && req.user.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดำเนินการนี้' });
     }
     const all = await listReservations(eventId);
     const checkInCount = all.reduce((p, r) => (r.status === 'checked-in' ? p + 1 : p), 0);
@@ -207,14 +209,14 @@ router.get('/statistic/attendance', requireRole('organizer', 'admin'), async (re
     return res.status(200).json({ body: { checkInCount, totalCount } });
   } catch (error) {
     logError('Failed to fetch attendance statistics', error, requestLogContext(req, { eventId }));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // GET /statistic/seating?eventId=
 router.get('/statistic/seating', requireRole('organizer', 'admin'), async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     const reservations = await listReservations(eventId);
     const usedSeatId = new Set();
@@ -264,14 +266,14 @@ router.get('/statistic/seating', requireRole('organizer', 'admin'), async (req, 
     });
   } catch (error) {
     logError('Failed to fetch seating statistics', error, requestLogContext(req, { eventId }));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
   }
 });
 
 // GET /?eventId= — seat map
 router.get('/', async (req, res) => {
   const { eventId } = req.query;
-  if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
+  if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     const all = await listReservations(eventId);
     const privileged = req.user.role === 'admin' || req.user.role === 'organizer';
@@ -304,7 +306,7 @@ router.post('/', async (req, res) => {
     if (!registrationOpen(ev)) return res.status(403).json({ error: 'กิจกรรมนี้ไม่ถูกเปิดให้จองในช่วงเวลานี้' });
 
     const reservation = await reserveSeat(input.eventId, input.seatId, req.user);
-    return res.status(201).json({ body: { message: 'Seat reserved', reservation: withSeatParts(reservation) } });
+    return res.status(201).json({ body: { message: 'จองที่นั่งสำเร็จ', reservation: withSeatParts(reservation) } });
   } catch (error) {
     const result = bookingErrorResponse(error, requestLogContext(req, { eventId: input.eventId }));
     return res.status(result.status).json(result.body);
@@ -315,11 +317,11 @@ router.post('/', async (req, res) => {
 router.delete('/', async (req, res) => {
   const { eventId, seatId } = req.query;
   if (!eventId || !isValidSeatId(seatId)) {
-    return res.status(400).json({ error: 'eventId and a valid seatId are required' });
+    return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรมและรหัสที่นั่งที่ถูกต้อง' });
   }
   try {
     await cancelSeat(eventId, seatId, req.user);
-    return res.status(200).json({ body: { message: 'Reservation cancelled' } });
+    return res.status(200).json({ body: { message: 'ยกเลิกการจองสำเร็จ' } });
   } catch (error) {
     const result = bookingErrorResponse(error, requestLogContext(req, { eventId }));
     return res.status(result.status).json(result.body);
@@ -327,5 +329,18 @@ router.delete('/', async (req, res) => {
 });
 
 app.use('/api/booking', router);
+app.use((req, res) => {
+  res.status(404).json({ error: 'ไม่พบเส้นทาง API ที่ร้องขอ' });
+});
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  const status = Number.isInteger(error.status) && error.status >= 400 ? error.status : 500;
+  if (status >= 500) {
+    logError('Unhandled booking API error', error, requestLogContext(req));
+  }
+  return res.status(status).json({
+    error: status >= 500 ? 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' : 'คำขอไม่ถูกต้อง'
+  });
+});
 
 export default app;

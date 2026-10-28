@@ -3,6 +3,7 @@ import { userStore } from "$lib/store/auth.svelte";
 import { redirect } from "@sveltejs/kit";
 import type { LayoutLoad } from "./$types";
 import { apiFetch } from "$lib/scripts/api";
+import { saveToken } from "$lib/scripts/auth";
 
 export const load: LayoutLoad = async ({ fetch, url }) => {
     if (url.pathname === "/login") {
@@ -11,10 +12,17 @@ export const load: LayoutLoad = async ({ fetch, url }) => {
     let response = await apiFetch(`/auth/me`, {
         method: "GET",
     }, fetch);
+    if (!response.ok) {
+        userStore.setUser(null);
+        if (response.status === 401) throw redirect(302, "/login");
+        throw new Error(`ไม่สามารถโหลดข้อมูลบัญชีได้ (${response.status})`);
+    }
     let userData = await response.json();
+    if (typeof userData.token === "string" && userData.token) {
+        saveToken(userData.token);
+    }
     userStore.setUser(userData.body);
-
-    if (userData.body === null) {
+    if (!userData.body) {
         throw redirect(302, "/login");
     }
     return {

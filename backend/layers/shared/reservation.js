@@ -44,7 +44,7 @@ export function bookingErrorResponse(error, context = {}) {
     return { status: BOOKING_HTTP_STATUS[error.code], body: { error: error.message, code: error.code } };
   }
   logError('Unexpected booking operation failure', error, context);
-  return { status: 500, body: { error: 'Internal server error' } };
+  return { status: 500, body: { error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' } };
 }
 
 // ---------- Check-in errors ----------
@@ -67,7 +67,7 @@ export function checkInErrorResponse(error, context = {}) {
     return { status: CHECK_IN_HTTP_STATUS[error.code], body: { error: error.message, code: error.code } };
   }
   logError('Unexpected check-in operation failure', error, context);
-  return { status: 500, body: { error: 'Internal server error' } };
+  return { status: 500, body: { error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' } };
 }
 
 // ---------- Request parsers ----------
@@ -76,7 +76,7 @@ export function checkInErrorResponse(error, context = {}) {
 export function readSeatRequest(body) {
   const { eventId, seatId } = body ?? {};
   if (typeof eventId !== 'string' || !eventId || !isValidSeatId(seatId)) {
-    return { error: true, status: 400, body: { error: 'eventId and seatId are required' } };
+    return { error: true, status: 400, body: { error: 'กรุณาระบุรหัสกิจกรรมและรหัสที่นั่ง' } };
   }
   return { eventId, seatId };
 }
@@ -89,7 +89,7 @@ export function readCheckInRequest(body) {
     typeof identifier !== 'string' || !identifier ||
     identifierResult.type === 'Other text'
   ) {
-    return { error: true, status: 400, body: { error: 'eventId and identifier are required' } };
+    return { error: true, status: 400, body: { error: 'กรุณาระบุรหัสกิจกรรมและข้อมูลสำหรับค้นหา' } };
   }
   return { eventId, identifier, identifierType: identifierResult.type };
 }

@@ -1,15 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
-Description: K-Seat - seat reservation backend, data stores and frontend hosting
-
+Description: K-Seat persistent storage and static website buckets
 
 Resources:
-  # ---------------------------------------------------------------
-  # Data layer (from your original appTemplate.yml)
-  # ---------------------------------------------------------------
-  # One bucket for all uploads:
-  #   pictures/* and place seat-type WebP files -> public read (used by <img> tags)
-  #   all other layout files -> private (only Lambda reads/writes)
   KSeatS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -98,3 +90,51 @@ Resources:
         - AttributeName: seatId
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'seat-reservation-frontend-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+
+  SamDeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'seat-reservation-sam-artifacts-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  KSeatS3BucketName:
+    Description: Bucket used for event, place, and layout files
+    Value: !Ref KSeatS3Bucket
+  FrontendBucketName:
+    Description: Static website bucket name
+    Value: !Ref FrontendBucket
+  FrontendUrl:
+    Description: Static website URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+  SamDeploymentBucketName:
+    Description: Private bucket for SAM deployment artifacts
+    Value: !Ref SamDeploymentBucket

@@ -1,49 +1,18 @@
 <script lang='ts'>
     import type { Event } from "$lib/type/event";
-    import { onMount } from "svelte";
     import { formatThaiDateTime, formatThaiDateTimeShort } from "$lib/scripts/formatTime";
-    import { apiFetch } from "$lib/scripts/api.js";
-    import { getSeatMap, registrationOpen } from '$lib/scripts/booking.js';
+    import { registrationOpen } from '$lib/scripts/booking.js';
     import type { ReservationView } from "$lib/type/reservation";
-    import { alertModal } from "$lib/store/alert.svelte";
+    import type { PageData } from "./$types";
 
-    let { params } = $props();
-
-    let event: Event = $state({} as Event);
-    let isLoading = $state(true);
-    let start_date = $state(new Date());
-    let end_date = $state(new Date());
-    let register_date_start = $state(new Date());
-    let register_date_end = $state(new Date());
-    let existingReservation = $state<ReservationView | null>(null);
-    let isCheckingReservation = $state(true);
-
-    onMount(async () => {
-        try {
-            const res = await apiFetch(`/event/getFromId/${params.eventId}`, { method: "GET" });
-            if (!res.ok) throw new Error("Unable to load event details.");
-            const data = await res.json();
-            if (data.body && data.body.length > 0) {
-                event = data.body[0];
-                if (event.date?.start) start_date = new Date(event.date.start);
-                if (event.date?.end) end_date = new Date(event.date.end);
-                if (event["register-date"]?.start) register_date_start = new Date(event["register-date"].start);
-                if (event["register-date"]?.end) register_date_end = new Date(event["register-date"].end);
-                try {
-                    const seatMap = await getSeatMap(event.eventId);
-                    existingReservation = seatMap.myReservation;
-                } catch {
-                    alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสถานะการจองของคุณได้");
-                } finally {
-                    isCheckingReservation = false;
-                }
-            }
-        } catch (err) {
-            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดรายละเอียดกิจกรรมได้ กรุณาลองอีกครั้ง");
-        } finally {
-            isLoading = false;
-        }
-    });
+    let { data, params }: { data: PageData; params: { eventId: string } } = $props();
+    let event: Event = $derived(data.event);
+    let start_date = $derived(event.date?.start ? new Date(event.date.start) : new Date());
+    let end_date = $derived(event.date?.end ? new Date(event.date.end) : new Date());
+    let register_date_start = $derived(event["register-date"]?.start ? new Date(event["register-date"].start) : new Date());
+    let register_date_end = $derived(event["register-date"]?.end ? new Date(event["register-date"].end) : new Date());
+    let existingReservation: ReservationView | null = $derived(data.existingReservation);
+    let isCheckingReservation = false;
 
     const isRegistrationOpen = $derived(registrationOpen(event));
     const isUpcoming = $derived.by(() => {
@@ -60,13 +29,6 @@
         <span class="text-dark-muted font-medium truncate max-w-xs">{event.name || 'รายละเอียดกิจกรรม'}</span>
     </nav>
 
-    {#if isLoading}
-        <div class="animate-pulse space-y-6">
-            <div class="w-full h-80 bg-surface-subtle rounded-2xl"></div>
-            <div class="h-8 bg-surface-subtle w-1/2 rounded-md"></div>
-            <div class="h-4 bg-surface-subtle w-1/3 rounded-md"></div>
-        </div>
-    {:else}
         <!-- Top Spotlight Card: Image & Quick Actions -->
         <section class="bg-white rounded-2xl border border-border-subtle shadow-xs overflow-hidden mb-8 grid grid-cols-1 lg:grid-cols-12 gap-0">
             <!-- Event Banner -->
@@ -292,5 +254,4 @@
                 </section>
             </div>
         </div>
-    {/if}
 </div>
