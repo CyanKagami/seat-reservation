@@ -273,6 +273,40 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.objects[0].metadata.isManualLabel).toBeUndefined();
 	});
 
+	it('can assign a zone to selected seats without changing other selected objects', () => {
+		const seat: CanvasObject = {
+			id: 'seat_selected',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1', isManualLabel: false }
+		};
+		const environment: CanvasObject = {
+			id: 'env_selected',
+			type: 'env-rect',
+			x: 0,
+			y: 30,
+			width: 20,
+			height: 20,
+			metadata: {}
+		};
+		state.objects = [seat, environment];
+		state.selectedIds = new Set([seat.id, environment.id]);
+
+		state.createZone({ name: 'New Zone', color: '#00ff00' });
+		const selectedSeatIds = new Set(
+			state.objects.filter((object) => object.type === 'seat' && state.selectedIds.has(object.id)).map((object) => object.id)
+		);
+		state.updateSelectedObjectZone('New Zone', selectedSeatIds);
+
+		expect(state.objects[0].metadata.zone).toBe('New Zone');
+		expect(state.objects[0].metadata.row).toBeUndefined();
+		expect(state.objects[0].metadata.seatNo).toBeUndefined();
+		expect(state.objects[1].metadata.zone).toBeUndefined();
+	});
+
 	it('should fall back to a stable internal ID when a seat label is missing', () => {
 		const seat: CanvasObject = {
 			id: 'seat_internal-id',

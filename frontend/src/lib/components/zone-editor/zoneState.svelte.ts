@@ -382,9 +382,9 @@ export class ZoneEditorState {
 		});
 	}
 
-	updateSelectedObjectZone(zone: string) {
+	updateSelectedObjectZone(zone: string, selectedIds: ReadonlySet<string> = this.selectedIds) {
 		this.objects = this.objects.map((obj) => {
-			if (!this.selectedIds.has(obj.id)) return obj;
+			if (!selectedIds.has(obj.id)) return obj;
 
 			const metadata = { ...(obj.metadata || {}) };
 			const zoneChanged = (metadata.zone ?? '') !== zone;

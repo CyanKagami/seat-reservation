@@ -28,9 +28,16 @@
 	}
 
 	function handleAddZone(){
-		let result = zoneState.createZone({name: zoneName, color: zoneColor});
+		const result = zoneState.createZone({name: zoneName, color: zoneColor});
 		if (!result) {
 			alertModal.warning('ชื่อโซนซ้ำ', 'กรุณาเลือกชื่อโซนที่ไม่ซ้ำ')
+		} else {
+			const selectedSeatIds = new Set(
+				zoneState.objects
+					.filter((object) => object.type === 'seat' && zoneState.selectedIds.has(object.id))
+					.map((seat) => seat.id)
+			);
+			zoneState.updateSelectedObjectZone(zoneName, selectedSeatIds);
 		}
 		zoneName = '';
 		zoneColor = '#ffffff';
