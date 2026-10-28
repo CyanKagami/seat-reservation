@@ -404,6 +404,19 @@ export class ZoneEditorState {
 		});
 	}
 
+	clearSeatLabels(seatIds: readonly string[]) {
+		const selectedSeatIds = new Set(seatIds);
+		this.objects = this.objects.map((obj) => {
+			if (obj.type !== 'seat' || !selectedSeatIds.has(obj.id)) return obj;
+
+			const metadata = { ...(obj.metadata || {}) };
+			delete metadata.row;
+			delete metadata.seatNo;
+			delete metadata.isManualLabel;
+			return { ...obj, metadata };
+		});
+	}
+
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
 		this.objects = this.objects.map((obj) => {
 			if (this.selectedIds.has(obj.id)) {
@@ -446,28 +459,39 @@ export class ZoneEditorState {
 	private autoLabelSeats(seats: CanvasObject[], overwriteManual: boolean) {
 		if (seats.length === 0) return;
 		const ROW_TOLERANCE = BOX_SIZE / 2;
+		const seatCenters = seats.map((seat) => ({
+			seat,
+			x: seat.x + seat.width / 2,
+			y: seat.y + seat.height / 2
+		}));
+		const shearSlope = this.estimateSeatRowSlope(seatCenters, ROW_TOLERANCE);
 
-		// Sort all zone seats top-to-bottom (Y), then left-to-right (X)
-		const sorted = [...seats].sort((a, b) => a.y - b.y || a.x - b.x);
+		const sorted = seatCenters
+			.map((center) => ({
+				...center,
+				rowPosition: center.y - shearSlope * center.x,
+				seatPosition: center.x + shearSlope * center.y
+			}))
+			.sort((a, b) => a.rowPosition - b.rowPosition || a.seatPosition - b.seatPosition);
 
 		// Group into rows by Y proximity
-		const rows: CanvasObject[][] = [];
-		for (const seat of sorted) {
+		const rows: (typeof sorted)[] = [];
+		for (const center of sorted) {
 			const matchingRow = rows.find(
-				(row) => Math.abs(seat.y - row[0].y) <= ROW_TOLERANCE
+				(row) => Math.abs(center.rowPosition - row[0].rowPosition) <= ROW_TOLERANCE
 			);
 			if (matchingRow) {
-				matchingRow.push(seat);
+				matchingRow.push(center);
 			} else {
-				rows.push([seat]);
+				rows.push([center]);
 			}
 		}
 
-		// Sort rows by top-to-bottom Y
-		rows.sort((r1, r2) => r1[0].y - r2[0].y);
+		// Sort rows from top to bottom after compensating for the estimated shear.
+		rows.sort((r1, r2) => r1[0].rowPosition - r2[0].rowPosition);
 
-		// Sort each row left-to-right (X)
-		rows.forEach((row) => row.sort((a, b) => a.x - b.x));
+		// Sort each row along its slanted direction.
+		rows.forEach((row) => row.sort((a, b) => a.seatPosition - b.seatPosition));
 
 		// Helper to convert 0 -> A, 1 -> B, ..., 25 -> Z, 26 -> AA...
 		const getRowLetter = (index: number) => {
@@ -486,10 +510,10 @@ export class ZoneEditorState {
 			if (obj.type !== 'seat' || !seatIds.has(obj.id)) return obj;
 			if (!overwriteManual && obj.metadata?.isManualLabel) return obj;
 
-			const rowIdx = rows.findIndex((r) => r.some((s) => s.id === obj.id));
+			const rowIdx = rows.findIndex((row) => row.some((center) => center.seat.id === obj.id));
 			if (rowIdx === -1) return obj;
 
-			const colIdx = rows[rowIdx].findIndex((s) => s.id === obj.id);
+			const colIdx = rows[rowIdx].findIndex((center) => center.seat.id === obj.id);
 			const rowLetter = getRowLetter(rowIdx);
 			const seatNumber = String(colIdx + 1);
 
@@ -504,6 +528,45 @@ export class ZoneEditorState {
 			};
 		});
 	};
+
+	private estimateSeatRowSlope(
+		seats: { x: number; y: number; seat: CanvasObject }[],
+		rowTolerance: number
+	) {
+		if (seats.length < 2) return 0;
+
+		const xValues = seats.map((seat) => seat.x).sort((a, b) => a - b);
+		const xSpan = xValues[xValues.length - 1] - xValues[0];
+		const minimumGap = Math.max(1, BOX_SIZE / 2);
+		if (xSpan < minimumGap) return 0;
+
+		const binWidth = rowTolerance / Math.max(xSpan, BOX_SIZE);
+		const slopeVotes = new Map<number, number>();
+
+		for (let i = 0; i < seats.length; i++) {
+			for (let j = i + 1; j < seats.length; j++) {
+				const dx = seats[j].x - seats[i].x;
+				if (Math.abs(dx) < minimumGap) continue;
+
+				const slope = (seats[j].y - seats[i].y) / dx;
+				if (!Number.isFinite(slope) || Math.abs(slope) > 2) continue;
+
+				const bin = Math.round(slope / binWidth);
+				slopeVotes.set(bin, (slopeVotes.get(bin) ?? 0) + 1);
+			}
+		}
+
+		let bestBin = 0;
+		let bestVotes = 0;
+		for (const [bin, votes] of slopeVotes) {
+			if (votes > bestVotes || (votes === bestVotes && Math.abs(bin) < Math.abs(bestBin))) {
+				bestBin = bin;
+				bestVotes = votes;
+			}
+		}
+
+		return bestBin * binWidth;
+	}
 
 	// --- Add State Variables for Vertex Manipulation ---
 	activeVertexDrag = $state<{ objId: string; index: number } | null>(null);

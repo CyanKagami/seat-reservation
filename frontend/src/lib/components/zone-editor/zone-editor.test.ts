@@ -123,6 +123,33 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(getSeatId(state.objects.find((o) => o.id === 'seat_other')!)).toBe('');
 	});
 
+	it.each([8, -8])('keeps seats in sheared rows together (vertical step %s)', (verticalStep) => {
+		const seats: CanvasObject[] = [];
+		for (let row = 0; row < 2; row++) {
+			for (let column = 0; column < 4; column++) {
+				seats.push({
+					id: `seat_${row}_${column}`,
+					type: 'seat',
+					x: column * 40,
+					y: row * 50 + column * verticalStep,
+					width: 20,
+					height: 20,
+					metadata: { zone: 'VIP' }
+				});
+			}
+		}
+		state.objects = seats;
+
+		state.autoLabelZone('VIP');
+
+		for (let column = 0; column < 4; column++) {
+			const topRowSeat = state.objects.find((seat) => seat.id === `seat_0_${column}`)!;
+			const bottomRowSeat = state.objects.find((seat) => seat.id === `seat_1_${column}`)!;
+			expect(getSeatId(topRowSeat)).toBe(`A${column + 1}`);
+			expect(getSeatId(bottomRowSeat)).toBe(`B${column + 1}`);
+		}
+	});
+
 	it('should respect manual overrides when overwriteManual is false', () => {
 		const seatManual: CanvasObject = {
 			id: 'seat_manual',
@@ -305,6 +332,42 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.objects[0].metadata.row).toBeUndefined();
 		expect(state.objects[0].metadata.seatNo).toBeUndefined();
 		expect(state.objects[1].metadata.zone).toBeUndefined();
+	});
+
+	it('clears labels from requested seats without changing other seats or metadata', () => {
+		state.objects = [
+			{
+				id: 'seat_to_clear',
+				type: 'seat',
+				x: 0,
+				y: 0,
+				width: 20,
+				height: 20,
+				metadata: { zone: 'VIP', row: 'A', seatNo: '1', isManualLabel: true, status: 'available' }
+			},
+			{
+				id: 'seat_to_keep',
+				type: 'seat',
+				x: 30,
+				y: 0,
+				width: 20,
+				height: 20,
+				metadata: { zone: 'VIP', row: 'A', seatNo: '2', isManualLabel: true }
+			}
+		];
+
+		state.clearSeatLabels(['seat_to_clear']);
+
+		expect(state.objects[0].metadata.row).toBeUndefined();
+		expect(state.objects[0].metadata.seatNo).toBeUndefined();
+		expect(state.objects[0].metadata.isManualLabel).toBeUndefined();
+		expect(state.objects[0].metadata).toMatchObject({ zone: 'VIP', status: 'available' });
+		expect(state.objects[1].metadata).toMatchObject({
+			zone: 'VIP',
+			row: 'A',
+			seatNo: '2',
+			isManualLabel: true
+		});
 	});
 
 	it('should fall back to a stable internal ID when a seat label is missing', () => {

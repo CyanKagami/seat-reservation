@@ -10,6 +10,9 @@
 	let selectedObjects = $derived(
 		zoneState.objects.filter((o) => zoneState.selectedIds.has(o.id))
 	);
+	let selectedSeatIds = $derived(
+		selectedObjects.filter((object) => object.type === "seat").map((seat) => seat.id)
+	);
 	
 	let hasSelection = $derived(selectedObjects.length > 0);
 
@@ -115,6 +118,64 @@
 	function handleZoneChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
 		zoneState.updateSelectedObjectZone(target.value);
+	}
+
+	function handleAutoLabelSelected() {
+		const seatIds = [...selectedSeatIds];
+		if (seatIds.length === 0) return;
+
+		const manualSeatsCount = zoneState.objects.filter(
+			(object) => seatIds.includes(object.id) && object.metadata?.isManualLabel
+		).length;
+
+		alertModal.warning(
+			"ยืนยันการจัดป้ายกำกับที่นั่งที่เลือก",
+			manualSeatsCount > 0
+				? `ระบบจะจัดป้ายกำกับที่นั่งที่เลือก ${seatIds.length} ที่นั่ง โดยมี ${manualSeatsCount} ที่นั่งที่กำหนดป้ายเอง`
+				: `ระบบจะจัดป้ายกำกับที่นั่งที่เลือก ${seatIds.length} ที่นั่งใหม่โดยอัตโนมัติ`,
+			{
+				confirmText: "ดำเนินการต่อ",
+				cancelText: "ยกเลิก",
+				showCancel: true,
+				onconfirm: () => {
+					if (manualSeatsCount > 0) {
+						alertModal.warning(
+							"มีป้ายกำกับที่กำหนดเอง",
+							`มีที่นั่งที่ล็อกป้ายเอง ${manualSeatsCount} ที่นั่ง ต้องการเขียนทับหรือไม่?`,
+							{
+								confirmText: "เขียนทับทั้งหมด",
+								cancelText: "ข้ามที่นั่งที่กำหนดเอง",
+								showCancel: true,
+								onconfirm: () => zoneState.autoLabelSelectedSeats(seatIds, true),
+								oncancel: () => zoneState.autoLabelSelectedSeats(seatIds, false)
+							}
+						);
+					} else {
+						zoneState.autoLabelSelectedSeats(seatIds, false);
+					}
+				}
+			}
+		);
+	}
+
+	function handleRemoveSelectedLabels() {
+		const seatsWithLabels = zoneState.objects.filter(
+			(object) => selectedSeatIds.includes(object.id) &&
+				(object.metadata?.row || object.metadata?.seatNo)
+		);
+		const seatIds = seatsWithLabels.map((seat) => seat.id);
+		if (seatIds.length === 0) return;
+
+		alertModal.warning(
+			"ยืนยันการลบป้ายกำกับ",
+			`ต้องการลบป้ายกำกับแถวและเลขที่นั่งของที่นั่งที่เลือก ${seatIds.length} ที่นั่งหรือไม่?`,
+			{
+				confirmText: "ลบป้ายกำกับ",
+				cancelText: "ยกเลิก",
+				showCancel: true,
+				onconfirm: () => zoneState.clearSeatLabels(seatIds)
+			}
+		);
 	}
 
 	function handleStatusChange(e: Event) {
@@ -280,7 +341,31 @@
 
 			<!-- 3. Seat Row & Number Labeling -->
 			<div class="space-y-3 border-t border-slate-200 pt-3">
-				<span class="text-xs font-semibold text-slate-700">ป้ายกำกับ</span>
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<span class="text-xs font-semibold text-slate-700">ป้ายกำกับ</span>
+					<div class="flex flex-wrap items-center gap-1">
+						<button
+							type="button"
+							onclick={handleAutoLabelSelected}
+							disabled={selectedSeatIds.length === 0}
+							class="text-[11px] px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded border border-indigo-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+							title="จัดป้ายกำกับที่นั่งที่เลือกอัตโนมัติ"
+						>
+							ใส่ป้ายอัตโนมัติ ({selectedSeatIds.length})
+						</button>
+						<button
+							type="button"
+							onclick={handleRemoveSelectedLabels}
+							disabled={!selectedSeatIds.some((seatId) => zoneState.objects.some(
+								(object) => object.id === seatId && (object.metadata?.row || object.metadata?.seatNo)
+							))}
+							class="text-[11px] px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium rounded border border-slate-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+							title="ลบป้ายกำกับของที่นั่งที่เลือก"
+						>
+							ลบป้ายกำกับ
+						</button>
+					</div>
+				</div>
 
 				<div class="grid grid-cols-2 gap-2">
 					<div class="space-y-1">
