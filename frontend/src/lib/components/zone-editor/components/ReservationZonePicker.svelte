@@ -18,6 +18,7 @@
 		padding = 40,
 		width = "100%",
 		height = "100%",
+		fillContainer = false,
 		reservedIds = new Set(),
 		className = "",
 		onZoneSelect
@@ -30,6 +31,7 @@
 		padding?: number;
 		width?: string;
 		height?: string;
+		fillContainer?: boolean;
 		reservedIds?: Set<string>;
 		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
@@ -387,12 +389,6 @@
 
 	// --- 5. Dynamic ViewBox ---
 	let baseViewBox = $derived.by(() => {
-		if (!isSmallScreen && gridWidth && gridHeight) {
-			const w = gridWidth * 10;
-			const h = gridHeight * 10;
-			return `0 0 ${w} ${h}`;
-		}
-
 		let minX = Infinity,
 			minY = Infinity,
 			maxX = -Infinity,
@@ -430,8 +426,9 @@
 	});
 
 	let pickerHeight = $derived(
-		isSmallScreen && height === "100%" ? "min(70dvh, 42rem)" : height
+		isSmallScreen && height === "100%" && !fillContainer ? "min(70dvh, 42rem)" : height
 	);
+	let pickerMinHeight = $derived(isSmallScreen && !fillContainer ? "22rem" : "0");
 
 	function handleTouchStart(event: TouchEvent) {
 		if (!isSmallScreen || event.touches.length !== 2 || !svgElement) return;
@@ -499,7 +496,7 @@
 <div
 	bind:this={pickerContainer}
 	class="relative bg-white rounded-xl overflow-hidden shadow-lg p-0 sm:p-2 select-none flex items-center justify-center touch-pan-x touch-pan-y {className}"
-	style="width: {width}; height: {pickerHeight}; min-height: {isSmallScreen ? '22rem' : '0'};"
+	style="width: {width}; height: {pickerHeight}; min-height: {pickerMinHeight};"
 	ontouchstart={handleTouchStart}
 	ontouchend={handleTouchEnd}
 	ontouchcancel={handleTouchEnd}
@@ -526,13 +523,13 @@
 				{@const isPoly = obj.type === 'env-polygon' || obj.type === 'env-icon-polygon' || (obj.points && obj.points.length > 0)}
 				{@const rotCx = isPoly && pts.length ? (pts.reduce((sum, p) => sum + p.x, 0) / pts.length) : minX + w/2}
 				{@const rotCy = isPoly && pts.length ? (pts.reduce((sum, p) => sum + p.y, 0) / pts.length) : minY + h/2}
-				{@const fillColor = obj.metadata?.color ?? '#dcdcd6'}
+				{@const fillColor = obj.metadata?.color ?? '#e2e8f0'}
 
 				<g transform="rotate({obj.rotation ?? 0} {rotCx} {rotCy})">
 					{#if isPoly}
 						<polygon
 							points={ptsString}
-							style="fill: {fillColor};"
+							fill={fillColor}
 							class="stroke-slate-600 stroke-[1.5px]"
 						/>
 					{:else if obj.type === 'env-circle'}
@@ -541,7 +538,7 @@
 							cy={minY + h / 2}
 							rx={w / 2}
 							ry={h / 2}
-							style="fill: {fillColor};"
+							fill={fillColor}
 							class="stroke-slate-600 stroke-[1.5px]"
 						/>
 					{:else}
@@ -551,7 +548,7 @@
 							width={w}
 							height={h}
 							rx={2}
-							style="fill: {fillColor};"
+							fill={fillColor}
 							class="stroke-slate-600 stroke-[1.5px]"
 						/>
 					{/if}

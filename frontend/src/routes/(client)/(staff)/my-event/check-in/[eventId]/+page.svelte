@@ -10,12 +10,20 @@
     const {data, params} = $props();
     onMount(() => {
         if (data.loadError) {
-            alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลการเข้าร่วมได้ กรุณาลองอีกครั้ง");
+            alertModal.failure(
+                "เกิดข้อผิดพลาด",
+                data.loadErrorMessage || "ไม่สามารถโหลดข้อมูลการเข้าร่วมได้ กรุณาลองอีกครั้ง"
+            );
         }
     });
     const percentage = $derived((data.checkInCount / (data.totalCount || 1)) * 100)
     let identifier: string = $state('');
     let reservationData: Reservation & SeatParts | null = $state(null);
+
+    function showCheckInFailure(message: string) {
+        status = 'initial';
+        alertModal.failure("เช็คชื่อไม่สำเร็จ", message);
+    }
 
     async function handleLoadData() {
         try{
@@ -25,7 +33,12 @@
         } catch (err){
             if (err instanceof ApiError) {
                 if (err.code === 'NOT_FOUND') status = "not_found";
-                else if (err.status === 400) status = "not_found";
+                else alertModal.failure("ตรวจสอบข้อมูลไม่สำเร็จ", err.message);
+            } else {
+                alertModal.failure(
+                    "ตรวจสอบข้อมูลไม่สำเร็จ",
+                    err instanceof Error ? err.message : "ไม่สามารถตรวจสอบข้อมูลได้ กรุณาลองอีกครั้ง"
+                );
             }
         }
         
@@ -51,7 +64,13 @@
                     case 'NOT_FOUND':
                         status = "not_found";
                         break;
+                    default:
+                        showCheckInFailure(err.message);
                 }
+            } else {
+                showCheckInFailure(
+                    err instanceof Error ? err.message : "ไม่สามารถเช็คชื่อได้ กรุณาลองอีกครั้ง"
+                );
             }
         }
         
@@ -145,38 +164,42 @@
                 <p class="text-xl font-semibold">สรุปข้อมูล</p>
                 <hr class="w-full mt-3">
                 <p class="my-5 max-w-full break-all text-center font-semibold">{reservationData.email}</p>
-                {#if reservationData.zone}
-                    <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
-                        <p>Zone</p>
-                        <p class="text-orange-600">{reservationData.zone}</p>
+                {#if reservationData.zone || reservationData.seat}
+                    <div class="flex max-w-full items-center justify-center gap-2 text-xl font-bold sm:text-2xl">
+                        {#if reservationData.zone}
+                            <span>โซน <span class="text-orange-600">{reservationData.zone}</span></span>
+                        {/if}
+                        {#if reservationData.zone && reservationData.seat}
+                            <span aria-hidden="true">·</span>
+                        {/if}
+                        {#if reservationData.seat}
+                            <span>ที่นั่ง <span class="text-orange-600">{reservationData.seat}</span></span>
+                        {/if}
                     </div>
                 {/if}
-                {#if reservationData.seat}
-                    <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
-                        <p>Seat</p>
-                        <p class="text-orange-600">{reservationData.seat}</p>
-                    </div>
-                {/if}
-                <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
-                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
+                <p class="mt-4 max-w-full break-all text-center text-sm text-dark-soft">
+                    รหัสที่นั่ง: <span class="font-mono font-semibold text-dark">{reservationData.seatId}</span>
+                </p>
+                <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">ยืนยันเช็คชื่อ</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">ยกเลิก</button>
             </div>
             {:else if status === "not_found"}
             <div class="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
                 <p class="text-xl font-semibold">ไม่พบข้อมูลในระบบ</p>
 
-                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">กลับ</button>
             </div>
             {:else if status === "client_error"}
             <div class="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
                 <p class="text-xl font-semibold">เกิดข้อผิดพลาดในการส่งข้อมูล</p>
 
-                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">กลับ</button>
             </div>
             {:else if status === "replicated"}
             <div class="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
-                <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้ทำการ Check in แล้ว</p>
+                <p class="text-xl font-semibold">ผู้ใช้หรือที่นั่งนี้เช็คชื่อแล้ว</p>
 
-                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Back</button>
+                <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">กลับ</button>
             </div>
             {/if}
         </div>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-  import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject } from "../types";
 	import type { SeatType } from "$lib/components/canvas-shared/types";
   import { getReservationSeatId, getSeatId } from "../utils/zoneUtils";
@@ -8,7 +7,6 @@
 	const NO_ZONE_ID = "zone-no-zone";
 
 	let {
-		zoneName = "เลือกที่นั่ง",
 		selectedZoneId = "",
 		objects = [],
 		seatTypes = {},
@@ -16,10 +14,8 @@
 		maxSeats = 1,
 		reservedIds = new Set(),
 		myReservedIds = new Set(),
-		onBack,
 		onConfirm
 	}: {
-		zoneName?: string;
 		selectedZoneId?: string;
 		objects: CanvasObject[];
 		seatTypes?: Record<string, SeatType>;
@@ -27,7 +23,6 @@
 		maxSeats?: number;
 		reservedIds: Set<string>;
 		myReservedIds?: Set<string>;
-		onBack?: () => void;
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
 
@@ -146,8 +141,10 @@
 		const padding = 60;
 		const width = Math.max(maxX - minX + padding * 2, 240);
 		const height = Math.max(maxY - minY + padding * 2, 180);
+		const centerX = (minX + maxX) / 2;
+		const centerY = (minY + maxY) / 2;
 
-		return `${minX - padding} ${minY - padding} ${width} ${height}`;
+		return `${centerX - width / 2} ${centerY - height / 2} ${width} ${height}`;
 	});
 
 	let viewBox = $derived.by(() => {
@@ -248,29 +245,6 @@
 </script>
 
 <div class="flex flex-col w-full h-full bg-white rounded-xl overflow-hidden shadow-xl border border-slate-200">
-	<!-- Top Bar (Responsive Grid Layout) -->
-	<div class="grid grid-cols-3 items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-100 border-b border-slate-200">
-		<button
-			onclick={onBack}
-			class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition cursor-pointer"
-		>
-			<svg class="w-4 h-4 fill-none stroke-current stroke-[2]" viewBox="0 0 24 24">
-				<path d="M15 18l-6-6 6-6" />
-			</svg>
-			<span class="hidden xs:inline sm:inline">กลับไปหน้าเลือกโซน</span>
-			<span class="inline xs:hidden sm:hidden">กลับ</span>
-		</button>
-
-		<div class="text-center px-1 overflow-hidden">
-			<h3 class="text-xs sm:text-sm font-bold text-slate-800 truncate">{zoneName}</h3>
-			<p class="text-[10px] sm:text-[11px] text-slate-500 whitespace-nowrap">
-				เลือกแล้ว <span class="text-indigo-600 font-bold">{selectedSeatIds.length}</span> / {maxSeats} ที่นั่ง
-			</p>
-		</div>
-
-		<div class="w-6 sm:w-16"></div>
-	</div>
-
 	<!-- Status Legend (Responsive Wrap) -->
 	<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-3 py-2 bg-slate-50 text-[11px] sm:text-xs text-slate-600 border-b border-slate-200">
 		<div class="flex items-center gap-1.5">
@@ -294,7 +268,7 @@
 	<!-- Canvas Viewport (Responsive Height & SVG Aspect Scaler) -->
 	<div
 		bind:this={pickerContainer}
-		class="relative flex-1 w-full h-full min-h-[320px] sm:min-h-[450px] bg-white select-none overflow-hidden flex items-center justify-center overscroll-contain touch-pan-x touch-pan-y"
+		class="relative flex-1 w-full h-full min-h-0 bg-white select-none overflow-hidden flex items-center justify-center overscroll-contain touch-pan-x touch-pan-y"
 		ontouchstart={handleTouchStart}
 		ontouchend={handleTouchEnd}
 		ontouchcancel={handleTouchEnd}

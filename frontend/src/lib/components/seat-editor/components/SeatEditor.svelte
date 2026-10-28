@@ -6,6 +6,7 @@
 	import LeftSidebar from "./LeftSidebar.svelte";
 	import RightSidebar from "./RightSidebar.svelte";
 	import Canvas from "./Canvas.svelte";
+	import { alertModal } from "$lib/store/alert.svelte";
 
 	let { seatState, place, backLink } = $props();
 	let isSeatTypePopupOpen = $state(false);
@@ -65,7 +66,7 @@
 	function handleSaveSeatType() {
 		const trimmedName = SeatTypeName.trim();
 		if (!trimmedName) {
-			alert('กรุณากรอกชื่อประเภทเก้าอี้');
+			alertModal.warning("ข้อมูลไม่ครบถ้วน", "กรุณากรอกชื่อประเภทเก้าอี้");
 			return;
 		}
 
@@ -78,7 +79,7 @@
 			});
 
 			if (!success) {
-				alert('ชื่อประเภทเก้าอี้ซ้ำ');
+				alertModal.warning("ชื่อประเภทซ้ำ", "ชื่อประเภทเก้าอี้ซ้ำ");
 				return;
 			}
 		} else {
@@ -90,7 +91,7 @@
 			});
 
 			if (!result) {
-				alert('ชื่อประเภทเก้าอี้ซ้ำ');
+				alertModal.warning("ชื่อประเภทซ้ำ", "ชื่อประเภทเก้าอี้ซ้ำ");
 				return;
 			}
 		}

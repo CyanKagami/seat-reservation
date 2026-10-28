@@ -1,4 +1,5 @@
 <script lang='ts'>
+    import { onMount } from "svelte";
     import ReservedEventBox from "$lib/components/student/ReservedEventBox.svelte";
     import { invalidateAll } from "$app/navigation";
     import type { ReservationWithEvent } from "$lib/type/reservation";
@@ -7,18 +8,49 @@
     let { data }: { data: PageData } = $props();
     let events: ReservationWithEvent[] = $derived(data.events);
     let searchQuery = $state("");
+    let now = $state(Date.now());
     const refreshReservations = () => invalidateAll();
 
+    const endedRetentionMs = 30 * 24 * 60 * 60 * 1000;
+
+    onMount(() => {
+        const interval = setInterval(() => now = Date.now(), 60_000);
+        return () => clearInterval(interval);
+    });
+
+    function getEventCategory(item: ReservationWithEvent) {
+        const start = Date.parse(item.event?.date?.start ?? "");
+        const end = Date.parse(item.event?.date?.end ?? "");
+
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return "comingSoon";
+        if (start > now) return "comingSoon";
+        if (end >= now) return "ongoing";
+        if (now - end <= endedRetentionMs) return "ended";
+        return null;
+    }
+
     const filteredEvents = $derived.by(() => {
-        if (!searchQuery.trim()) return events;
         const q = searchQuery.toLowerCase().trim();
-        return events.filter(e => 
+        return events.filter(e =>
+            getEventCategory(e) !== null &&
+            e.event &&
+            (!q ||
             e.event?.name?.toLowerCase().includes(q) ||
             e.seat?.toLowerCase().includes(q) ||
             e.zone?.toLowerCase().includes(q) ||
-            e.event?.place?.name?.toLowerCase().includes(q)
+            e.event?.place?.name?.toLowerCase().includes(q))
         );
     });
+
+    const eventGroups = $derived([
+        { id: "ongoing", title: "กำลังดำเนินการ" },
+        { id: "comingSoon", title: "กำลังจะมาถึง" },
+        { id: "ended", title: "สิ้นสุดแล้ว" }
+    ].map(group => ({
+        ...group,
+        events: filteredEvents.filter(item => getEventCategory(item) === group.id)
+    })));
+    const hasVisibleEvents = $derived(eventGroups.some(group => group.events.length > 0));
 </script>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -51,7 +83,7 @@
 
     <!-- Content -->
     <div class="pt-8">
-        {#if filteredEvents.length === 0}
+        {#if !hasVisibleEvents}
             <div class="bg-white rounded-2xl border border-border-subtle p-12 text-center flex flex-col items-center max-w-lg mx-auto my-8">
                 <div class="w-12 h-12 rounded-full bg-pale-soft flex items-center justify-center text-secondary mb-4">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,12 +91,16 @@
                     </svg>
                 </div>
                 <h3 class="text-lg font-bold text-dark">
-                    {searchQuery ? 'ไม่พบที่นั่งที่ตรงกับคำค้นหา' : 'คุณยังไม่มีที่นั่งที่จองไว้'}
+                    {searchQuery ? 'ไม่พบที่นั่งที่ตรงกับคำค้นหา' : events.length > 0 ? 'ไม่มีกิจกรรมที่แสดงในขณะนี้' : 'คุณยังไม่มีที่นั่งที่จองไว้'}
                 </h3>
                 <p class="text-xs sm:text-sm text-dark-soft mt-1.5 leading-relaxed">
-                    {searchQuery ? 'ลองตรวจสอบคำสะกด หรือล้างคำค้นหา' : 'เลือกดูกิจกรรมที่กำลังเปิดรับสมัคร และจองที่นั่งของคุณได้ทันที'}
+                    {searchQuery
+                        ? 'ลองตรวจสอบคำสะกด หรือล้างคำค้นหา'
+                        : events.length > 0
+                            ? 'กิจกรรมที่สิ้นสุดแล้วจะแสดงไว้ไม่เกิน 30 วัน'
+                            : 'เลือกดูกิจกรรมที่กำลังเปิดรับสมัคร และจองที่นั่งของคุณได้ทันที'}
                 </p>
-                {#if !searchQuery}
+                {#if !searchQuery && events.length === 0}
                     <a 
                         href="/" 
                         class="mt-6 px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
@@ -74,18 +110,30 @@
                 {/if}
             </div>
         {:else}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                {#each filteredEvents as item (item.eventId + item.seat)}
-                    {#if item.event}
-                        <ReservedEventBox 
-                            event={item.event} 
-                            seat={item.seat} 
-                            zone={item.zone} 
-                            seatId={item.seatId}
-                            checkInSeatId={item.checkInSeatId}
-                            eventId={item.eventId}
-                            onCancelled={refreshReservations}
-                        />
+            <div class="flex flex-col gap-10">
+                {#each eventGroups as group (group.id)}
+                    {#if group.events.length > 0}
+                        <section aria-labelledby="reserved-events-{group.id}">
+                            <h2 id="reserved-events-{group.id}" class="mb-5 text-xl font-bold text-dark">
+                                {group.title}
+                                <span class="ml-1 text-sm font-medium text-dark-soft">({group.events.length})</span>
+                            </h2>
+                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+                                {#each group.events as item (item.eventId + item.seat)}
+                                    {#if item.event}
+                                        <ReservedEventBox
+                                            event={item.event}
+                                            seat={item.seat}
+                                            zone={item.zone}
+                                            seatId={item.seatId}
+                                            checkInSeatId={item.checkInSeatId}
+                                            eventId={item.eventId}
+                                            onCancelled={refreshReservations}
+                                        />
+                                    {/if}
+                                {/each}
+                            </div>
+                        </section>
                     {/if}
                 {/each}
             </div>

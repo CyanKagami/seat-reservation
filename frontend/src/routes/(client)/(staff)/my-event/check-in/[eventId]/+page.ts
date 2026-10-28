@@ -14,7 +14,8 @@ export const load: PageLoad = async ({ fetch, params, depends }) => {
         return {
             checkInCount:0,
             totalCount:0,
-            loadError: true
+            loadError: true,
+            loadErrorMessage: err instanceof Error ? err.message : null
         };
     }
     

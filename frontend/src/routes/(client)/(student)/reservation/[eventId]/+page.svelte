@@ -114,22 +114,23 @@
   });
 </script>
 
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex flex-col items-center">
+<div class="mx-auto flex h-[calc(100dvh-4.5rem)] w-full flex-col items-center overflow-y-auto sm:h-auto sm:max-w-6xl sm:overflow-visible sm:px-6 sm:py-10 lg:px-8">
   <!-- Event Header Title -->
-  <div class="w-full max-w-2xl mb-10 sm:mb-20">
+  <div class="grid w-full max-w-2xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2 sm:mb-10 sm:px-0 sm:py-0">
     <a
       href="/event-info/{data.event.eventId}"
-      class="mb-5 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-dark-muted transition-colors hover:bg-surface-subtle hover:text-dark"
+      class="col-start-1 inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg px-2 text-sm font-semibold text-dark-muted transition-colors hover:bg-surface-subtle hover:text-dark"
       aria-label="กลับไปหน้ารายละเอียดกิจกรรม"
     >
       <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
       </svg>
-      <span>กลับไปหน้ากิจกรรม</span>
+      <span class="hidden sm:inline">กลับไปหน้ากิจกรรม</span>
     </a>
-    <h1 class="text-center text-2xl sm:text-3xl font-bold text-dark tracking-tight">
+    <h1 class="col-start-2 min-w-0 max-w-[min(60vw,32rem)] truncate text-center text-lg font-bold tracking-tight text-dark sm:max-w-sm sm:text-3xl">
       {data.event.name}
     </h1>
+    <span class="col-start-3" aria-hidden="true"></span>
   </div>
 
   {#if hasLoadedSeatMap && !hasExistingReservation}
@@ -200,21 +201,22 @@
     </div>
   <!-- STEP 1: ZONE PICKER -->
   {:else if status === "zone"}
-    <div class="w-full max-w-4xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
-      <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
+    <div class="flex min-h-0 w-full flex-1 flex-col gap-3 bg-white p-0 sm:flex-initial sm:h-auto sm:max-w-4xl sm:gap-6 sm:rounded-2xl sm:border sm:border-border-subtle sm:p-8 sm:shadow-xs">
+      <div class="flex items-center justify-between border-b border-border-subtle px-4 pb-3 pt-2 sm:px-0 sm:pb-4 sm:pt-0">
         <div>
           <h2 class="text-lg font-bold text-dark">เลือกโซนที่นั่ง</h2>
           <p class="text-xs sm:text-sm text-dark-soft mt-0.5">คลิกที่โซนที่คุณต้องการนั่งบนผังสถานที่</p>
         </div>
       </div>
 
-      <div class="w-full bg-surface-subtle/60 rounded-xl p-4 flex justify-center items-center overflow-auto border border-border-subtle">
+      <div class="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden border-border-subtle bg-surface-subtle/60 p-0 sm:h-[min(60vh,30rem)] sm:flex-none sm:rounded-xl sm:border sm:p-4">
         <ReservationZonePicker
           objects={data.seatState.objects}
           zone={data.seatState.zones}
           gridWidth={data.seatState.gridWidth}
           gridHeight={data.seatState.gridHeight}
           reservedIds={reservedId}
+          fillContainer
           onZoneSelect={(zoneId) => {
             zone = zoneId;
             status = "seat";
@@ -225,8 +227,8 @@
 
   <!-- STEP 2: SEAT PICKER -->
   {:else if status === "seat"}
-    <div class="w-full max-w-5xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
-      <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
+    <div class="flex min-h-0 w-full flex-1 flex-col gap-3 bg-white p-0 sm:flex-initial sm:h-auto sm:max-w-4xl sm:gap-6 sm:rounded-2xl sm:border sm:border-border-subtle sm:p-8 sm:shadow-xs">
+      <div class="flex items-center justify-between border-b border-border-subtle px-4 pb-3 pt-2 sm:px-0 sm:pb-4 sm:pt-0">
         <div>
           <h2 class="text-lg font-bold text-dark">เลือกที่นั่งในโซน: {zoneDisplayName}</h2>
           <p class="text-xs sm:text-sm text-dark-soft mt-0.5">เลือกที่นั่งที่คุณต้องการ (สูงสุด 1 ที่นั่งต่อบัญชี)</p>
@@ -243,18 +245,14 @@
         </button>
       </div>
 
-      <div class="w-full bg-surface-subtle/60 rounded-xl p-4 flex justify-center items-center overflow-auto border border-border-subtle">
+      <div class="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden border-border-subtle bg-surface-subtle/60 p-0 sm:h-[min(60vh,30rem)] sm:flex-none sm:rounded-xl sm:border sm:p-4">
         <ZoneSeatPicker
-          zoneName={zoneDisplayName}
           selectedZoneId={zone}
           maxSeats={1}
           objects={data.seatState.objects}
           seatTypes={data.seatState.seatTypes}
           reservedIds={reservedId}
           myReservedIds={myReservedId}
-          onBack={() => {
-            status = "zone";
-          }}
           onConfirm={(seats) => {
             selectedSeats = seats;
             status = "confirm";

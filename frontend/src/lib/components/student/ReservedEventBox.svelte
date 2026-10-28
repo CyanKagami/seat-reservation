@@ -150,9 +150,6 @@
                     {checkInSeatId}
                 </p>
             </div>
-            <p class="mt-5 text-sm text-dark-soft">
-                เจ้าหน้าที่สามารถกรอกรหัสนี้ในหน้าตรวจสอบการเข้าร่วมกิจกรรม
-            </p>
             <button
                 type="button"
                 onclick={() => (isSeatCodeOpen = false)}
