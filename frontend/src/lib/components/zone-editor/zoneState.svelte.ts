@@ -388,7 +388,11 @@ export class ZoneEditorState {
 
 			const metadata = { ...(obj.metadata || {}) };
 			const zoneChanged = (metadata.zone ?? '') !== zone;
-			metadata.zone = zone;
+			if (zone) {
+				metadata.zone = zone;
+			} else {
+				delete metadata.zone;
+			}
 
 			if (obj.type === 'seat' && zoneChanged && !metadata.isManualLabel) {
 				delete metadata.row;
@@ -415,17 +419,36 @@ export class ZoneEditorState {
 		});
 	}
 
+	autoLabelSelectedSeats = (seatIds: readonly string[], overwriteManual: boolean = false) => {
+		const selectedSeats = this.objects.filter(
+			(object) => object.type === 'seat' && seatIds.includes(object.id)
+		);
+		const seatsByZone = new Map<string, CanvasObject[]>();
+		for (const seat of selectedSeats) {
+			const zoneName = seat.metadata?.zone ?? '';
+			const zoneSeats = seatsByZone.get(zoneName) ?? [];
+			zoneSeats.push(seat);
+			seatsByZone.set(zoneName, zoneSeats);
+		}
+		for (const seats of seatsByZone.values()) {
+			this.autoLabelSeats(seats, overwriteManual);
+		}
+	};
+
 	autoLabelZone = (zoneName: string, overwriteManual: boolean = false) => {
 		if (!zoneName) return;
-		const ROW_TOLERANCE = BOX_SIZE / 2;
 		const zoneSeats = this.objects.filter(
 			(o) => o.type === 'seat' && o.metadata?.zone === zoneName
 		);
+		this.autoLabelSeats(zoneSeats, overwriteManual);
+	};
 
-		if (zoneSeats.length === 0) return;
+	private autoLabelSeats(seats: CanvasObject[], overwriteManual: boolean) {
+		if (seats.length === 0) return;
+		const ROW_TOLERANCE = BOX_SIZE / 2;
 
 		// Sort all zone seats top-to-bottom (Y), then left-to-right (X)
-		const sorted = [...zoneSeats].sort((a, b) => a.y - b.y || a.x - b.x);
+		const sorted = [...seats].sort((a, b) => a.y - b.y || a.x - b.x);
 
 		// Group into rows by Y proximity
 		const rows: CanvasObject[][] = [];
@@ -458,8 +481,9 @@ export class ZoneEditorState {
 		};
 
 		// Assign labels to seats in objects
+		const seatIds = new Set(seats.map((seat) => seat.id));
 		this.objects = this.objects.map((obj) => {
-			if (obj.type !== 'seat' || obj.metadata?.zone !== zoneName) return obj;
+			if (obj.type !== 'seat' || !seatIds.has(obj.id)) return obj;
 			if (!overwriteManual && obj.metadata?.isManualLabel) return obj;
 
 			const rowIdx = rows.findIndex((r) => r.some((s) => s.id === obj.id));

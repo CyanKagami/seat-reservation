@@ -3,6 +3,12 @@
 	import { alertModal } from "$lib/store/alert.svelte";
 
 	let { zoneState, onOpenPopup }: { zoneState: ZoneEditorState, onOpenPopup: () => void } = $props();
+	let selectedSeatIds = $derived(
+		zoneState.objects
+			.filter((object) => object.type === "seat" && zoneState.selectedIds.has(object.id))
+			.map((seat) => seat.id)
+	);
+
 	function handleRemoveZone(event: MouseEvent, zoneName: string) {
 		event.stopPropagation();
 		alertModal.warning(
@@ -26,12 +32,60 @@
 			}
 		);
 	}
-	function handleApplyZone(zoneName: string) {
-		if (zoneState.selectedIds.size === 0) return;
-		zoneState.updateSelectedObjectZone(zoneName);
+	function handleSelectZone(zoneName: string) {
+		zoneState.selectedIds = new Set(
+			zoneState.objects
+				.filter((object) => object.type === "seat" && object.metadata?.zone === zoneName)
+				.map((seat) => seat.id)
+		);
 	}
 
-	function handleAutoLabel(event: MouseEvent, zoneName: string) {
+	function handleZoneCardKeydown(event: KeyboardEvent, zoneName: string) {
+		if (event.target !== event.currentTarget) return;
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		handleSelectZone(zoneName);
+	}
+
+	function handleAutoLabelSelected() {
+		const seatIds = [...selectedSeatIds];
+		if (seatIds.length === 0) return;
+
+		const manualSeatsCount = zoneState.objects.filter(
+			(object) => seatIds.includes(object.id) && object.metadata?.isManualLabel
+		).length;
+
+		alertModal.warning(
+			"ยืนยันการจัดป้ายกำกับที่นั่งที่เลือก",
+			manualSeatsCount > 0
+				? `ระบบจะจัดป้ายกำกับที่นั่งที่เลือก ${seatIds.length} ที่นั่ง โดยมี ${manualSeatsCount} ที่นั่งที่กำหนดป้ายเอง`
+				: `ระบบจะจัดป้ายกำกับที่นั่งที่เลือก ${seatIds.length} ที่นั่งใหม่โดยอัตโนมัติ`,
+			{
+				confirmText: "ดำเนินการต่อ",
+				cancelText: "ยกเลิก",
+				showCancel: true,
+				onconfirm: () => {
+					if (manualSeatsCount > 0) {
+						alertModal.warning(
+							"มีป้ายกำกับที่กำหนดเอง",
+							`มีที่นั่งที่ล็อกป้ายเอง ${manualSeatsCount} ที่นั่ง ต้องการเขียนทับหรือไม่?`,
+							{
+								confirmText: "เขียนทับทั้งหมด",
+								cancelText: "ข้ามที่นั่งที่กำหนดเอง",
+								showCancel: true,
+								onconfirm: () => zoneState.autoLabelSelectedSeats(seatIds, true),
+								oncancel: () => zoneState.autoLabelSelectedSeats(seatIds, false)
+							}
+						);
+					} else {
+						zoneState.autoLabelSelectedSeats(seatIds, false);
+					}
+				}
+			}
+		);
+	}
+
+	function handleAutoLabelZone(event: MouseEvent, zoneName: string) {
 		event.stopPropagation();
 		const manualSeatsCount = zoneState.objects.filter(
 			(object) => object.type === "seat" &&
@@ -76,6 +130,15 @@
 			<svg class="h-4 fill-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M352 128C352 110.3 337.7 96 320 96C302.3 96 288 110.3 288 128L288 288L128 288C110.3 288 96 302.3 96 320C96 337.7 110.3 352 128 352L288 352L288 512C288 529.7 302.3 544 320 544C337.7 544 352 529.7 352 512L352 352L512 352C529.7 352 544 337.7 544 320C544 302.3 529.7 288 512 288L352 288L352 128z"/></svg>
 			<span class='text-xs'>เพิ่มโซน</span>
 		</button>
+		<button
+			type="button"
+			onclick={handleAutoLabelSelected}
+			disabled={selectedSeatIds.length === 0}
+			class="flex items-center rounded-md border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 p-1.5 gap-2 text-indigo-700 cursor-pointer"
+			title="จัดป้ายกำกับที่นั่งที่เลือกอัตโนมัติ"
+		>
+			<span class="text-xs">ใส่ป้ายที่นั่งที่เลือก ({selectedSeatIds.length})</span>
+		</button>
 	
 	<hr class="border-dim-gray mb-2">
 
@@ -86,10 +149,10 @@
 			<div 
 				role="button"
 				tabindex="0"
-				onclick={() => handleApplyZone(zoneName)}
-				onkeydown={(e) => e.key === 'Enter' && handleApplyZone(zoneName)}
+				onclick={() => handleSelectZone(zoneName)}
+				onkeydown={(event) => handleZoneCardKeydown(event, zoneName)}
 				class="w-full flex items-center justify-between border group border-slate-300 rounded bg-white gap-1 hover:bg-indigo-50 hover:border-indigo-400 transition-colors p-2 cursor-pointer"
-				title="คลิกเพื่อกำหนดโซนของที่นั่งที่เลือกให้เป็น {zoneName}"
+				title={`คลิกเพื่อเลือกที่นั่งทั้งหมดในโซน ${zoneName}`}
 			>
 				<div class="flex items-center gap-1.5 min-w-0">
 					<div class="w-2.5 h-2.5 rounded-xs shrink-0" style={`background-color: ${zoneInfo.color};`}></div>
@@ -104,9 +167,9 @@
 						type="button"
 						title="จัดป้ายกำกับที่นั่งในโซนนี้อัตโนมัติ"
 						class="text-[9px] px-1.5 py-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 cursor-pointer font-medium whitespace-nowrap"
-						onclick={(e) => handleAutoLabel(e, zoneName)}
+						onclick={(e) => handleAutoLabelZone(e, zoneName)}
 					>
-						Auto Label
+						ใส่ป้าย
 					</button>
 					<button
 						type="button"

@@ -157,6 +157,43 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(overwrittenMeta?.isManualLabel).toBe(false);
 	});
 
+	it('auto-labels only the selected seats in their zones', () => {
+		const selectedSeatRight: CanvasObject = {
+			id: 'selected_right',
+			type: 'seat',
+			x: 40,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP' }
+		};
+		const selectedSeatLeft: CanvasObject = {
+			id: 'selected_left',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP' }
+		};
+		const unselectedSeat: CanvasObject = {
+			id: 'unselected',
+			type: 'seat',
+			x: 0,
+			y: 40,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP' }
+		};
+		state.objects = [selectedSeatRight, selectedSeatLeft, unselectedSeat];
+
+		state.autoLabelSelectedSeats(['selected_right', 'selected_left']);
+
+		expect(getSeatId(state.objects.find((seat) => seat.id === 'selected_left')!)).toBe('A1');
+		expect(getSeatId(state.objects.find((seat) => seat.id === 'selected_right')!)).toBe('A2');
+		expect(getSeatId(state.objects.find((seat) => seat.id === 'unselected')!)).toBe('');
+	});
+
 	it('should preserve row and seat number when updating other selected metadata', () => {
 		const seat: CanvasObject = {
 			id: 'seat_A1',
@@ -214,6 +251,26 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.objects[0].metadata.zone).toBe('Regular');
 		expect(getSeatId(state.objects[0])).toBe('CUSTOM9');
 		expect(state.objects[0].metadata.isManualLabel).toBe(true);
+	});
+
+	it('removes zone assignment and generated labels when setting a seat to no zone', () => {
+		state.objects = [{
+			id: 'seat_auto',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1', isManualLabel: false }
+		}];
+		state.selectedIds = new Set(['seat_auto']);
+
+		state.updateSelectedObjectZone('');
+
+		expect(state.objects[0].metadata.zone).toBeUndefined();
+		expect(state.objects[0].metadata.row).toBeUndefined();
+		expect(state.objects[0].metadata.seatNo).toBeUndefined();
+		expect(state.objects[0].metadata.isManualLabel).toBeUndefined();
 	});
 
 	it('should fall back to a stable internal ID when a seat label is missing', () => {

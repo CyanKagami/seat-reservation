@@ -45,12 +45,15 @@
 		hasSelection && selectedObjects.every((o) => o.type !== "seat")
 	);
 
-	let currentZone = $derived(
-		hasSelection && selectedObjects.every((o) => {
+	let hasMixedZoneSelection = $derived(
+		hasSelection && !selectedObjects.every((o) => {
 			const cZone = o.metadata?.zone ?? '';
 			const fZone = selectedObjects[0].metadata?.zone ?? '';
 			return cZone === fZone;
 		})
+	);
+	let currentZone = $derived(
+		hasSelection && !hasMixedZoneSelection
 			? (selectedObjects[0].metadata?.zone ?? '')
 			: ""
 	);
@@ -246,11 +249,12 @@
 
 				<select
 					id="zone-name"
-					value={currentZone}
+					value={hasMixedZoneSelection ? "__mixed__" : currentZone}
 					onchange={handleZoneChange}
 					class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
 				>
-					{#if !currentZone}<option value="" disabled>มีหลายค่าเลือกอยู่ หรือยังไม่มีโซน</option>{/if}
+					{#if hasMixedZoneSelection}<option value="__mixed__" disabled>มีหลายค่าเลือกอยู่</option>{/if}
+					<option value="">ไม่มีโซน</option>
 					{#each Object.entries(zoneState.zones) as [zoneName, zone]}
 						<option value={zoneName}>{zoneName}</option>
 					{/each}
