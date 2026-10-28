@@ -45,15 +45,33 @@
 
         <!-- Right Menu -->
         <nav class="flex items-center gap-3 sm:gap-6">
+            <a
+                href="/"
+                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath === '/' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+            >
+                กิจกรรมทั้งหมด
+            </a>
+            <a
+                href="/my-event"
+                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+            >
+                กิจกรรมที่จัด
+            </a>
+            <a
+                href="/reserved-event"
+                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+            >
+                ที่นั่งของฉัน
+            </a>
             <a 
                 href="/admin/users" 
-                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath === '/admin/users' ? 'text-secondary font-semibold bg-secondary-subtle/70' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath === '/admin/users' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
             >
                 ผู้ใช้งาน & สิทธิ์
             </a>
             <a 
                 href="/admin/places" 
-                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/admin/places') ? 'text-secondary font-semibold bg-secondary-subtle/70' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/admin/places') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
             >
                 สถานที่ & ผังที่นั่ง
             </a>
@@ -92,15 +110,6 @@
                             <hr class="border-border-subtle my-0.5">
 
                             <div class="flex flex-col gap-1 text-sm">
-                                <a
-                                    href="/"
-                                    onclick={() => isDropdownOpen = false}
-                                    class="px-2.5 py-2 rounded-lg font-medium text-dark-muted hover:text-dark hover:bg-surface-subtle transition-colors flex items-center justify-between"
-                                >
-                                    <span>กลับสู่หน้าผู้ใช้ทั่วไป</span>
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                </a>
-
                                 <button 
                                     type="button"
                                     onclick={handleLogout} 
