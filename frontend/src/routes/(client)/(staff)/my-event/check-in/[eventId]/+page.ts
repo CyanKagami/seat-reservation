@@ -1,5 +1,7 @@
 import type { PageLoad } from './$types';
 import { getEventAttendance } from '$lib/scripts/booking';
+import { ApiError } from '$lib/scripts/api';
+import { throwRouteError } from '$lib/scripts/routeErrors';
 export const load: PageLoad = async ({ fetch, params, depends }) => {
     depends('increase:count')
     try {
@@ -11,6 +13,9 @@ export const load: PageLoad = async ({ fetch, params, depends }) => {
         };
     }
     catch (err) {
+        if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+            throwRouteError(err);
+        }
         return {
             checkInCount:0,
             totalCount:0,

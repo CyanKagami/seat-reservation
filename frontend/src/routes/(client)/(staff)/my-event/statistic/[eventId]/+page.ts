@@ -1,5 +1,7 @@
 import type { PageLoad } from './$types';
 import { getReservationStatistic, getSeatMap } from '$lib/scripts/booking';
+import { ApiError } from '$lib/scripts/api';
+import { throwRouteError } from '$lib/scripts/routeErrors';
 
 export const load: PageLoad = async ({ fetch, params, depends }) => {
     depends('change:seatmap');
@@ -10,7 +12,10 @@ export const load: PageLoad = async ({ fetch, params, depends }) => {
         ]);
         return { ...result, reservations: seatMap.reservations, loadError: false };
     }
-    catch {
+    catch (cause) {
+        if (cause instanceof ApiError && (cause.status === 403 || cause.status === 404)) {
+            throwRouteError(cause);
+        }
         return {
             loadError: true,
             zoneData: {},

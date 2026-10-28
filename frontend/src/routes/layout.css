@@ -48,12 +48,6 @@ html, body {
   outline-offset: 2px;
 }
 
-/* Themed selection */
-::selection {
-  background-color: var(--color-accent);
-  color: #FFFFFF;
-}
-
 /* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

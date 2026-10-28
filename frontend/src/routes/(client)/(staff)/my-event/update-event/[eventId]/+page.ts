@@ -3,8 +3,9 @@ import { error } from '@sveltejs/kit';
 import { apiFetchJson } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
 import type { Place } from '$lib/type/place';
+import { withRouteErrors } from '$lib/scripts/routeErrors';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params }) => withRouteErrors(async () => {
     const [events, placeResult] = await Promise.all([
         apiFetchJson<Event[]>(`/event/getFromId/${params.eventId}`, { method: 'GET' }, fetch),
         apiFetchJson<{ data: Place[] }>('/place', { method: 'GET' }, fetch)
@@ -19,4 +20,4 @@ export const load: PageLoad = async ({ fetch, params }) => {
         event,
         places: placeResult.data
     };
-};
+});

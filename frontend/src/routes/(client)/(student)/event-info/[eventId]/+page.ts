@@ -3,8 +3,9 @@ import { getSeatMap } from '$lib/scripts/booking';
 import { apiFetchJson } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
 import type { PageLoad } from './$types';
+import { withRouteErrors } from '$lib/scripts/routeErrors';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params }) => withRouteErrors(async () => {
   const events = await apiFetchJson<Event[]>(
     `/event/getFromId/${params.eventId}`,
     { method: 'GET' },
@@ -15,4 +16,4 @@ export const load: PageLoad = async ({ fetch, params }) => {
 
   const seatMap = await getSeatMap(event.eventId, fetch);
   return { event, existingReservation: seatMap.myReservation };
-};
+});

@@ -4,8 +4,9 @@ import type { PageLoad } from './$types';
 import type { Event } from '$lib/type/event';
 import { getSeatMap } from '$lib/scripts/booking';
 import { apiFetch, apiFetchJson } from '$lib/scripts/api';
+import { requireSuccessfulResponse, withRouteErrors } from '$lib/scripts/routeErrors';
 
-export const load: PageLoad = async ({ params, fetch }) => {
+export const load: PageLoad = async ({ params, fetch }) => withRouteErrors(async () => {
     const [events, seatMap] = await Promise.all([
         apiFetchJson<Event[]>(`/event/getFromId/${params.eventId}`, { method: 'GET' }, fetch),
         getSeatMap(params.eventId, fetch)
@@ -16,10 +17,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
     const response = await apiFetch(`/event/layout?eventId=${encodeURIComponent(params.eventId)}`, {
         method: 'GET'
     }, fetch);
-    if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `ไม่สามารถโหลดแผนผังที่นั่งได้ (${response.status})`);
-    }
+    await requireSuccessfulResponse(response, `ไม่สามารถโหลดแผนผังที่นั่งได้ (${response.status})`);
     const layoutData = await response.arrayBuffer();
     let seatState = new ZoneEditorState(event.place.placeId, params.eventId);
     seatState.loadFromMessagePack(layoutData);
@@ -28,4 +26,4 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		seatState,
         seatMap
 	};
-};
+});

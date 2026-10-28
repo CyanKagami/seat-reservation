@@ -3,8 +3,9 @@ import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import { apiFetchJson } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
+import { withRouteErrors } from '$lib/scripts/routeErrors';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params }) => withRouteErrors(async () => {
     const events = await apiFetchJson<Event[]>(`/event/getFromId/${params.eventId}`, {
         method: 'GET'
     }, fetch);
@@ -20,4 +21,4 @@ export const load: PageLoad = async ({ fetch, params }) => {
             picture: event.picture ?? null
         }
     };
-};
+});

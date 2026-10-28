@@ -1,9 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { apiFetchJson } from '$lib/scripts/api';
+import { withRouteErrors } from '$lib/scripts/routeErrors';
 import type { User } from '$lib/type/user';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, url }) => {
+export const load: PageLoad = async ({ fetch, url }) => withRouteErrors(async () => {
   const requestedPage = Number(url.searchParams.get('page') ?? '1');
   const currentPage = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   let cursorStack: (string | null)[] = [null];
@@ -34,4 +35,4 @@ export const load: PageLoad = async ({ fetch, url }) => {
     currentPage,
     cursorStack
   };
-};
+});

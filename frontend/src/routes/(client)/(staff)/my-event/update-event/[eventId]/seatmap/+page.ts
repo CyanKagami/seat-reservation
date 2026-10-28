@@ -2,8 +2,9 @@ import { error } from '@sveltejs/kit';
 import { apiFetch, apiFetchJson } from '$lib/scripts/api';
 import type { Event } from '$lib/type/event';
 import type { PageLoad } from './$types';
+import { requireSuccessfulResponse, withRouteErrors } from '$lib/scripts/routeErrors';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ fetch, params }) => withRouteErrors(async () => {
   const events = await apiFetchJson<Event[]>(
     `/event/getFromId/${params.eventId}`,
     { method: 'GET' },
@@ -15,10 +16,7 @@ export const load: PageLoad = async ({ fetch, params }) => {
   const response = await apiFetch(`/event/layout?eventId=${encodeURIComponent(params.eventId)}`, {
     method: 'GET'
   }, fetch);
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `ไม่สามารถโหลดแผนผังที่นั่งได้ (${response.status})`);
-  }
+  await requireSuccessfulResponse(response, `ไม่สามารถโหลดแผนผังที่นั่งได้ (${response.status})`);
 
   return { place: event.place, layoutData: await response.arrayBuffer() };
-};
+});
