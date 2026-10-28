@@ -11,6 +11,22 @@
     const zones = $derived(
         Object.entries(data.zoneData).filter(([, zone]) => zone.capacity && zone.id !== "zone-unavailable"),
     );
+    const reservations = $derived(
+        [...data.reservations].sort((a, b) =>
+            (b.reservedAt ?? '').localeCompare(a.reservedAt ?? ''),
+        ),
+    );
+
+    function formatReservationDate(value?: string) {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '-';
+        return new Intl.DateTimeFormat('th-TH', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+            timeZone: 'Asia/Bangkok'
+        }).format(date);
+    }
 
 </script>
 <div class="mx-auto flex w-full max-w-6xl flex-col px-4 py-6 sm:px-6 sm:py-8">
@@ -71,16 +87,16 @@
                 <caption class="sr-only">สรุปจำนวนที่นั่ง ความจุ การจอง และที่นั่งคงเหลือ แยกตามโซน</caption>
                 <thead class="bg-secondary text-white">
                     <tr>
-                        <th rowspan="2" scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">โซนที่นั่ง</th>
-                        <th rowspan="2" scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 text-right font-semibold sm:px-5">ความจุที่นั่ง</th>
-                        <th colspan="2" scope="colgroup" class="whitespace-nowrap border border-border-strong px-3 py-4 text-center font-semibold sm:px-5">จองแล้ว</th>
-                        <th colspan="2" scope="colgroup" class="whitespace-nowrap border border-border-strong px-3 py-4 text-center font-semibold sm:px-5">คงเหลือ</th>
+                        <th rowspan="2" scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 text-lg font-semibold sm:px-5">โซนที่นั่ง</th>
+                        <th rowspan="2" scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 text-right text-lg font-semibold sm:px-5">ความจุที่นั่ง</th>
+                        <th colspan="2" scope="colgroup" class="whitespace-nowrap border border-border-strong px-3 py-4 text-center text-lg font-semibold sm:px-5">จองแล้ว</th>
+                        <th colspan="2" scope="colgroup" class="whitespace-nowrap border border-border-strong px-3 py-4 text-center text-lg font-semibold sm:px-5">คงเหลือ</th>
                     </tr>
                     <tr>
-                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-xs font-medium sm:px-5">จำนวน</th>
-                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-xs font-medium sm:px-5">เปอร์เซ็นต์</th>
-                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-xs font-medium sm:px-5">จำนวน</th>
-                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-xs font-medium sm:px-5">เปอร์เซ็นต์</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-sm font-medium sm:px-5">จำนวน</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-sm font-medium sm:px-5">เปอร์เซ็นต์</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-sm font-medium sm:px-5">จำนวน</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-3 text-right text-sm font-medium sm:px-5">เปอร์เซ็นต์</th>
                     </tr>
                 </thead>
                 <tbody class="text-dark-muted">
@@ -109,6 +125,54 @@
                         <td class="whitespace-nowrap border border-border-strong px-3 py-4 text-right tabular-nums sm:px-5">{data.totalCapacity ? `${(data.remainingCapacity / data.totalCapacity * 100).toFixed(2)}%` : '-'}</td>
                     </tr>
                 </tfoot>
+            </table>
+        </div>
+    </section>
+
+    <section class="mt-8 w-full overflow-hidden rounded-2xl border border-border-subtle bg-white shadow-xs sm:mt-10">
+        <div class="border-b border-border-strong bg-secondary px-4 py-4 text-white sm:px-5">
+            <h2 class="text-lg font-semibold">รายชื่อผู้ลงทะเบียน</h2>
+            <p class="mt-1 text-sm text-white/80">แสดงที่นั่ง สถานะ และเวลาที่ทำรายการจอง</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[52rem] border-collapse border border-border-strong text-left text-sm">
+                <caption class="sr-only">รายชื่อผู้จองที่นั่ง พร้อมโซน หมายเลขที่นั่ง สถานะ และวันที่จอง</caption>
+                <thead class="bg-secondary text-white">
+                    <tr>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">ผู้ลงทะเบียน</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">โซนที่นั่ง</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">รหัสที่นั่ง</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">สถานะ</th>
+                        <th scope="col" class="whitespace-nowrap border border-border-strong px-3 py-4 font-semibold sm:px-5">วันที่จอง</th>
+                    </tr>
+                </thead>
+                <tbody class="text-dark-muted">
+                    {#each reservations as reservation (reservation.seatId)}
+                        {@const displayName = reservation.user?.name || reservation.user?.email || reservation.email || reservation.googleId || 'ไม่ทราบผู้ใช้'}
+                        <tr class="transition-colors odd:bg-white even:bg-surface-base/60 hover:bg-secondary-subtle/40">
+                            <th scope="row" class="border border-border-strong px-3 py-4 font-semibold text-dark sm:px-5">
+                                <span class="block min-w-0 max-w-64 truncate">{displayName}</span>
+                                {#if reservation.user?.name && reservation.user.email}
+                                    <span class="mt-1 block max-w-64 truncate text-xs font-normal text-dark-soft">{reservation.user.email}</span>
+                                {/if}
+                            </th>
+                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 sm:px-5">{reservation.zone || '-'}</td>
+                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 font-medium text-dark tabular-nums sm:px-5">{reservation.seat || reservation.seatId}</td>
+                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 sm:px-5">
+                                <span class="inline-flex rounded-full border border-border-strong bg-surface-subtle px-2.5 py-1 text-xs font-semibold text-dark">
+                                    {reservation.status === 'checked-in' ? 'เช็กอินแล้ว' : reservation.status === 'reserved' ? 'จองแล้ว' : 'ไม่ทราบสถานะ'}
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 tabular-nums sm:px-5">
+                                <time datetime={reservation.reservedAt}>{formatReservationDate(reservation.reservedAt)}</time>
+                            </td>
+                        </tr>
+                    {:else}
+                        <tr>
+                            <td colspan="5" class="border border-border-strong px-3 py-12 text-center text-sm text-dark-soft sm:px-5">ยังไม่มีผู้ลงทะเบียน</td>
+                        </tr>
+                    {/each}
+                </tbody>
             </table>
         </div>
     </section>

@@ -190,17 +190,8 @@ export async function fetchEventFromHost(creatorId) {
 }
 
 export async function fetchEventFromEventId(eventId) {
-  const paginatorConfig = { client: docClient, pageSize: 25 };
-  const scanParams = {
-    TableName: 'events',
-    FilterExpression: 'eventId = :eventId',
-    ExpressionAttributeValues: { ':eventId': eventId }
-  };
-  const allItems = [];
-  for await (const page of paginateScan(paginatorConfig, scanParams)) {
-    if (page.Items) allItems.push(...page.Items);
-  }
-  return allItems;
+  const event = await fetchData('events', { eventId });
+  return event ? [event] : [];
 }
 
 export async function updateAllAttributes(tableName, primaryKey, attributesToUpdate) {

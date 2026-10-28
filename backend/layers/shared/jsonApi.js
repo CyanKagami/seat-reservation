@@ -1,6 +1,8 @@
 export function normalizeJsonApiResponse(req, res, next) {
   const sendJson = res.json.bind(res);
   res.json = (payload) => {
+    res.setHeader('Cache-Control', 'no-store');
+
     if (res.statusCode >= 400) {
       const error =
         typeof payload?.error === 'string'

@@ -14,6 +14,7 @@ import {
   updateAllAttributes,
   deleteItem,
   deleteFile,
+  deleteReservationsForEvent,
   fetchEventFromEventId,
   fetchEventFromHost,
   requireRole,
@@ -157,7 +158,7 @@ router.get('/layout', requireAuth, async (req, res) => {
 });
 
 // PUT /event/layout — upload/replace an event-specific layout
-router.put('/layout', requireRole('admin'), upload.single('layoutFile'), async (req, res) => {
+router.put('/layout', requireRole('admin', 'organizer'), upload.single('layoutFile'), async (req, res) => {
   const { eventId } = req.body;
   try {
     const layoutURL = await addFile('layouts/event', `${eventId}.msgpack`, req.file.buffer);
@@ -255,6 +256,7 @@ router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
   if (!eventId) return res.status(400).json({ error: 'กรุณาระบุรหัสกิจกรรม' });
   try {
     await deleteItem('events', { eventId });
+    await deleteReservationsForEvent(eventId);
     await Promise.all([
       deleteFile('pictures/event', `${eventId}.webp`),
       deleteFile('pictures/event', eventId)

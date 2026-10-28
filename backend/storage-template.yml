@@ -11,6 +11,10 @@ Resources:
         IgnorePublicAcls: true
         BlockPublicPolicy: false
         RestrictPublicBuckets: false
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
   KSeatS3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -63,18 +67,6 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
-  LocationsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: locations
-      AttributeDefinitions:
-        - AttributeName: locationId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: locationId
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
-
   ReservationTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -103,6 +95,10 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -124,6 +120,10 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
 Outputs:
   KSeatS3BucketName:

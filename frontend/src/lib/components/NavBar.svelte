@@ -56,18 +56,19 @@
 
             {#if user}
                 {#if user.role === 'admin' || user.role === 'organizer'}
-                    <a 
-                        href="/my-event" 
-                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
-                    >
-                        กิจกรรมที่จัด
-                    </a>
                     <a
                         href="/reserved-event"
                         class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
                     >
                         ที่นั่งของฉัน
                     </a>
+                    <a 
+                        href="/my-event" 
+                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                    >
+                        กิจกรรมที่จัด
+                    </a>
+
                 {:else}
                     <a 
                         href="/reserved-event" 
@@ -181,12 +182,13 @@
         <nav aria-label="เมนูนำทาง" class="md:hidden absolute left-0 right-0 top-full border-b border-border-subtle bg-white px-4 py-3 shadow-lg">
             <div class="mx-auto flex max-w-7xl flex-col gap-1">
                 <a href="/" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath === '/' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">กิจกรรมทั้งหมด</a>
-                {#if user && (user.role === 'admin' || user.role === 'organizer')}
-                    <a href="/my-event" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">กิจกรรมที่จัด</a>
-                {/if}
                 {#if user}
                     <a href="/reserved-event" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">ที่นั่งของฉัน</a>
                 {/if}
+                {#if user && (user.role === 'admin' || user.role === 'organizer')}
+                    <a href="/my-event" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">กิจกรรมที่จัด</a>
+                {/if}
+                
             </div>
         </nav>
     {/if}

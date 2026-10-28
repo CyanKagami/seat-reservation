@@ -1,16 +1,20 @@
 import type { PageLoad } from './$types';
-import { getReservationStatistic } from '$lib/scripts/booking';
+import { getReservationStatistic, getSeatMap } from '$lib/scripts/booking';
 
 export const load: PageLoad = async ({ fetch, params, depends }) => {
-    depends('change:seatmap')
+    depends('change:seatmap');
     try {
-        let result = await getReservationStatistic(params.eventId, fetch);
-        return { ...result, loadError: false };
+        const [result, seatMap] = await Promise.all([
+            getReservationStatistic(params.eventId, fetch),
+            getSeatMap(params.eventId, fetch)
+        ]);
+        return { ...result, reservations: seatMap.reservations, loadError: false };
     }
-    catch (err) {
+    catch {
         return {
             loadError: true,
             zoneData: {},
+            reservations: [],
             totalReservation:0,
             totalCapacity:0,
             remainingCapacity:0,
@@ -21,5 +25,4 @@ export const load: PageLoad = async ({ fetch, params, depends }) => {
             }
         };
     }
-    
 };

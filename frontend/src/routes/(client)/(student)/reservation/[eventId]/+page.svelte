@@ -95,9 +95,7 @@
       try {
         let { reservation } = await reserveSeat(data.event.eventId, seatId, zone);
         allSeat.push(reservation.seatId);
-        alertModal.success("การจองสำเร็จ", "คุณได้ทำการจองที่นั่งเรียบร้อยแล้ว", () => {
-          goto(`/event-info/${data.event.eventId}`);
-        });
+        alertModal.success("การจองสำเร็จ", "คุณได้ทำการจองที่นั่งเรียบร้อยแล้ว", () => {});
       } catch (err) {
         if (err instanceof ApiError) {
           alertModal.failure("การจองล้มเหลว", err.message, () => {

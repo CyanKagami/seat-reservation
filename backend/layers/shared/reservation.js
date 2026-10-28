@@ -4,6 +4,7 @@
 // and bookingErrorResponse/checkInErrorResponse return { status, body } for the router to send.
 import {
   BatchGetCommand,
+  BatchWriteCommand,
   GetCommand,
   QueryCommand,
   ScanCommand,
@@ -124,6 +125,13 @@ export async function reserveSeat(eventId, seatId, user) {
     await docClient.send(
       new TransactWriteCommand({
         TransactItems: [
+          {
+            ConditionCheck: {
+              TableName: 'events',
+              Key: { eventId },
+              ConditionExpression: 'attribute_exists(eventId)'
+            }
+          },
           { Put: { TableName: TABLE, Item: seat, ConditionExpression: 'attribute_not_exists(seatId)' } },
           { Put: { TableName: TABLE, Item: slot, ConditionExpression: 'attribute_not_exists(seatId)' } }
         ]
@@ -132,11 +140,14 @@ export async function reserveSeat(eventId, seatId, user) {
   } catch (error) {
     if (error.name === 'TransactionCanceledException') {
       const reasons = error.CancellationReasons ?? [];
-      if (reasons[0]?.Code === 'ConditionalCheckFailed') {
+      if (reasons[1]?.Code === 'ConditionalCheckFailed') {
         throw new BookingError('SEAT_TAKEN', 'ที่นั่งที่ท่านเลือกถูกจองไว้แล้ว');
       }
-      if (reasons[1]?.Code === 'ConditionalCheckFailed') {
+      if (reasons[2]?.Code === 'ConditionalCheckFailed') {
         throw new BookingError('ALREADY_BOOKED', 'ท่านมีที่นั่งอยู่แล้วในกิจกรรมนี้');
+      }
+      if (reasons[0]?.Code === 'ConditionalCheckFailed') {
+        throw new BookingError('NOT_FOUND', 'ไม่พบกิจกรรม');
       }
     }
     throw error;
@@ -212,6 +223,59 @@ export async function listReservations(eventId) {
 
   // user slots have no `status`
   return items.filter((i) => i.status !== undefined);
+}
+
+export async function deleteReservationsForEvent(eventId) {
+  let startKey;
+  let deletedCount = 0;
+
+  do {
+    const response = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: 'eventId = :eventId',
+        ExpressionAttributeValues: { ':eventId': eventId },
+        ProjectionExpression: 'eventId, seatId',
+        ConsistentRead: true,
+        ExclusiveStartKey: startKey
+      })
+    );
+
+    const keys = (response.Items ?? []).map(({ eventId: reservationEventId, seatId }) => ({
+      eventId: reservationEventId,
+      seatId
+    }));
+
+    for (let offset = 0; offset < keys.length; offset += 25) {
+      let pending = keys.slice(offset, offset + 25);
+
+      for (let attempt = 0; pending.length > 0 && attempt < 5; attempt++) {
+        const result = await docClient.send(
+          new BatchWriteCommand({
+            RequestItems: {
+              [TABLE]: pending.map((Key) => ({ DeleteRequest: { Key } }))
+            }
+          })
+        );
+        pending = (result.UnprocessedItems?.[TABLE] ?? [])
+          .map(({ DeleteRequest }) => DeleteRequest.Key);
+
+        if (pending.length > 0 && attempt < 4) {
+          await new Promise((resolve) => setTimeout(resolve, 50 * 2 ** attempt));
+        }
+      }
+
+      if (pending.length > 0) {
+        throw new Error(`Failed to delete all reservations for event '${eventId}' after retries`);
+      }
+
+      deletedCount += Math.min(25, keys.length - offset);
+    }
+
+    startKey = response.LastEvaluatedKey;
+  } while (startKey);
+
+  return deletedCount;
 }
 
 export async function listUserReservations(email, googleId) {

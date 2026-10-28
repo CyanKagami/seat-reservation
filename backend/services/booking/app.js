@@ -27,6 +27,7 @@ import {
   withSeatParts,
   isValidSeatId,
   classifyIdentifier,
+  isEventCheckInDay,
   FACULTY_MAP,
   requestLogger,
   requestLogContext,
@@ -54,17 +55,6 @@ function registrationOpen(ev, now = new Date()) {
   if (end && now > new Date(end)) return false;
   return true;
 }
-
-// Event date window helper (for check-in).
-function registrationOngoing(ev, now = new Date()) {
-  const start = ev.date?.start;
-  const end = ev.date?.end;
-  if (start && now < new Date(start)) return false;
-  if (end && now > new Date(end)) return false;
-  return true;
-}
-
-
 
 function parseKmitlEmail(email) {
   if (typeof email !== 'string') return { isValid: false, error: 'ข้อมูลต้องเป็นข้อความ' };
@@ -121,7 +111,9 @@ router.post('/check-in', requireRole('organizer', 'admin'), async (req, res) => 
   try {
     const ev = await fetchData('events', { eventId: input.eventId });
     if (!ev) return res.status(404).json({ error: 'ไม่พบกิจกรรม' });
-    if (!registrationOngoing(ev)) return res.status(403).json({ error: 'กิจกรรมนี้ไม่ได้กำลังดำเนินการอยู่' });
+    if (!isEventCheckInDay(ev)) {
+      return res.status(403).json({ error: 'เช็กชื่อได้เฉพาะวันที่จัดกิจกรรม' });
+    }
 
     const reservation = await (input.identifierType === 'SeatId'
       ? checkInWithSeatId(ev.eventId, input.identifier)
