@@ -210,19 +210,15 @@
 			<span>ว่าง</span>
 		</div>
 		<div class="flex items-center gap-1.5">
-			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-indigo-300 border border-indigo-600 ring-1 ring-indigo-400"></span>
+			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-indigo-500 border border-indigo-600 ring-2 ring-indigo-400"></span>
 			<span>กำลังเลือก</span>
-		</div>
-		<div class="flex items-center gap-1.5">
-			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-emerald-500 border border-emerald-600 ring-1 ring-emerald-400"></span>
-			<span>ที่นั่งของคุณ</span>
 		</div>
 		<div class="flex items-center gap-1.5">
 			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-stone-700 border border-stone-900"></span>
 			<span>ถูกจองแล้ว</span>
 		</div>
 		<div class="flex items-center gap-1.5">
-			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-slate-200 border border-slate-300 opacity-40"></span>
+			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-slate-200 border border-slate-300 opacity-25"></span>
 			<span>นอกโซนที่เลือก</span>
 		</div>
 	</div>

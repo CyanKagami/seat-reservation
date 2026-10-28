@@ -18,7 +18,9 @@
   let zone = $state("");
   let seat = $state("");
   let isSubmitting = $state(false);
+  let hasLoadedSeatMap = $state(false);
   let reservationMap: SeatMap = $state({ myReservation: null, reservations: [] });
+  let hasExistingReservation = $derived(reservationMap.myReservation !== null);
 
   let reservedId: Record<string, Set<string>> = $derived.by(() => {
     let group = Object.groupBy(reservationMap.reservations, (s) => s.zone);
@@ -48,12 +50,36 @@
   });
 
   let selectedSeats = $state<CanvasObject[]>([]);
+  let existingReservationSeat = $derived.by(() => {
+    const reservation = reservationMap.myReservation;
+    if (!reservation) return null;
+    const reservedSeat = data.seatState.objects.find(
+      (object) =>
+        object.type === "seat" &&
+        object.metadata?.zone === reservation.zone &&
+        getSeatId(object) === reservation.seat
+    );
+    return {
+      id: reservedSeat?.id ?? `${reservation.zone}-${reservation.seat}`,
+      zone: reservation.zone,
+      seatId: reservation.seat,
+      seatTypeKey: reservedSeat?.metadata?.seatType ?? "standard"
+    };
+  });
+  let confirmationSeats = $derived(selectedSeats.map((selectedSeat) => ({
+      id: selectedSeat.id,
+      zone,
+      seatId: getSeatId(selectedSeat),
+      seatTypeKey: selectedSeat.metadata?.seatType ?? "standard"
+    })));
 
   async function pollForSeats() {
     try {
       reservationMap = await getSeatMap(data.event.eventId);
     } catch {
       // Seat availability refreshes periodically; avoid interrupting the user with repeated dialogs.
+    } finally {
+      hasLoadedSeatMap = true;
     }
   }
 
@@ -97,20 +123,79 @@
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex flex-col items-center">
   <!-- Event Header Title -->
-  <div class="text-center max-w-2xl">
-    <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-pale-soft text-dark-secondary border border-pale inline-block mb-2">
-      ระบบจองที่นั่งออนไลน์
-    </span>
+  <div class="text-center max-w-2xl mb-20">
     <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight">
       {data.event.name}
     </h1>
   </div>
 
-  <!-- Interactive Stepper -->
-  <ProgressBar {status} />
+  {#if hasLoadedSeatMap && !hasExistingReservation}
+    <!-- Interactive Stepper -->
+    <ProgressBar {status} />
+  {/if}
 
+  {#if !hasLoadedSeatMap}
+    <div class="w-full max-w-xl rounded-2xl border border-border-subtle bg-white p-8 text-center shadow-xs">
+      <span class="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-border-subtle border-t-accent"></span>
+      <p class="mt-3 text-sm text-dark-soft">กำลังตรวจสอบข้อมูลการจอง...</p>
+    </div>
+  {:else if hasExistingReservation}
+    <div class="w-full max-w-xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
+      <div class="text-center pb-4 border-b border-border-subtle">
+        <h2 class="text-xl font-bold text-dark">คุณได้จองที่นั่งแล้ว</h2>
+        <p class="text-xs text-dark-soft mt-1">รายละเอียดที่นั่งที่คุณจองไว้</p>
+      </div>
+
+      <div class="bg-surface-subtle rounded-xl p-5 space-y-3.5 text-sm">
+        <div class="flex items-start justify-between gap-4">
+          <span class="text-dark-soft shrink-0">กิจกรรม</span>
+          <span class="font-semibold text-dark text-right">{data.event.name}</span>
+        </div>
+        <div class="flex items-start justify-between gap-4">
+          <span class="text-dark-soft shrink-0">วันและเวลากิจกรรม</span>
+          <span class="font-medium text-dark text-right">{formatThaiDateTimeShort(new Date(data.event.date.start), new Date(data.event.date.end))}</span>
+        </div>
+
+        {#if existingReservationSeat}
+          {@const seatTypeKey = existingReservationSeat.seatTypeKey}
+          {@const seatType = data.seatState.seatTypes[seatTypeKey] ?? {
+            name: seatTypeKey,
+            color: "#e2e8f0"
+          }}
+          <div class="pt-3 border-t border-border-subtle space-y-3">
+            <span class="text-dark-soft font-medium">ที่นั่งที่เลือก</span>
+            <div class="flex items-center gap-3 rounded-lg border border-border-subtle bg-white p-3">
+              {#if seatType.picture}
+                <img
+                  src={seatType.picture}
+                  alt={`รูปภาพประเภทที่นั่ง ${seatType.name}`}
+                  class="h-14 w-14 shrink-0 rounded-md border border-border-subtle object-cover"
+                />
+              {/if}
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-secondary">
+                  โซน {existingReservationSeat.zone} · ที่นั่ง {existingReservationSeat.seatId}
+                </p>
+                <p class="mt-0.5 text-sm font-semibold text-dark">{seatType.name}</p>
+                {#if seatType.description}
+                  <p class="mt-1 text-xs text-dark-soft">{seatType.description}</p>
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <button
+        type="button"
+        onclick={() => goto(`/event-info/${data.event.eventId}`)}
+        class="w-full py-3 px-4 rounded-xl bg-surface-subtle text-dark font-semibold text-sm hover:bg-border-subtle transition-colors cursor-pointer"
+      >
+        กลับไปหน้ากิจกรรม
+      </button>
+    </div>
   <!-- STEP 1: ZONE PICKER -->
-  {#if status === "zone"}
+  {:else if status === "zone"}
     <div class="w-full max-w-4xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
       <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
         <div>
@@ -180,7 +265,9 @@
     <div class="w-full max-w-xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
       <div class="text-center pb-4 border-b border-border-subtle">
         <h2 class="text-xl font-bold text-dark">สรุปข้อมูลการจองที่นั่ง</h2>
-        <p class="text-xs text-dark-soft mt-1">กรุณาตรวจสอบข้อมูลก่อนกดยืนยันการจอง</p>
+        <p class="text-xs text-dark-soft mt-1">
+          กรุณาตรวจสอบข้อมูลก่อนกดยืนยันการจอง
+        </p>
       </div>
 
       <div class="bg-surface-subtle rounded-xl p-5 space-y-3.5 text-sm">
@@ -204,8 +291,8 @@
         <div class="pt-3 border-t border-border-subtle space-y-3">
           <span class="text-dark-soft font-medium">ที่นั่งที่เลือก</span>
           <div class="space-y-2">
-            {#each selectedSeats as selectedSeat (selectedSeat.id)}
-              {@const seatTypeKey = selectedSeat.metadata?.seatType ?? "standard"}
+            {#each confirmationSeats as selectedSeat (selectedSeat.id)}
+              {@const seatTypeKey = selectedSeat.seatTypeKey}
               {@const seatType = data.seatState.seatTypes[seatTypeKey] ?? {
                 name: seatTypeKey,
                 color: "#e2e8f0"
@@ -220,7 +307,7 @@
                 {/if}
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-bold text-secondary">
-                    โซน {zone} · ที่นั่ง {getSeatId(selectedSeat)}
+                    โซน {selectedSeat.zone} · ที่นั่ง {selectedSeat.seatId}
                   </p>
                   <p class="mt-0.5 text-sm font-semibold text-dark">{seatType.name}</p>
                   {#if seatType.description}
@@ -235,16 +322,16 @@
 
       <!-- Action Buttons -->
       <div class="flex flex-col sm:flex-row gap-3 pt-2">
-        <button 
+        <button
           type="button"
           onclick={() => status = "seat"}
           class="flex-1 py-3 px-4 rounded-xl border border-border-strong text-dark font-semibold text-sm hover:bg-surface-subtle transition-colors cursor-pointer"
         >
           กลับไปแก้ไข
         </button>
-        <button 
+        <button
           type="button"
-          onclick={handleBooking} 
+          onclick={handleBooking}
           disabled={isSubmitting}
           class="flex-1 py-3 px-4 rounded-xl bg-accent hover:bg-accent-hover text-white font-bold text-sm transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
         >

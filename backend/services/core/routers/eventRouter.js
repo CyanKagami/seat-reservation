@@ -128,7 +128,7 @@ router.delete('/published', requireRole('admin', 'organizer'), async (req, res) 
 });
 
 // GET /event/layout?eventId= — event-specific layout, falls back to place layout
-router.get('/layout', requireRole('admin', 'organizer'), async (req, res) => {
+router.get('/layout', requireAuth, async (req, res) => {
   const { eventId } = req.query;
   if (!eventId) return res.status(400).send();
 
