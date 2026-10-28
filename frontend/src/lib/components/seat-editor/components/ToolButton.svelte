@@ -2,10 +2,11 @@
 	import type { ToolConfig } from '$lib/components/seat-editor/config/tools';
 	import type { ToolType } from '$lib/components/seat-editor/types';
 
-	let { tool, activeTool, onSelect }: {
+	let { tool, activeTool, onSelect, disabled = false }: {
 		tool: ToolConfig;
 		activeTool: ToolType;
 		onSelect: (id: ToolType) => void;
+		disabled?: boolean;
 	} = $props();
 
 	const isActive = $derived(activeTool === tool.id);
@@ -13,6 +14,7 @@
 
 <button
 	onclick={() => onSelect(tool.id)}
+	disabled={disabled}
 	class="w-8 h-8 border rounded flex items-center justify-center transition-colors relative
 		{isActive 
 			? 'bg-slate-300 border-slate-400 text-slate-900 shadow-inner' 

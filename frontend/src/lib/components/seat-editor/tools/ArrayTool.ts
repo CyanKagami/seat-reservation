@@ -66,9 +66,8 @@ export class ArrayToolStrategy extends BaseToolStrategy {
 
 		const points = this.calculateArraySeats(state.arrayStart, state.arrayEnd, state);
 		if (points.length > 0) {
-			const batch = points.map((pt, idx) => 
-				this.createSeatObject(state.objects.length + idx + 1, pt.x, pt.y)
-			);
+			const ids = state.createObjectIds('seat', points.length);
+			const batch = points.map((pt, index) => this.createSeatObject(ids[index], pt.x, pt.y));
 
 			state.objects = [...state.objects, ...batch];
 			state.selectedIds = new Set(batch.map(b => b.id));

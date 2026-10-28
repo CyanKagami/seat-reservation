@@ -35,9 +35,9 @@ export abstract class BaseToolStrategy {
 		return screenToCanvas(screenPt, panX, panY, scale);
 	}
 
-	protected createSeatObject(id: number, x: number, y: number) {
+	protected createSeatObject(id: string, x: number, y: number) {
 		return {
-			id: `seat_${id}`,
+			id,
 			type: 'seat' as const,
 			x,
 			y,

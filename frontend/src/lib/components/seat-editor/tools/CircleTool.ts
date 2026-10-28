@@ -63,7 +63,7 @@ export class CircleToolStrategy extends BaseToolStrategy {
 
 		if (bounds.width > 5 && bounds.height > 5) {
 			const newCircle = {
-				id: `env_circle_${state.objects.length + 1}`,
+				id: state.createObjectId('env_circle'),
 				type: 'env-circle' as const,
 				x: bounds.x,
 				y: bounds.y,

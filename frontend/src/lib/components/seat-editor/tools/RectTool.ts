@@ -63,7 +63,7 @@ export class RectToolStrategy extends BaseToolStrategy {
 
 		if (bounds.width > 5 && bounds.height > 5) {
 			const newEnv:CanvasObject = {
-				id: `env_${state.objects.length + 1}`,
+				id: state.createObjectId('env'),
 				type: 'env-rect' as const,
 				x: bounds.x,
 				y: bounds.y,

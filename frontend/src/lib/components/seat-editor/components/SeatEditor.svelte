@@ -16,14 +16,6 @@
 	let SeatTypeColor = $state('#ffffff');
 	let seatTypeImage = $state<string | null>(null);
 
-	$effect(() => {
-		if (isSeatTypePopupOpen) {
-			seatState.isUneditable = true; // Disable canvas interactions when the popup is open
-		} else {
-			seatState.isUneditable = false; // Enable canvas interactions when the popup is closed
-		}
-	});
-
 	function handleOpenCreatePopup() {
 		editingSeatType = null;
 		SeatTypeName = '';
@@ -31,6 +23,7 @@
 		SeatTypeColor = '#ffffff';
 		seatTypeImage = null;
 		isSeatTypePopupOpen = true;
+		seatState.isSeatTypePopupOpen = true;
 	}
 
 	function handleOpenEditPopup(seatType: SeatType) {
@@ -40,6 +33,7 @@
 		SeatTypeColor = seatType.color || '#ffffff';
 		seatTypeImage = seatType.picture || null;
 		isSeatTypePopupOpen = true;
+		seatState.isSeatTypePopupOpen = true;
 	}
 
 	function handleImageChange(event: Event) {
@@ -65,6 +59,7 @@
 		SeatTypeColor = '#ffffff';
 		seatTypeImage = null;
 		isSeatTypePopupOpen = false;
+		seatState.isSeatTypePopupOpen = false;
 	}
 
 	function handleSaveSeatType() {
@@ -109,7 +104,14 @@
 	});
 </script>
 
-<svelte:body onkeydown={seatState.handleKeyDown} onkeyup={seatState.handleKeyUp} onblur={seatState.handleWindowBlur} />
+<svelte:window
+	onkeydown={seatState.handleKeyDown}
+	onkeyup={seatState.handleKeyUp}
+	onpointermove={seatState.handleMouseMove}
+	onpointerup={seatState.handleMouseUp}
+	onpointercancel={seatState.handlePointerCancel}
+	onblur={seatState.handleWindowBlur}
+/>
 
 <div class="fixed inset-0 top-20 flex flex-col bg-[#e8ecef] select-none text-slate-800 font-sans overflow-hidden">
 	<SubHeader state={seatState} {backLink} {place} />

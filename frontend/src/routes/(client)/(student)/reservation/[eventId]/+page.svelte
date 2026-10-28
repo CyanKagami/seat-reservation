@@ -32,6 +32,21 @@
     return newGroup;
   });
 
+  let myReservedId: Record<string, Set<string>> = $derived.by(() => {
+    let group = Object.groupBy(
+      reservationMap.reservations.filter((reservation) => reservation.mine),
+      (reservation) => reservation.zone
+    );
+    let newGroup: Record<string, Set<string>> = {};
+    for (var key in group) {
+      let reservations = group[key];
+      if (reservations) {
+        newGroup[key] = new Set(reservations.map((reservation) => reservation.seat));
+      }
+    }
+    return newGroup;
+  });
+
   let selectedSeats = $state<CanvasObject[]>([]);
 
   async function pollForSeats() {
@@ -146,6 +161,7 @@
           maxSeats={1}
           objects={data.seatState.objects}
           reservedIds={reservedId[zone]}
+          myReservedIds={myReservedId[zone]}
           onBack={() => {
             status = "zone";
           }}

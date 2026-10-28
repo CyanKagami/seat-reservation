@@ -63,4 +63,19 @@ describe('SingleSeatToolStrategy', () => {
 		expect(state.selectedIds.size).toBe(1);
 		expect(state.selectedIds.has(state.objects[0].id)).toBe(true);
 	});
+
+	it('should not reuse an ID after an object is removed', () => {
+		state.objects = [
+			{ id: 'seat_2', type: 'seat', x: 0, y: 0, width: 20, height: 20, metadata: {} }
+		];
+		singleSeatTool.onMouseDown({
+			state,
+			event: {} as MouseEvent,
+			canvasPoint: { x: 50, y: 50 },
+			screenPoint: { x: 50, y: 50 }
+		} as ToolContext);
+
+		expect(state.objects.map((object) => object.id)).toEqual(['seat_2', 'seat_1']);
+		expect(new Set(state.objects.map((object) => object.id)).size).toBe(2);
+	});
 });

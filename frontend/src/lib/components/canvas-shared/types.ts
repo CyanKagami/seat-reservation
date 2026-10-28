@@ -20,6 +20,7 @@ export interface CanvasObject {
 	width: number;
 	height: number;
 	rotation?: number;
+	rotationCenter?: Point;
 	points?: Point[];
 	iconType?: string;
 	label?: string;

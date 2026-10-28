@@ -13,6 +13,7 @@ describe('PolygonToolStrategy', () => {
 			selectedIds: new Set(),
 			isPolygonDrawing: true,
 			polygonPoints: [],
+			createObjectId: () => 'env_poly_1',
 		} as unknown as ToolContext['state'];
 	});
 

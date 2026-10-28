@@ -77,6 +77,7 @@
 						id="seat-char"
 						value={currentCharacteristic}
 						onchange={handleCharacteristicChange}
+						disabled={state.isSaving}
 						class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
 					>
 						{#if !currentCharacteristic}<option value="" disabled>มีหลายค่าเลือกอยู่</option>{/if}
@@ -104,6 +105,7 @@
 							id="shape-color"
 							value={currentColor === 'มีหลายค่าเลือกอยู่' ? '#ffffff': currentColor}
 							oninput={handleColorChange}
+							disabled={state.isSaving}
 							class="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
 						/>
 						<span class="text-xs font-mono text-slate-600 uppercase">{currentColor}</span>

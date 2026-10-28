@@ -85,7 +85,7 @@ export class PolygonToolStrategy extends BaseToolStrategy {
 			}));
 
 			const newPolygon:CanvasObject = {
-				id: `env_poly_${state.objects.length + 1}`,
+				id: state.createObjectId('env_poly'),
 				type: 'env-polygon' as const,
 				x: minX,
 				y: minY,

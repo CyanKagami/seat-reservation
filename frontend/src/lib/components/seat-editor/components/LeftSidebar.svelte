@@ -87,6 +87,7 @@
 	<h2 class="text-xs font-bold text-slate-800">ประเภทที่นั่ง</h2>
 		<button
 			type="button"
+			disabled={seatState.isSaving}
 			class="flex items-center rounded-md bg-accent hover:bg-accent-hover p-1.5 gap-2 text-white cursor-pointer transition-colors shadow-xs"
 			onclick={onOpenCreatePopup}
 		>
@@ -126,6 +127,7 @@
 							<!-- Edit Button -->
 							<button
 								type="button"
+								disabled={seatState.isSaving}
 								title="แก้ไขประเภทที่นั่ง"
 								class="w-4 h-4 hidden group-hover:flex items-center justify-center cursor-pointer text-slate-400 hover:text-indigo-600 rounded transition-colors"
 								onclick={(e) => handleEditSeatType(e, seatType)}
@@ -138,6 +140,7 @@
 							<!-- Delete Button -->
 							<button
 								type="button"
+								disabled={seatState.isSaving}
 								title="ลบประเภทที่นั่ง"
 								class="w-4 h-4 hidden group-hover:flex items-center justify-center cursor-pointer text-slate-400 hover:text-red-500 rounded transition-colors"
 								onclick={(e) => handleRemoveSeatType(e, typeName)}

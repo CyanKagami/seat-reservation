@@ -55,9 +55,8 @@ export class LineToolStrategy extends BaseToolStrategy {
 
 		const points = this.calculateLineSeats(state.lineStart, state.lineEnd, state);
 		if (points.length > 0) {
-			const newBatch = points.map((pt, idx) => 
-				this.createSeatObject(state.objects.length + idx + 1, pt.x, pt.y)
-			);
+			const ids = state.createObjectIds('seat', points.length);
+			const newBatch = points.map((pt, index) => this.createSeatObject(ids[index], pt.x, pt.y));
 
 			state.objects = [...state.objects, ...newBatch];
 			state.selectedIds = new Set(newBatch.map(b => b.id));

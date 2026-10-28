@@ -111,7 +111,6 @@
 							y={centerY}
 							text-anchor="middle"
 							dominant-baseline="central"
-							transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
 							class="font-bold pointer-events-none select-none tracking-tighter {status === 'unavailable' ? 'fill-stone-300' : (textDark ? 'fill-white' : 'fill-slate-800')}"
 							style="font-size: {Math.max(7, Math.min(11, 8.5 * state.scale))}px;"
 						>

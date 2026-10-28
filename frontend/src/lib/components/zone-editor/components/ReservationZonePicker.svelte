@@ -252,7 +252,7 @@
 				id: string;
 				name: string;
 				color: string;
-				reservedCount:number,
+				reservedCount: number;
 				isUnavailableZone?: boolean;
 				isNoZone?: boolean;
 				seats: CanvasObject[];
@@ -284,7 +284,7 @@
 							id: zId,
 							name: obj.metadata?.zone ?? "โซนทั่วไป",
 							color: zone[zId]?.color ?? "#6366f1",
-							reservedCount:isReserved ? 1 : 0,
+							reservedCount: 0,
 							isUnavailableZone: false,
 							seats: []
 						};
@@ -325,6 +325,10 @@
 				seats: g.seats,
 				availableCount: (g.isUnavailableZone || g.isNoZone) ? 0 : g.seats.length - g.reservedCount,
 				totalCount: g.seats.length,
+				reservedSeats: g.seats.filter(
+					(seat) => !g.isUnavailableZone && !g.isNoZone &&
+						(reservedIds[g.id]?.has(getSeatId(seat)) ?? false)
+				),
 				loops,
 				pathData,
 				allPoints
@@ -506,6 +510,31 @@
 					role="button"
 					tabindex="0"
 				/>
+			{/each}
+		</g>
+
+		<!-- LAYER 2.5: Reserved Seats -->
+		<g class="reserved-seats-layer pointer-events-none">
+			{#each zones as zone (zone.id)}
+				{#each zone.reservedSeats as seat (seat.id)}
+					{@const x = seat.x ?? 0}
+					{@const y = seat.y ?? 0}
+					{@const seatWidth = seat.width ?? 28}
+					{@const seatHeight = seat.height ?? 28}
+					{@const centerX = x + seatWidth / 2}
+					{@const centerY = y + seatHeight / 2}
+					<rect
+						x={x}
+						y={y}
+						width={seatWidth}
+						height={seatHeight}
+						rx={1}
+						transform="rotate({seat.rotation ?? 0} {centerX} {centerY})"
+						class="fill-black stroke-black stroke-1"
+					>
+						<title>{zone.name}: ที่นั่ง {getSeatId(seat)} ถูกจองแล้ว</title>
+					</rect>
+				{/each}
 			{/each}
 		</g>
 

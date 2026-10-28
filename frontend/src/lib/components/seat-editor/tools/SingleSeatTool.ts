@@ -9,7 +9,7 @@ export class SingleSeatToolStrategy extends BaseToolStrategy {
 		const posX = Math.max(0, canvasPoint.x - BOX_SIZE / 2);
 		const posY = Math.max(0, canvasPoint.y - BOX_SIZE / 2);
 
-		const newSeat = this.createSeatObject(state.objects.length + 1, posX, posY);
+		const newSeat = this.createSeatObject(state.createObjectId('seat'), posX, posY);
 
 		state.objects = [...state.objects, newSeat];
 		state.selectedIds = new Set([newSeat.id]);

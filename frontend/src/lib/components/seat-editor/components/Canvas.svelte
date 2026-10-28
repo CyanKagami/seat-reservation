@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import type { SeatEditorState } from "../seatState.svelte";
 	import { BOX_SIZE, GRID_SIZE } from "../constants";
+	import { getPolygonRotationCenter } from "../polygonGeometry";
 
 	let { state }: { state: SeatEditorState } = $props();
 
@@ -21,9 +22,8 @@
 	oncontextmenu={state.handleContextMenu}
 	ondragover={state.handleDragOver}
 	ondrop={state.handleDrop}
-	onmousemove={state.handleMouseMove}
-	onmouseup={state.handleMouseUp}
-	onmousedown={state.handleCanvasMouseDown}
+	onpointerdown={state.handleCanvasMouseDown}
+	style="touch-action: none;"
 	class="relative flex-1 w-full h-full bg-[#e5e5e5] select-none outline-none overflow-hidden"
 
 	role="presentation"
@@ -72,7 +72,8 @@
 							{isOverlapping 
 								? (isSelected ? 'fill-red-400 stroke-red-700 ring-2 ring-red-500' : 'fill-red-200 stroke-red-500') 
 								: statusClasses}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
+						onpointerdown={(e) => state.handleObjectMouseDown(obj, e)}
+						onkeydown={(e) => state.handleObjectKeyDown(obj, e)}
 					/>
 
 					<!-- 2. Top Accent Bar (Indicates custom seatType) -->
@@ -103,7 +104,8 @@
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
+						onpointerdown={(e) => state.handleObjectMouseDown(obj, e)}
+						onkeydown={(e) => state.handleObjectKeyDown(obj, e)}
 					/>
 
 				<!-- 2. env-circle -->
@@ -119,27 +121,36 @@
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
+						onpointerdown={(e) => state.handleObjectMouseDown(obj, e)}
+						onkeydown={(e) => state.handleObjectKeyDown(obj, e)}
 					/>
 
 				<!-- 3. env-polygon -->
 				{:else if obj.type === 'env-polygon' && obj.points}
 					{@const svgPoints = obj.points.map(p => `${screenX + p.x * state.scale},${screenY + p.y * state.scale}`).join(' ')}
+					{@const rotationCenter = getPolygonRotationCenter(obj)}
+					{@const centerRelX = rotationCenter.x}
+					{@const centerRelY = rotationCenter.y}
+					{@const centerScreenX = screenX + centerRelX * state.scale}
+					{@const centerScreenY = screenY + centerRelY * state.scale}
 					<polygon 
 						points={svgPoints} 
 						role="button"
 						tabindex="0"
+						transform="rotate({obj.rotation ?? 0}, {centerScreenX}, {centerScreenY})"
 						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 						class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 							{isSelected ? 'stroke-indigo-600 ring-2 ring-indigo-400' : 'stroke-slate-500 hover:opacity-90'}"
-						onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
+						onpointerdown={(e) => state.handleObjectMouseDown(obj, e)}
+						onkeydown={(e) => state.handleObjectKeyDown(obj, e)}
 					/>
 
 				<!-- 4. env-icon-polygon -->
 				{:else if obj.type === 'env-icon-polygon' && obj.points}
 					{@const svgPoints = obj.points.map(p => `${screenX + p.x * state.scale},${screenY + p.y * state.scale}`).join(' ')}
-					{@const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length}
-					{@const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length}
+					{@const rotationCenter = getPolygonRotationCenter(obj)}
+					{@const centerRelX = rotationCenter.x}
+					{@const centerRelY = rotationCenter.y}
 					{@const centerScreenX = screenX + centerRelX * state.scale}
 					{@const centerScreenY = screenY + centerRelY * state.scale}
 
@@ -151,7 +162,8 @@
 							style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
 							class="cursor-move stroke-2 transition-colors pointer-events-auto focus:outline-none
 								{isSelected ? 'stroke-indigo-600' : 'stroke-slate-500 hover:opacity-90'}"
-							onmousedown={(e) => state.handleObjectMouseDown(obj, e)}
+							onpointerdown={(e) => state.handleObjectMouseDown(obj, e)}
+							onkeydown={(e) => state.handleObjectKeyDown(obj, e)}
 						/>
 
 					<!-- Centered Icon & Label Render -->
@@ -203,10 +215,10 @@
 				{@const screenHeight = (maxPointY - minPointY) * state.scale}
 				
 				{@const centerRelX = singleObj.points 
-					? singleObj.points.reduce((a, p) => a + p.x, 0) / singleObj.points.length 
+					? getPolygonRotationCenter(singleObj).x
 					: singleObj.width / 2}
 				{@const centerRelY = singleObj.points 
-					? singleObj.points.reduce((a, p) => a + p.y, 0) / singleObj.points.length 
+					? getPolygonRotationCenter(singleObj).y
 					: singleObj.height / 2}
 				{@const centerX = singleObj.x * state.scale + centerRelX * state.scale + state.panX}
 				{@const centerY = singleObj.y * state.scale + centerRelY * state.scale + state.panY}
@@ -221,7 +233,7 @@
 						height={screenHeight + 8} 
 						class="fill-transparent stroke-indigo-500 stroke-1 pointer-events-auto cursor-move" 
 						style="stroke-dasharray: 4;"
-						onmousedown={state.handleSelectionBoundsMouseDown}
+						onpointerdown={state.handleSelectionBoundsMouseDown}
 					/>
 
 					<line 
@@ -237,7 +249,7 @@
 						cy={handleCenterY} 
 						r={6} 
 						class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing transition-transform pointer-events-auto"
-						onmousedown={state.handleRotateStart}
+						onpointerdown={state.handleRotateStart}
 					/>
 				</g>
 			{:else}
@@ -257,7 +269,7 @@
 					height={screenHeight + 8} 
 					class="fill-transparent stroke-indigo-500 stroke-1 pointer-events-auto cursor-move" 
 					style="stroke-dasharray: 4;"
-					onmousedown={state.handleSelectionBoundsMouseDown}
+					onpointerdown={state.handleSelectionBoundsMouseDown}
 				/>
 
 				<line 
@@ -273,18 +285,19 @@
 					cy={handleCenterY} 
 					r={6} 
 					class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing transition-transform pointer-events-auto"
-					onmousedown={state.handleRotateStart}
+					onpointerdown={state.handleRotateStart}
 				/>
 			{/if}
 		{/if}
 
 		<!-- 3. Top-level Handles Layer (Rendered OVER Selection Bounds) -->
 		{#each state.objects as obj (obj.id)}
-			{#if state.selectedIds.has(obj.id) && obj.type === 'env-icon-polygon' && obj.points}
+			{#if state.selectedIds.has(obj.id) && (obj.type === 'env-icon-polygon' || obj.type === 'env-polygon') && obj.points}
 				{@const screenX = obj.x * state.scale + state.panX}
 				{@const screenY = obj.y * state.scale + state.panY}
-				{@const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length}
-				{@const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length}
+				{@const rotationCenter = getPolygonRotationCenter(obj)}
+				{@const centerRelX = rotationCenter.x}
+				{@const centerRelY = rotationCenter.y}
 				{@const centerScreenX = screenX + centerRelX * state.scale}
 				{@const centerScreenY = screenY + centerRelY * state.scale}
 
@@ -303,7 +316,7 @@
 							cy={my} 
 							r={4 * state.scale} 
 							class="fill-indigo-300 stroke-indigo-600 stroke-1 cursor-pointer opacity-70 hover:opacity-100 pointer-events-auto"
-							onmousedown={(e) => state.addVertexAtMidpoint(obj.id, idx, e)}
+							onpointerdown={(e) => state.addVertexAtMidpoint(obj.id, idx, e)}
 						/>
 
 						<!-- Vertex Corner Handle (Move Point) -->
@@ -312,12 +325,34 @@
 							cy={vy} 
 							r={6 * state.scale} 
 							class="fill-white stroke-indigo-600 stroke-2 cursor-grab active:cursor-grabbing pointer-events-auto"
-							onmousedown={(e) => state.handleVertexMouseDown(obj.id, idx, e)}
+							onpointerdown={(e) => state.handleVertexMouseDown(obj.id, idx, e)}
 						/>
 					{/each}
 				</g>
 			{/if}
 		{/each}
+
+		{#if state.vertexSnapPoint}
+			{@const snapX = state.vertexSnapPoint.x * state.scale + state.panX}
+			{@const snapY = state.vertexSnapPoint.y * state.scale + state.panY}
+			<g class="pointer-events-none" aria-hidden="true">
+				<line
+					x1={snapX - 18}
+					y1={snapY}
+					x2={snapX + 18}
+					y2={snapY}
+					class="stroke-fuchsia-600 stroke-2"
+				/>
+				<line
+					x1={snapX}
+					y1={snapY - 18}
+					x2={snapX}
+					y2={snapY + 18}
+					class="stroke-fuchsia-600 stroke-2"
+				/>
+				<circle cx={snapX} cy={snapY} r="5" class="fill-white stroke-fuchsia-700 stroke-2" />
+			</g>
+		{/if}
 
 		<!-- Marquee Box Selection Preview -->
 		{#if state.isBoxSelecting && state.marqueeRect}

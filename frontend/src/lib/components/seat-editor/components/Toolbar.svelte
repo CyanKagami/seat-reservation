@@ -18,16 +18,20 @@
 		<input 
 			type="number" 
 			bind:value={state.gridWidth} 
+			disabled={state.isUneditable}
 			min={BOX_SIZE * 2}
 			max={3000}
+			onchange={state.commitGridDimensionChange}
 			class="w-12 h-7 px-1 text-center bg-white border border-slate-400 rounded focus:outline-none font-medium text-sm"
 		/>
 		<span class="text-slate-500 font-bold text-sm">✕</span>
 		<input 
 			type="number" 
 			bind:value={state.gridHeight} 
+			disabled={state.isUneditable}
 			min={BOX_SIZE * 2}
 			max={3000}
+			onchange={state.commitGridDimensionChange}
 			class="w-12 h-7 px-1 text-center bg-white border border-slate-400 rounded focus:outline-none font-medium text-sm"
 		/>
 	</div>
@@ -39,6 +43,7 @@
 		{#each selectTools as tool (tool.id)}
 			<ToolButton 
 				{tool} 
+				disabled={state.isUneditable}
 				activeTool={state.activeTool} 
 				onSelect={(id) => state.activeTool = id} 
 			/>
@@ -52,6 +57,7 @@
 		{#each createTools as tool (tool.id)}
 			<ToolButton 
 				{tool} 
+				disabled={state.isUneditable}
 				activeTool={state.activeTool} 
 				onSelect={(id) => state.activeTool = id} 
 			/>
@@ -62,7 +68,7 @@
 	<div class="flex items-center gap-1 ml-2">
 		<button 
 			onclick={state.undo}
-			disabled={!state.canUndo}
+			disabled={!state.canUndo || state.isUneditable}
 			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 			title="Undo (Ctrl+Z)"
 		>
@@ -70,7 +76,7 @@
 		</button>
 		<button 
 			onclick={state.redo}
-			disabled={!state.canRedo}
+			disabled={!state.canRedo || state.isUneditable}
 			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 			title="Redo (Ctrl+Y)"
 		>
@@ -79,14 +85,14 @@
 		<div class="w-px h-5 bg-slate-300 mx-1"></div>
 		<button 
 			onclick={state.copySelected}
-			disabled={state.selectedIds.size === 0}
+			disabled={state.selectedIds.size === 0 || state.isUneditable}
 			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Copy
 		</button>
 		<button 
 			onclick={state.pasteSquares}
-			disabled={state.copiedObjects.length === 0}
+			disabled={state.copiedObjects.length === 0 || state.isUneditable}
 			class="px-2 h-7 bg-[#e2e8f0] border border-slate-300 rounded hover:bg-slate-300 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Paste
@@ -94,7 +100,7 @@
 		<button 
             id="delete-button"
 			onclick={state.removeSelected}
-			disabled={state.selectedIds.size === 0}
+			disabled={state.selectedIds.size === 0 || state.isUneditable}
 			class="px-2 h-7 bg-red-100 border border-red-300 text-red-700 rounded hover:bg-red-200 disabled:opacity-40 text-[11px] font-semibold cursor-pointer disabled:cursor-not-allowed"
 		>
 			Delete

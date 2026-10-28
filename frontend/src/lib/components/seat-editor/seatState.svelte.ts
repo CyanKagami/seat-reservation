@@ -8,16 +8,23 @@ import type { ArrayToolStrategy } from "./tools/ArrayTool";
 import type { CircleToolStrategy } from "./tools/CircleTool";
 import type { RectToolStrategy } from "./tools/RectTool";
 import type { PolygonToolStrategy } from "./tools/PolygonTool";
-import { decode, encode } from "@msgpack/msgpack";
 import { apiFetch } from "$lib/scripts/api";
 import { alertModal } from "$lib/store/alert.svelte";
+import { appendLayoutSnapshot, cloneLayoutSnapshot, type LayoutSnapshot } from "./history";
+import { decodeLayout, encodeLayout } from "./layout";
+import {
+	getPolygonRotationCenter,
+	movePolygonVertex,
+	snapPolygonVertexToNeighborAxis
+} from "./polygonGeometry";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
 	gridWidth = $state(80);
 	gridHeight = $state(60);
-	isUneditable = $state(false);
+	isSeatTypePopupOpen = $state(false);
 	isSaving = $state(false);
+	isUneditable = $derived(this.isSaving || this.isSeatTypePopupOpen);
 
 	// Canvas & Active Tool State
 	objects = $state<CanvasObject[]>([]);
@@ -29,7 +36,7 @@ export class SeatEditorState {
 
 	// Undo/Redo History
 	private static readonly MAX_HISTORY_DEPTH = 50;
-	history = $state<CanvasObject[][]>([]);
+	history = $state<LayoutSnapshot[]>([]);
 	historyIndex = $state<number>(-1);
 
 	// Viewport State
@@ -78,53 +85,85 @@ export class SeatEditorState {
 		this.locationId = locationId;
 	}
 
+	createObjectId(prefix: string, reservedIds: Iterable<string> = []): string {
+		return this.createObjectIds(prefix, 1, reservedIds)[0];
+	}
+
+	createObjectIds(prefix: string, count: number, reservedIds: Iterable<string> = []): string[] {
+		const existingIds = new Set([...this.objects.map((object) => object.id), ...reservedIds]);
+		const ids: string[] = [];
+		let nextId = 1;
+		while (ids.length < count) {
+			const id = `${prefix}_${nextId++}`;
+			if (existingIds.has(id)) continue;
+			ids.push(id);
+			existingIds.add(id);
+		}
+		return ids;
+	}
+
+	private createLayoutSnapshot(): LayoutSnapshot {
+		return {
+			objects: $state.snapshot(this.objects) as CanvasObject[],
+			seatTypes: $state.snapshot(this.seatTypes) as Record<string, SeatType>,
+			gridWidth: this.gridWidth,
+			gridHeight: this.gridHeight
+		};
+	}
+
+	private restoreLayoutSnapshot(snapshot: LayoutSnapshot) {
+		const copy = cloneLayoutSnapshot(snapshot);
+		this.objects = copy.objects;
+		this.seatTypes = copy.seatTypes;
+		this.gridWidth = copy.gridWidth;
+		this.gridHeight = copy.gridHeight;
+		this.selectedIds = new Set();
+	}
+
 	// --- Undo/Redo History Management ---
 
 	canUndo = $derived(this.historyIndex > 0);
 	canRedo = $derived(this.historyIndex < this.history.length - 1);
 
 	commitHistory() {
-		const snapshot = $state.snapshot(this.objects) as CanvasObject[];
-
-		// Skip if identical to the current history entry
-		if (this.historyIndex >= 0) {
-			const current = this.history[this.historyIndex];
-			if (JSON.stringify(current) === JSON.stringify(snapshot)) return;
-		}
-
-		// Truncate any future entries (discard redo stack on new action)
-		const trimmed = this.history.slice(0, this.historyIndex + 1);
-		trimmed.push(snapshot);
-
-		// Enforce max depth
-		if (trimmed.length > SeatEditorState.MAX_HISTORY_DEPTH) {
-			trimmed.shift();
-			this.historyIndex = trimmed.length - 1;
-		} else {
-			this.historyIndex = trimmed.length - 1;
-		}
-
-		this.history = trimmed;
+		const result = appendLayoutSnapshot(
+			this.history,
+			this.historyIndex,
+			this.createLayoutSnapshot(),
+			SeatEditorState.MAX_HISTORY_DEPTH
+		);
+		this.history = result.history;
+		this.historyIndex = result.historyIndex;
 	}
 
 	undo = () => {
 		if (!this.canUndo) return;
 		this.historyIndex--;
-		this.objects = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-		this.selectedIds = new Set();
+		this.restoreLayoutSnapshot(this.history[this.historyIndex]);
 	};
 
 	redo = () => {
 		if (!this.canRedo) return;
 		this.historyIndex++;
-		this.objects = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-		this.selectedIds = new Set();
+		this.restoreLayoutSnapshot(this.history[this.historyIndex]);
 	};
 
 	clearHistory() {
 		this.history = [];
 		this.historyIndex = -1;
 	}
+
+	commitGridDimensionChange = () => {
+		const previous = this.history[this.historyIndex];
+		if (!Number.isInteger(this.gridWidth) || this.gridWidth < BOX_SIZE * 2 || this.gridWidth > 3000) {
+			this.gridWidth = previous?.gridWidth ?? 80;
+		}
+		if (!Number.isInteger(this.gridHeight) || this.gridHeight < BOX_SIZE * 2 || this.gridHeight > 3000) {
+			this.gridHeight = previous?.gridHeight ?? 60;
+		}
+		this.moveSquareOnOutOfBound(this.gridWidth, this.gridHeight);
+		this.commitHistory();
+	};
 
 	private rafPending = false;
 
@@ -246,21 +285,15 @@ export class SeatEditorState {
 	});
 
 	moveSquareOnOutOfBound(gridWidth: number, gridHeight: number) {
-		const maxX = gridWidth * GRID_SIZE - BOX_SIZE;
-		const maxY = gridHeight * GRID_SIZE - BOX_SIZE;
+		const canvasWidth = gridWidth * GRID_SIZE;
+		const canvasHeight = gridHeight * GRID_SIZE;
 		this.objects = untrack(() =>
 			this.objects.map(o => {
-				if (o.type === 'seat') {
-					const s = o;
-					if (s.x > maxX || s.y > maxY) {
-						return {
-							...s,
-							x: Math.max(0, Math.min(maxX, s.x)),
-							y: Math.max(0, Math.min(maxY, s.y))
-						} as CanvasObject;
-					}
-				}
-				return o;
+				const extents = this.getObjectWorldExtents(o);
+				const dx = Math.max(-extents.minX, Math.min(canvasWidth - extents.maxX, 0));
+				const dy = Math.max(-extents.minY, Math.min(canvasHeight - extents.maxY, 0));
+				if (dx === 0 && dy === 0) return o;
+				return { ...o, x: o.x + dx, y: o.y + dy };
 			})
 		);
 	}
@@ -297,8 +330,9 @@ export class SeatEditorState {
 	};
 
 	createSeatType = ({name, color, description, picture}:{name:string, color:string, description?: string, picture?: string | null}) => {
-		if (this.seatTypes[name]) return null;
+		if (this.isSaving || this.seatTypes[name]) return null;
 		this.seatTypes[name] = {name, color, description, picture: picture ?? undefined};
+		this.commitHistory();
 		return this.seatTypes[name];
 	}
 
@@ -306,6 +340,7 @@ export class SeatEditorState {
 		oldName: string,
 		{ name, color, description, picture }: { name: string; color: string; description?: string; picture?: string | null }
 	) => {
+		if (this.isSaving) return false;
 		if (!this.seatTypes[oldName]) return false;
 		if (name !== oldName && this.seatTypes[name]) return false;
 
@@ -342,7 +377,7 @@ export class SeatEditorState {
 	};
 
 	removeSeatType = (name: string) => {
-		if (name === 'standard') return false;
+		if (this.isSaving || name === 'standard') return false;
 		if (!this.seatTypes[name]) return false;
 
 		delete this.seatTypes[name];
@@ -370,13 +405,11 @@ export class SeatEditorState {
 		await this.uploadToAPI()
 	}
 
-	async uploadToAPI(apiEndpoint = '/api/place/layout') {
+	async uploadToAPI() {
 		if (this.isSaving) return;
 		this.isSaving = true;
-		this.isUneditable = true;
 
 		try {
-			this.selectedIds.clear();
 			const binaryData = this.exportToMessagePack();
 			const blob = new Blob([binaryData as any], { type: 'application/msgpack' });
 			const file = new File([blob], `${this.locationId}.msgpack`, {
@@ -395,31 +428,18 @@ export class SeatEditorState {
 			if (res.ok) {
 				alertModal.success("บันทึกสำเร็จ", "การเปลี่ยนแปลงของคุณได้รับการบันทึกแล้ว")
 			} else {
-				const err = await res.json();
+				await res.json();
 				alertModal.failure("บันทึกล้มเหลว", "การเปลี่ยนแปลงของคุณยังไม่ได้รับการบันทึก กรุณาลองอีกครั้ง")
 			}
 		} catch (err) {
 			alertModal.failure("ล้มเหลว", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ")
 		} finally {
 			this.isSaving = false;
-			this.isUneditable = false;
 		}	
 	}
 
 	exportToMessagePack(): Uint8Array {
-		const layoutPayload = {
-			version: "1.0",
-			timestamp: new Date().toISOString(),
-			canvas: {
-				gridWidth: this.gridWidth,
-				gridHeight: this.gridHeight,
-			},
-			seatTypes: $state.snapshot(this.seatTypes),
-			// Strip Svelte 5 reactive proxy wrappers before binary encoding
-			objects: $state.snapshot(this.objects)
-		};
-
-		return encode(layoutPayload);
+		return encodeLayout(this.createLayoutSnapshot());
 	}
 
 	saveToMessagePackFile(filename = "seating-layout.msgpack") {
@@ -436,26 +456,13 @@ export class SeatEditorState {
 
 		URL.revokeObjectURL(url);
 
-		// Freeze editing after save
-		this.isUneditable = true;
 		this.selectedIds.clear();
 	}
 
 	loadFromMessagePack(buffer: ArrayBuffer) {
 		try {
-			const data = decode(buffer) as any;
-
-			if (data.canvas) {
-				this.gridWidth = data.canvas.gridWidth ?? this.gridWidth;
-				this.gridHeight = data.canvas.gridHeight ?? this.gridHeight;
-			}
-			if (data.seatTypes) {
-				this.seatTypes = data.seatTypes;
-			}
-			if (Array.isArray(data.objects)) {
-				this.objects = data.objects;
-			}
-			this.selectedIds.clear();
+			const layout = decodeLayout(buffer);
+			this.restoreLayoutSnapshot(layout);
 			this.centerGrid();
 			this.clearHistory();
 			this.commitHistory();
@@ -465,6 +472,7 @@ export class SeatEditorState {
 	}
 
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
+		if (this.isSaving) return;
 		this.objects = this.objects.map((obj) => {
 			if (this.selectedIds.has(obj.id)) {
 				return {
@@ -480,7 +488,8 @@ export class SeatEditorState {
 		this.commitHistory();
 	}
 	// --- Add State Variables for Vertex Manipulation ---
-	activeVertexDrag = $state<{ objId: string; index: number } | null>(null);
+	activeVertexDrag = $state<{ objId: string; index: number; rotationCenter: Point } | null>(null);
+	vertexSnapPoint = $state<Point | null>(null);
 
 	// --- Drop Handler ---
 	handleDrop = (event: DragEvent) => {
@@ -548,7 +557,9 @@ export class SeatEditorState {
 	handleVertexMouseDown = (objId: string, index: number, event: MouseEvent) => {
 		event.stopPropagation();
 		if (this.isUneditable) return;
-		this.activeVertexDrag = { objId, index };
+		const obj = this.objects.find((object) => object.id === objId);
+		if (!obj?.points) return;
+		this.activeVertexDrag = { objId, index, rotationCenter: getPolygonRotationCenter(obj) };
 	};
 
 	addVertexAtMidpoint = (objId: string, index: number, event: MouseEvent) => {
@@ -569,8 +580,11 @@ export class SeatEditorState {
 		newPoints.splice(index + 1, 0, midpoint);
 
 		this.objects = this.objects.map((o) => (o.id === objId ? { ...o, points: newPoints } : o));
-		this.activeVertexDrag = { objId, index:index + 1};
-		this.commitHistory();
+		this.activeVertexDrag = {
+			objId,
+			index: index + 1,
+			rotationCenter: getPolygonRotationCenter(obj)
+		};
 	};
 
 	// --- Add inside SeatEditorState class ---
@@ -594,8 +608,7 @@ export class SeatEditorState {
 
 			if (obj.points && obj.points.length > 0) {
 				// Polygon Objects: Calculate bounds using actual vertex positions
-				const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
-				const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+				const { x: centerRelX, y: centerRelY } = getPolygonRotationCenter(obj);
 				const cx = obj.x + centerRelX;
 				const cy = obj.y + centerRelY;
 
@@ -653,12 +666,13 @@ export class SeatEditorState {
 		const posX = customPos ? customPos.x : obj.x;
 		const posY = customPos ? customPos.y : obj.y;
 		const rotation = obj.rotation ?? 0;
+		const width = obj.width ?? BOX_SIZE;
+		const height = obj.height ?? BOX_SIZE;
 
 		let points: { x: number; y: number }[] = [];
 
 		if ((obj.type === 'env-polygon' || obj.type === 'env-icon-polygon') && obj.points) {
-			const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
-			const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+			const { x: centerRelX, y: centerRelY } = getPolygonRotationCenter(obj);
 			const cx = posX + centerRelX;
 			const cy = posY + centerRelY;
 
@@ -666,10 +680,10 @@ export class SeatEditorState {
 				this.rotatePoint(posX + p.x, posY + p.y, cx, cy, rotation)
 			);
 		} else if (obj.type === 'env-circle') {
-			const cx = posX + obj.width / 2;
-			const cy = posY + obj.height / 2;
-			const a = obj.width / 2;
-			const b = obj.height / 2;
+			const cx = posX + width / 2;
+			const cy = posY + height / 2;
+			const a = width / 2;
+			const b = height / 2;
 			const rad = (rotation * Math.PI) / 180;
 
 			const rx = Math.sqrt(Math.pow(a * Math.cos(rad), 2) + Math.pow(b * Math.sin(rad), 2));
@@ -677,13 +691,13 @@ export class SeatEditorState {
 
 			return { minX: cx - rx, maxX: cx + rx, minY: cy - ry, maxY: cy + ry };
 		} else {
-			const cx = posX + obj.width / 2;
-			const cy = posY + obj.height / 2;
+			const cx = posX + width / 2;
+			const cy = posY + height / 2;
 			const corners = [
 				{ x: posX, y: posY },
-				{ x: posX + obj.width, y: posY },
-				{ x: posX + obj.width, y: posY + obj.height },
-				{ x: posX, y: posY + obj.height }
+				{ x: posX + width, y: posY },
+				{ x: posX + width, y: posY + height },
+				{ x: posX, y: posY + height }
 			];
 			points = corners.map((p) => this.rotatePoint(p.x, p.y, cx, cy, rotation));
 		}
@@ -708,8 +722,7 @@ export class SeatEditorState {
 
 		if ((obj.type === 'env-polygon' || obj.type === 'env-icon-polygon') && obj.points) {
 			// 1. Polygon: Centroid pivot + relative points
-			const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
-			const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
+			const { x: centerRelX, y: centerRelY } = getPolygonRotationCenter(obj);
 			const cx = obj.x + centerRelX;
 			const cy = obj.y + centerRelY;
 
@@ -804,7 +817,7 @@ export class SeatEditorState {
 		if (this.selectedIds.size === 0) return;
 		this.copiedObjects = this.objects
 			.filter(o => this.selectedIds.has(o.id))
-			.map(o => ({ ...o }));
+			.map((o) => JSON.parse(JSON.stringify($state.snapshot(o))) as CanvasObject);
 
 	};
 
@@ -813,13 +826,10 @@ export class SeatEditorState {
 
 		const nextBatch: CanvasObject[] = [];
 		const nextSelected = new Set<string>();
-		const highestExistingId = this.objects.reduce((maxId, obj) => {
-			if (obj.type !== 'seat') return maxId;
-			const idNum = parseInt(obj.id.split('_')[1]);
-			return Math.max(maxId, idNum);
-		}, 0);
+		const reservedIds: string[] = [];
 		this.copiedObjects.forEach((src, idx) => {
-			const newId = `${src.type}_${highestExistingId + idx + 1}`;
+			const newId = this.createObjectId(src.type, reservedIds);
+			reservedIds.push(newId);
 			const targetX = src.x + GRID_SIZE * 2;
 			const targetY = src.y + GRID_SIZE * 2;
 
@@ -834,13 +844,15 @@ export class SeatEditorState {
 				label:src.label,
 				points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
 				rotation: src.rotation,
-				metadata: src.metadata
+				metadata: src.metadata ? JSON.parse(JSON.stringify(src.metadata)) : {}
 			});
 			nextSelected.add(newId);
 		});
 		this.objects = [...this.objects, ...nextBatch];
 		this.selectedIds = nextSelected;
-		this.copiedObjects = nextBatch.map(s => ({ ...s }));
+		this.copiedObjects = nextBatch.map((object) =>
+			JSON.parse(JSON.stringify(object)) as CanvasObject
+		);
 		this.commitHistory();
 	};
 
@@ -928,7 +940,7 @@ export class SeatEditorState {
 	};
 
 	handleMouseMove = (event: MouseEvent) => {
-		this.isShiftPressed = event.shiftKey;
+		this.isShiftPressed = event.shiftKey || this.isShiftPressed;
 		if (this.rafPending) return;
 		this.rafPending = true;
 
@@ -1074,19 +1086,29 @@ export class SeatEditorState {
 			}
 
 			if (this.activeVertexDrag) {
-				const { objId, index } = this.activeVertexDrag;
+				const { objId, index, rotationCenter } = this.activeVertexDrag;
 				const rect = this.canvasElement.getBoundingClientRect();
 				const mouseX = (event.clientX - rect.left - this.panX) / this.scale;
 				const mouseY = (event.clientY - rect.top - this.panY) / this.scale;
+				const obj = this.objects.find((object) => object.id === objId);
+				const shiftPressed = event.shiftKey || this.isShiftPressed;
+				const pointer = obj && shiftPressed
+					? snapPolygonVertexToNeighborAxis(
+						obj,
+						index,
+						{ x: mouseX, y: mouseY },
+						36 / this.scale,
+						12 / this.scale
+					)
+					: { x: mouseX, y: mouseY };
+				this.vertexSnapPoint =
+					pointer.x !== mouseX || pointer.y !== mouseY ? pointer : null;
 
 				this.objects = this.objects.map((obj) => {
 					if (obj.id !== objId || !obj.points) return obj;
 
-					// Create candidate vertex position relative to obj origin
-					const candidatePoints = [...obj.points];
-					candidatePoints[index] = { x: mouseX - obj.x, y: mouseY - obj.y };
-
-					const candidateObj = { ...obj, points: candidatePoints };
+					const candidateObj = movePolygonVertex(obj, index, pointer);
+					candidateObj.rotationCenter = rotationCenter;
 
 					// Only update if candidate polygon stays inside canvas
 					return this.isObjectOutOfBounds(candidateObj) ? obj : candidateObj;
@@ -1107,28 +1129,44 @@ export class SeatEditorState {
 	};
 
 	handleMouseUp = (event: MouseEvent) => {
-		if (this.isUneditable) return;
-		if (this.activeVertexDrag) {
-			this.activeVertexDrag = null;
-			return;
+		const wasLocked = this.isUneditable;
+		const hadDocumentInteraction = this.isDragging || this.isRotating || this.activeVertexDrag !== null ||
+			this.isArrayDrawing || this.isLineDrawing || this.isRectDrawing || this.isCircleDrawing;
+		if (!wasLocked) {
+			const rect = this.canvasElement?.getBoundingClientRect();
+			const screenPoint = rect
+				? { x: event.clientX - rect.left, y: event.clientY - rect.top }
+				: { x: 0, y: 0 };
+			const canvasPoint = {
+				x: (screenPoint.x - this.panX) / this.scale,
+				y: (screenPoint.y - this.panY) / this.scale
+			};
+			toolRegistry[this.activeTool]?.onMouseUp?.({ state: this, event, screenPoint, canvasPoint });
 		}
-		const rect = this.canvasElement?.getBoundingClientRect();
-		const screenPoint = rect
-			? { x: event.clientX - rect.left, y: event.clientY - rect.top }
-			: { x: 0, y: 0 };
-		const canvasPoint = {
-			x: (screenPoint.x - this.panX) / this.scale,
-			y: (screenPoint.y - this.panY) / this.scale
-		};
+		this.clearInteractionState();
+		if (!wasLocked && hadDocumentInteraction) this.commitHistory();
+	};
 
-		const ctx = { state: this, event, screenPoint, canvasPoint };
-		toolRegistry[this.activeTool]?.onMouseUp?.(ctx);
-
-		// Reset global transform states
+	private clearInteractionState() {
 		this.isPanning = false;
 		this.isRotating = false;
 		this.isDragging = false;
-		this.commitHistory();
+		this.activeVertexDrag = null;
+		this.vertexSnapPoint = null;
+		this.isBoxSelecting = false;
+		this.isLassoSelecting = false;
+		this.isArrayDrawing = false;
+		this.isLineDrawing = false;
+		this.isRectDrawing = false;
+		this.isCircleDrawing = false;
+		this.initialPositions.clear();
+		this.initialStates.clear();
+	}
+
+	handlePointerCancel = () => {
+		const hadDocumentInteraction = this.isDragging || this.isRotating || this.activeVertexDrag !== null;
+		this.clearInteractionState();
+		if (hadDocumentInteraction) this.commitHistory();
 	};
 
 	handleWheel = (event: WheelEvent) => {
@@ -1142,6 +1180,11 @@ export class SeatEditorState {
 
 	handleKeyDown = (event: KeyboardEvent) => {
 		if (this.isUneditable) return;
+		const target = event.target;
+		if (
+			target instanceof HTMLElement &&
+			(target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+		) return;
 		if (event.code === 'Delete' || event.code === 'Backspace') {
 			event.preventDefault();
 			this.removeSelected();
@@ -1188,9 +1231,18 @@ export class SeatEditorState {
 		}
 	};
 
-	// Optional: Reset on window blur to avoid stuck state
 	handleWindowBlur = () => {
+		this.handlePointerCancel();
 		this.isShiftPressed = false;
+		this.isPolygonDrawing = false;
+		this.polygonPoints = [];
+	};
+
+	handleObjectKeyDown = (obj: CanvasObject, event: KeyboardEvent) => {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		if (this.isUneditable) return;
+		this.selectedIds = event.shiftKey ? new Set([...this.selectedIds, obj.id]) : new Set([obj.id]);
 	};
 
 	handleContextMenu = (event: MouseEvent) => {

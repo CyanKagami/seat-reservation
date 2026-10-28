@@ -10,6 +10,7 @@
 		selectedSeatIds = $bindable([]),
 		maxSeats = 1,
 		reservedIds = new Set(),
+		myReservedIds = new Set(),
 		onBack,
 		onConfirm
 	}: {
@@ -18,7 +19,8 @@
 		objects: CanvasObject[];
 		selectedSeatIds?: string[];
 		maxSeats?: number;
-		reservedIds:Set<string>
+		reservedIds: Set<string>;
+		myReservedIds?: Set<string>;
 		onBack?: () => void;
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
@@ -167,6 +169,14 @@
 			<span>กำลังเลือก</span>
 		</div>
 		<div class="flex items-center gap-1.5">
+			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-emerald-500 border border-emerald-600 ring-1 ring-emerald-400"></span>
+			<span>ที่นั่งของคุณ</span>
+		</div>
+		<div class="flex items-center gap-1.5">
+			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-stone-700 border border-stone-900"></span>
+			<span>ถูกจองแล้ว</span>
+		</div>
+		<div class="flex items-center gap-1.5">
 			<span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm bg-slate-200 border border-slate-300 opacity-40"></span>
 			<span>นอกโซนที่เลือก</span>
 		</div>
@@ -194,11 +204,14 @@
 					{@const status = obj.metadata.status ?? 'available'}
 					{@const seatId = getSeatId(obj)}
 					{@const isReserved = reservedIds.has(seatId)}
+					{@const isMine = myReservedIds.has(seatId)}
 
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'
 						: status === 'unavailable' || !seatId
 							? 'fill-stone-700 stroke-stone-600'
+							: isMine
+								? 'fill-emerald-500 stroke-emerald-600 ring-2 ring-emerald-400'
 							: isReserved
 								? 'fill-stone-700 stroke-stone-900'
 								: (isSelected ? 'fill-indigo-500 stroke-indigo-600 ring-2 ring-indigo-400' : 'fill-indigo-200 stroke-indigo-500 hover:fill-indigo-300')}
@@ -230,6 +243,7 @@
 								y={centerY}
 								text-anchor="middle"
 								dominant-baseline="central"
+								transform="rotate({-(obj.rotation ?? 0)}, {centerX}, {centerY})"
 								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' || isReserved ? 'fill-stone-300' : 'fill-slate-800'}"
 							>
 								{seatId}

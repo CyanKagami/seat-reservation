@@ -51,4 +51,54 @@ describe('Undo/Redo History', () => {
 		state.undo();
 		expect(state.objects[0].id).toBe('test_53');
 	});
+
+	it('restores seat types and grid dimensions with the layout', () => {
+		state.commitHistory();
+		state.createSeatType({ name: 'premium', color: '#123456' });
+		state.gridWidth = 120;
+		state.commitGridDimensionChange();
+
+		state.undo();
+		expect(state.gridWidth).toBe(80);
+		expect(state.seatTypes.premium?.color).toBe('#123456');
+		state.undo();
+		expect(state.seatTypes.premium).toBeUndefined();
+
+		state.redo();
+		expect(state.seatTypes.premium?.color).toBe('#123456');
+		state.redo();
+		expect(state.gridWidth).toBe(120);
+	});
+
+	it('records seat type edits even when objects do not change', () => {
+		state.commitHistory();
+		state.createSeatType({ name: 'premium', color: '#123456' });
+
+		state.undo();
+		expect(state.seatTypes.premium).toBeUndefined();
+		state.redo();
+		expect(state.seatTypes.premium?.color).toBe('#123456');
+	});
+
+	it('records the final vertex position as one undoable edit', () => {
+		state.objects = [{
+			id: 'env_poly_1',
+			type: 'env-polygon',
+			x: 10,
+			y: 10,
+			width: 40,
+			height: 40,
+			points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 40 }],
+			metadata: {}
+		}];
+		state.commitHistory();
+
+		state.addVertexAtMidpoint('env_poly_1', 0, { stopPropagation() {} } as MouseEvent);
+		state.objects[0].points![1] = { x: 30, y: 5 };
+		state.handleMouseUp({ clientX: 0, clientY: 0 } as MouseEvent);
+
+		expect(state.history).toHaveLength(2);
+		state.undo();
+		expect(state.objects[0].points).toHaveLength(3);
+	});
 });
