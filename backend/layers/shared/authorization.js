@@ -51,22 +51,22 @@ export function requireRole(...allowedRoles) {
   return async (req, res, next) => {
     const tokenUser = getUser(req);
     if (!tokenUser.email) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' });
     }
 
     try {
       const currentUser = await fetchUser(tokenUser.email);
       if (!currentUser) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' });
       }
       if ((tokenUser.role || '') !== (currentUser.role || '')) {
         return res.status(403).json({
-          error: 'Your role has changed. Refresh your access and try again.',
+          error: 'สิทธิ์การใช้งานของคุณมีการเปลี่ยนแปลง กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง',
           code: 'ROLE_CHANGED'
         });
       }
       if (!currentUser || !allowedRoles.includes(currentUser.role)) {
-        return res.status(403).json({ error: 'Access denied' });
+        return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดำเนินการนี้' });
       }
       req.user = { ...tokenUser, ...currentUser, role: currentUser.role || '' };
       next();
@@ -79,17 +79,17 @@ export function requireRole(...allowedRoles) {
 export async function requireAuth(req, res, next) {
   const tokenUser = getUser(req);
   if (!tokenUser.email) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' });
   }
 
   try {
     const currentUser = await fetchUser(tokenUser.email);
     if (!currentUser) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' });
     }
     if ((tokenUser.role || '') !== (currentUser.role || '')) {
       return res.status(403).json({
-        error: 'Your role has changed. Refresh your access and try again.',
+        error: 'สิทธิ์การใช้งานของคุณมีการเปลี่ยนแปลง กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง',
         code: 'ROLE_CHANGED'
       });
     }

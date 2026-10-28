@@ -122,7 +122,18 @@ router.get('/me', async (req, res) => {
     const tokenUser = jwt.verify(token, process.env.JWT_SECRET);
     const user = await fetchUser(tokenUser.email);
     if (!user) return res.status(401).json({ body: null });
-    return res.status(200).json({ body: user });
+    const refreshedToken = jwt.sign(
+      {
+        googleId: user.googleId,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+    return res.status(200).json({ body: user, token: refreshedToken });
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return res.status(401).json({ body: null });

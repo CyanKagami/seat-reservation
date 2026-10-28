@@ -7,6 +7,24 @@
     let currentPage = $state(1);
     let token:string[] = $state([])
     let editing = $state({index: -1, role: ''});
+
+    function isRecord(value: unknown): value is Record<string, unknown> {
+        return typeof value === "object" && value !== null;
+    }
+
+    function getResponseError(payload: unknown, fallback: string): string {
+        if (!isRecord(payload)) return fallback;
+
+        const body = isRecord(payload.body) ? payload.body : undefined;
+        const error = payload.error ?? body?.error;
+        if (typeof error === "string" && error.trim()) return error;
+        if (isRecord(error) && typeof error.message === "string" && error.message.trim()) {
+            return error.message;
+        }
+        if (typeof payload.message === "string" && payload.message.trim()) return payload.message;
+        return fallback;
+    }
+
     onMount(async () => {
         await apiFetch("/user", {method: 'GET'})
         .then((res) => res.json())
@@ -47,21 +65,47 @@
     }
 
     async function saveRole(index:number) {
-        await apiFetch(`/user/editRole?email=${encodeURIComponent(users[index].email)}&role=${encodeURIComponent(editing.role)}`, {
-            method: 'POST',
-        })
-        .then(async (res) => {
-            if (res.status === 200){
-                let result = await res.json();
-                users[index].role = result.body.updatedUser.role;
-                alertModal.success('สำเร็จ', `เปลี่ยนบทบาทของผู้ใช้ ${result.body.updatedUser.name} เป็น ${result.body.updatedUser.role} สำเร็จ`)
+        const user = users[index];
+        const requestedRole = editing.role;
+
+        try {
+            const response = await apiFetch(
+                `/user/editRole?email=${encodeURIComponent(user.email)}&role=${encodeURIComponent(requestedRole)}`,
+                { method: 'POST' }
+            );
+            const payload: unknown = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                alertModal.failure(
+                    'แก้ไขบทบาทล้มเหลว',
+                    getResponseError(payload, `เซิร์ฟเวอร์ตอบกลับข้อผิดพลาด (${response.status})`)
+                );
+                return;
             }
-            else {
-                let result = await res.json();
-                alertModal.failure('แก้ไขบทบาทล้มเหลว', `เปลี่ยนบทบาทของผู้ใช้ ${result.body.updatedUser.name} ไม่สำเร็จ\n เหตุผล: ${result.error.message}`)
+
+            const body = isRecord(payload) && isRecord(payload.body) ? payload.body : undefined;
+            const updatedUserValue = body?.updatedUser ?? body?.newAttributes;
+            const updatedUser = isRecord(updatedUserValue) ? updatedUserValue : undefined;
+            if (!updatedUser || typeof updatedUser.role !== "string") {
+                alertModal.failure(
+                    'แก้ไขบทบาทล้มเหลว',
+                    'เซิร์ฟเวอร์ตอบกลับว่าสำเร็จ แต่ไม่มีข้อมูลบทบาทผู้ใช้ที่อัปเดต'
+                );
+                return;
             }
-        })
-        editing = {index: -1, role: ''}; // Reset editing state when changing pages
+
+            user.role = updatedUser.role;
+            const updatedName = typeof updatedUser.name === "string" ? updatedUser.name : user.name || user.email;
+            alertModal.success(
+                'สำเร็จ',
+                `เปลี่ยนบทบาทของผู้ใช้ ${updatedName} เป็น ${updatedUser.role} สำเร็จ`
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            alertModal.failure('แก้ไขบทบาทล้มเหลว', `ส่งคำขอไม่สำเร็จ: ${message}`);
+        } finally {
+            editing = {index: -1, role: ''};
+        }
     }
 
     function editRole(index:number) {

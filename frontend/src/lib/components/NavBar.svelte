@@ -6,6 +6,7 @@
 
     const user = $derived(userStore.currentUser);
     let isDropdownOpen = $state(false);
+    let isMobileMenuOpen = $state(false);
 
     function toggleDropdown() {
         isDropdownOpen = !isDropdownOpen;
@@ -26,10 +27,13 @@
 </script>
 
 <!-- Backdrop click detector to dismiss dropdown -->
-{#if isDropdownOpen}
+{#if isDropdownOpen || isMobileMenuOpen}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="fixed inset-0 z-40" onclick={() => isDropdownOpen = false}></div>
+    <div class="fixed inset-0 z-40" onclick={() => {
+        isDropdownOpen = false;
+        isMobileMenuOpen = false;
+    }}></div>
 {/if}
 
 <header class="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-border-subtle transition-colors">
@@ -42,10 +46,10 @@
         </a>
 
         <!-- Navigation Links & User Action -->
-        <nav class="flex items-center gap-3 sm:gap-6">
+        <nav class="flex items-center gap-2 sm:gap-3 md:gap-6">
             <a 
                 href="/" 
-                class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath === '/' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath === '/' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
             >
                 กิจกรรมทั้งหมด
             </a>
@@ -54,27 +58,43 @@
                 {#if user.role === 'admin' || user.role === 'organizer'}
                     <a 
                         href="/my-event" 
-                        class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
                     >
                         กิจกรรมที่จัด
                     </a>
                     <a
                         href="/reserved-event"
-                        class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
                     >
                         ที่นั่งของฉัน
                     </a>
                 {:else}
                     <a 
                         href="/reserved-event" 
-                        class="text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
+                        class="hidden md:inline-flex text-sm sm:text-base font-medium px-3 py-1.5 rounded-lg transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}"
                     >
                         ที่นั่งของฉัน
                     </a>
                 {/if}
-
-
             {/if}
+
+            <button
+                type="button"
+                onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
+                aria-label={isMobileMenuOpen ? "ปิดเมนูนำทาง" : "เปิดเมนูนำทาง"}
+                aria-expanded={isMobileMenuOpen}
+                class="md:hidden h-10 w-10 inline-flex items-center justify-center rounded-lg border border-border-subtle text-dark hover:bg-surface-subtle cursor-pointer"
+            >
+                {#if isMobileMenuOpen}
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                {:else}
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                {/if}
+            </button>
 
             <!-- Profile & Dropdown Container or Login CTA -->
             {#if user}
@@ -157,4 +177,17 @@
             {/if}
         </nav>
     </div>
+    {#if isMobileMenuOpen}
+        <nav aria-label="เมนูนำทาง" class="md:hidden absolute left-0 right-0 top-full border-b border-border-subtle bg-white px-4 py-3 shadow-lg">
+            <div class="mx-auto flex max-w-7xl flex-col gap-1">
+                <a href="/" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath === '/' ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">กิจกรรมทั้งหมด</a>
+                {#if user && (user.role === 'admin' || user.role === 'organizer')}
+                    <a href="/my-event" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath.startsWith('/my-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">กิจกรรมที่จัด</a>
+                {/if}
+                {#if user}
+                    <a href="/reserved-event" onclick={() => isMobileMenuOpen = false} class="rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {currentPath.startsWith('/reserved-event') ? 'text-accent font-semibold bg-accent-subtle/50' : 'text-dark-muted hover:text-dark hover:bg-surface-subtle'}">ที่นั่งของฉัน</a>
+                {/if}
+            </div>
+        </nav>
+    {/if}
 </header>
