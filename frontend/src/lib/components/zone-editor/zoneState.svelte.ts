@@ -4,7 +4,12 @@ import { toolRegistry } from "./tools";
 import { rotatePoint } from '../canvas-shared/utils';
 import { decode, encode } from "@msgpack/msgpack";
 import type { SeatType } from "../canvas-shared/types";
-import { getSeatId } from "./utils/zoneUtils";
+import {
+	ensureReadableReservationSeatIds,
+	getLegacySeatIds,
+	getReservationSeatId,
+	getSeatLabel
+} from "./utils/zoneUtils";
 import { apiFetch } from "$lib/scripts/api";
 import { alertModal } from "$lib/store/alert.svelte";
 
@@ -156,24 +161,31 @@ export class ZoneEditorState {
 
 	seatIdValidation = $derived.by(() => {
 		const seatIdCounts = new Map<string, number>();
-		let missingSeatIds = 0;
+		const internalIds = new Set<string>();
+		const duplicateInternalIds = new Set<string>();
 
 		for (const object of this.objects) {
 			if (object.type !== 'seat') continue;
-			const seatId = getSeatId(object);
-			if (!seatId) {
-				missingSeatIds += 1;
-				continue;
+			const internalId = getReservationSeatId(object);
+			if (internalIds.has(internalId)) {
+				duplicateInternalIds.add(internalId);
 			}
-			const identifier = `โซน ${object.metadata.zone} รหัสที่นั่ง ${seatId}`;
-			seatIdCounts.set(identifier, (seatIdCounts.get(identifier) ?? 0) + 1);
+			internalIds.add(internalId);
+
+			const seatLabel = getSeatLabel(object);
+			if (seatLabel) {
+				const identifier = `โซน ${object.metadata.zone || 'ไม่มีโซน'} รหัสที่นั่ง ${seatLabel}`;
+				seatIdCounts.set(identifier, (seatIdCounts.get(identifier) ?? 0) + 1);
+			}
 		}
 
 		return {
-			missingCount: missingSeatIds,
-			duplicateSeatIds: Array.from(seatIdCounts)
+			duplicateSeatIds: [
+				...Array.from(seatIdCounts)
 				.filter(([, count]) => count > 1)
-				.map(([seatId]) => seatId)
+				.map(([seatId]) => seatId),
+				...Array.from(duplicateInternalIds, (id) => `รหัสภายใน ${id}`)
+			]
 		};
 	});
 
@@ -256,25 +268,12 @@ export class ZoneEditorState {
 
 	async uploadToAPI(apiEndpoint = '/api/place/layout') {
 		if (this.isSaving || this.isResetting) return;
-		const { missingCount, duplicateSeatIds } = this.seatIdValidation;
-		if (missingCount > 0) {
-			alertModal.warning(
-				'ยังบันทึกผังไม่ได้',
-				`กรุณากำหนดแถวและเลขที่นั่งให้ครบทุกที่นั่ง (ยังไม่มีรหัส ${missingCount} ที่นั่ง)`
-			);
-			return;
-		}
+		const { duplicateSeatIds } = this.seatIdValidation;
 		if (duplicateSeatIds.length > 0) {
 			alertModal.warning(
 				'ยังบันทึกผังไม่ได้',
 				`พบรหัสที่นั่งซ้ำ: ${duplicateSeatIds.join(', ')} กรุณาแก้ไขให้แต่ละที่นั่งมีรหัสไม่ซ้ำกัน`
 			);
-			return;
-		}
-		if (!this.objects.filter((o) => o.type === 'seat').every((o) =>
-			(o.metadata?.zone || o.metadata?.status === 'unavailable')
-		)) {
-			alertModal.warning('ที่นั่งบางที่ไม่ถูกกำหนดโซน', 'กรุณากำหนดโซนให้ครบทุกที่นั่ง');
 			return;
 		}
 		this.isSaving = true;
@@ -357,7 +356,7 @@ export class ZoneEditorState {
 			this.seatTypes = data.seatTypes ?? {
 				standard: { name: 'standard', color: '#e2e8f0', description: 'Standard seat' }
 			};
-			this.objects = data.objects;
+			this.objects = ensureReadableReservationSeatIds(data.objects);
 			this.zones = data.zones ?? {};
 			this.selectedIds.clear();
 			this.centerGrid();
@@ -380,6 +379,24 @@ export class ZoneEditorState {
 				zoneId
 			}
 			return obj;
+		});
+	}
+
+	updateSelectedObjectZone(zone: string) {
+		this.objects = this.objects.map((obj) => {
+			if (!this.selectedIds.has(obj.id)) return obj;
+
+			const metadata = { ...(obj.metadata || {}) };
+			const zoneChanged = (metadata.zone ?? '') !== zone;
+			metadata.zone = zone;
+
+			if (obj.type === 'seat' && zoneChanged && !metadata.isManualLabel) {
+				delete metadata.row;
+				delete metadata.seatNo;
+				delete metadata.isManualLabel;
+			}
+
+			return { ...obj, metadata };
 		});
 	}
 

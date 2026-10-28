@@ -81,6 +81,8 @@
                             event={item.event} 
                             seat={item.seat} 
                             zone={item.zone} 
+                            seatId={item.seatId}
+                            checkInSeatId={item.checkInSeatId}
                             eventId={item.eventId}
                             onCancelled={refreshReservations}
                         />

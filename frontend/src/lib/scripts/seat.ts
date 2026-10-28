@@ -1,6 +1,5 @@
 // src/lib/seat.ts
-// A seatId is "<zone>-<seat>", e.g. "Front-A5". The seat part never contains "-", the zone may,
-// so the split is at the LAST hyphen: "Zone-B-12" -> zone "Zone-B", seat "12".
+// Legacy seat IDs are "<zone>-<seat>"; internal IDs use readable "S-..." or legacy "seatkey_*" forms.
 // Pure functions with no server imports, so the same code runs in the browser and on the server.
 
 // Letters (any script, Thai included), combining marks, digits and "_". '#' is never allowed,
@@ -10,6 +9,7 @@ const WORD = '[\\p{L}\\p{M}\\p{N}_]';
 // zone: 1-32 chars, hyphens allowed inside but not at either end
 // seat: 1-32 chars, no hyphen (so the greedy zone part backtracks to the last "-")
 const SEAT_ID = new RegExp(`^(${WORD}(?:[\\p{L}\\p{M}\\p{N}_-]{0,30}${WORD})?)-(${WORD}{1,32})$`, 'u');
+const INTERNAL_SEAT_ID = /^(?:S-[0-9A-HJKMNP-TV-Z]{10}|seatkey_(?:[a-f0-9]{32}|legacy_[a-f0-9]+))$/;
 
 export interface SeatParts {
   zone: string;
@@ -17,6 +17,7 @@ export interface SeatParts {
 }
 
 export function parseSeatId(seatId: string): SeatParts | null {
+  if (INTERNAL_SEAT_ID.test(seatId)) return { zone: '', seat: seatId };
   const match = SEAT_ID.exec(seatId);
   return match ? { zone: match[1], seat: match[2] } : null;
 }

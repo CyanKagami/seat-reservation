@@ -157,7 +157,7 @@
                                 {/if}
                             </th>
                             <td class="whitespace-nowrap border border-border-strong px-3 py-4 sm:px-5">{reservation.zone || '-'}</td>
-                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 font-medium text-dark tabular-nums sm:px-5">{reservation.seat || reservation.seatId}</td>
+                            <td class="whitespace-nowrap border border-border-strong px-3 py-4 font-medium text-dark tabular-nums sm:px-5">{reservation.seat}</td>
                             <td class="whitespace-nowrap border border-border-strong px-3 py-4 sm:px-5">
                                 <span class="inline-flex rounded-full border border-border-strong bg-surface-subtle px-2.5 py-1 text-xs font-semibold text-dark">
                                     {reservation.status === 'checked-in' ? 'เช็กอินแล้ว' : reservation.status === 'reserved' ? 'จองแล้ว' : 'ไม่ทราบสถานะ'}

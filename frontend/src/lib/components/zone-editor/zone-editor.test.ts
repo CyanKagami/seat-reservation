@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ZoneEditorState } from './zoneState.svelte';
 import type { CanvasObject } from './types';
-import { getSeatId } from './utils/zoneUtils';
+import {
+	createReservationSeatId,
+	ensureReadableReservationSeatIds,
+	getLegacySeatIds,
+	getReservationSeatId,
+	getSeatId
+} from './utils/zoneUtils';
 import { alertModal } from '$lib/store/alert.svelte';
+import { classifyIdentifier } from '$lib/scripts/checkIn';
 
 describe('ZoneEditorState - Seat Status and Labeling', () => {
 	let state: ZoneEditorState;
@@ -169,7 +176,47 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.objects[0].metadata?.status).toBe('unavailable');
 	});
 
-	it('should not return a seat ID until both row and seat number are assigned', () => {
+	it('clears auto-generated labels when moving a seat to another zone', () => {
+		state.objects = [{
+			id: 'seat_auto',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1', isManualLabel: false }
+		}];
+		state.selectedIds = new Set(['seat_auto']);
+
+		state.updateSelectedObjectZone('Regular');
+
+		expect(state.objects[0].metadata.zone).toBe('Regular');
+		expect(state.objects[0].metadata.row).toBeUndefined();
+		expect(state.objects[0].metadata.seatNo).toBeUndefined();
+		expect(state.objects[0].metadata.isManualLabel).toBeUndefined();
+		expect(getSeatId(state.objects[0])).toBe('');
+	});
+
+	it('preserves manual labels when moving a seat to another zone', () => {
+		state.objects = [{
+			id: 'seat_manual',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'CUSTOM', seatNo: '9', isManualLabel: true }
+		}];
+		state.selectedIds = new Set(['seat_manual']);
+
+		state.updateSelectedObjectZone('Regular');
+
+		expect(state.objects[0].metadata.zone).toBe('Regular');
+		expect(getSeatId(state.objects[0])).toBe('CUSTOM9');
+		expect(state.objects[0].metadata.isManualLabel).toBe(true);
+	});
+
+	it('should fall back to a stable internal ID when a seat label is missing', () => {
 		const seat: CanvasObject = {
 			id: 'seat_internal-id',
 			type: 'seat',
@@ -181,11 +228,12 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		};
 
 		expect(getSeatId(seat)).toBe('');
+		expect(getReservationSeatId(seat)).toBe('seatkey_legacy_736561745f696e7465726e616c2d6964');
 		seat.metadata!.seatNo = '1';
 		expect(getSeatId(seat)).toBe('A1');
 	});
 
-	it('should reject saving when a seat has no row and seat number', async () => {
+	it('should not require a zone or label to validate a reservable seat', () => {
 		state.objects = [{
 			id: 'seat_unlabeled',
 			type: 'seat',
@@ -193,14 +241,79 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 			y: 0,
 			width: 20,
 			height: 20,
-			metadata: { zone: 'VIP' }
+			metadata: {}
 		}];
+		expect(state.seatIdValidation.duplicateSeatIds).toEqual([]);
+	});
 
-		await state.uploadToAPI();
+	it('preserves legacy reservation aliases when loading a layout', () => {
+		state.objects = [{
+			id: 'seat_old',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { zone: 'VIP', row: 'A', seatNo: '1' }
+		}];
+		const bytes = state.exportToMessagePack();
+		state.loadFromMessagePack(new Uint8Array(bytes).buffer);
+		const loadedSeat = state.objects[0];
 
-		expect(state.isSaving).toBe(false);
-		expect(alertModal.title).toBe('ยังบันทึกผังไม่ได้');
-		expect(alertModal.message).toContain('ยังไม่มีรหัส 1 ที่นั่ง');
+		expect(loadedSeat.metadata.reservationId).toBe(getReservationSeatId(loadedSeat));
+		expect(getLegacySeatIds(loadedSeat)).toContain('VIP-A1');
+		expect(loadedSeat.metadata.reservationId).toMatch(/^S-[0-9A-HJKMNP-TV-Z]{10}$/);
+
+		loadedSeat.metadata.zone = undefined;
+		loadedSeat.metadata.row = undefined;
+		loadedSeat.metadata.seatNo = undefined;
+		expect(getLegacySeatIds(loadedSeat)).toContain('VIP-A1');
+	});
+
+	it('creates distinct internal IDs for newly added seats', () => {
+		const first = createReservationSeatId();
+		const second = createReservationSeatId();
+
+		expect(first).toMatch(/^S-[0-9A-HJKMNP-TV-Z]{10}$/);
+		expect(second).toMatch(/^S-[0-9A-HJKMNP-TV-Z]{10}$/);
+		expect(second).not.toBe(first);
+	});
+
+	it('migrates existing internal IDs and retains them as reservation aliases', () => {
+		const previousId = 'seatkey_0123456789abcdef0123456789abcdef';
+		const legacySeat: CanvasObject = {
+			id: 'seat_old',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { reservationId: previousId, zone: 'VIP', row: 'A', seatNo: '1' }
+		};
+		const currentSeat: CanvasObject = {
+			id: 'seat_current',
+			type: 'seat',
+			x: 30,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: { reservationId: 'S-0123456789' }
+		};
+
+		const migrated = ensureReadableReservationSeatIds([legacySeat, currentSeat]);
+
+		expect(getReservationSeatId(migrated[0])).toMatch(/^S-[0-9A-HJKMNP-TV-Z]{10}$/);
+		expect(getLegacySeatIds(migrated[0])).toContain(previousId);
+		expect(getLegacySeatIds(migrated[0])).toContain('VIP-A1');
+		expect(getReservationSeatId(migrated[1])).toBe('S-0123456789');
+		expect(getReservationSeatId(migrated[0])).not.toBe(getReservationSeatId(migrated[1]));
+	});
+
+	it('classifies readable seat IDs for organizer check-in', () => {
+		expect(classifyIdentifier('S-7K2M9W4P3D')).toEqual({
+			type: 'SeatId',
+			value: 'S-7K2M9W4P3D'
+		});
 	});
 
 	it('should reject saving when seats have duplicate seat IDs', async () => {

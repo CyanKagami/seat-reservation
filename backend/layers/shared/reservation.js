@@ -11,7 +11,7 @@ import {
   TransactWriteCommand
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, fetchData, updateAllAttributes } from './dynamo.js';
-import { parseSeatId, isValidSeatId } from './seat.js';
+import { parseSeatId, isInternalSeatId, isValidSeatId } from './seat.js';
 import { classifyIdentifier } from './checkIn.js';
 import { logError } from './logger.js';
 
@@ -98,16 +98,28 @@ export function readCheckInRequest(body) {
 // ---------- Helpers ----------
 
 export function withSeatParts(record) {
+  if (record.zone !== undefined || record.seat !== undefined) {
+    return {
+      ...record,
+      zone: record.zone ?? '',
+      seat: record.seat ?? ''
+    };
+  }
+  if (isInternalSeatId(record.seatId)) {
+    return { ...record, zone: '', seat: '' };
+  }
   const parts = parseSeatId(record.seatId) ?? { zone: '', seat: record.seatId };
   return { ...record, ...parts };
 }
 
 // ---------- Core reservation operations ----------
 
-export async function reserveSeat(eventId, seatId, user) {
+export async function reserveSeat(eventId, seatDetails, user) {
   const seat = {
     eventId,
-    seatId,
+    seatId: seatDetails.seatId,
+    zone: seatDetails.zone,
+    seat: seatDetails.label || '',
     email: user.email,
     googleId: user.googleId,
     status: 'reserved',
@@ -118,7 +130,7 @@ export async function reserveSeat(eventId, seatId, user) {
     seatId: SLOT_PREFIX + (user.email || user.googleId),
     email: user.email,
     googleId: user.googleId,
-    reservedSeatId: seatId
+    reservedSeatId: seatDetails.seatId
   };
 
   try {
@@ -418,5 +430,8 @@ export async function getUserSeat(eventId, userIdentifier) {
     })
   );
   if (!Item) return null;
-  return withSeatParts({ seatId: Item.reservedSeatId });
+  const reservation = await fetchData('reservations', { eventId, seatId: Item.reservedSeatId });
+  return reservation
+    ? withSeatParts({ seatId: reservation.seatId, zone: reservation.zone, seat: reservation.seat })
+    : null;
 }

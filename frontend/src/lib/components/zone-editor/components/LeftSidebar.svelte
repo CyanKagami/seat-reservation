@@ -15,7 +15,7 @@
 	}
 	function handleApplyZone(zoneName: string) {
 		if (zoneState.selectedIds.size === 0) return;
-		zoneState.updateSelectedObjectMetadata({ zone: zoneName });
+		zoneState.updateSelectedObjectZone(zoneName);
 	}
 
 	function handleQuickAutoLabel(event: MouseEvent, zoneName: string) {

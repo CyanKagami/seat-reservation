@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { ZoneEditorState } from "../zoneState.svelte";
 	import type { SeatType } from "../types";
-	import { getSeatId } from "../utils/zoneUtils";
+	import { getReservationSeatId, getSeatId } from "../utils/zoneUtils";
+	import { alertModal } from "$lib/store/alert.svelte";
 
 	let { zoneState, onOpenPopup }: { zoneState: ZoneEditorState, onOpenPopup: () => void } = $props();
 	let previewSeatType = $state<SeatType | null>(null);
@@ -92,6 +93,12 @@
 			: ""
 	);
 
+	let currentReservationSeatId = $derived(
+		selectedObjects.length === 1 && selectedObjects[0].type === 'seat'
+			? getReservationSeatId(selectedObjects[0])
+			: ''
+	);
+
 	let hasManualLabel = $derived(
 		hasSelection && selectedObjects.some((o) => o.metadata?.isManualLabel)
 	);
@@ -104,7 +111,7 @@
 
 	function handleZoneChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
-		zoneState.updateSelectedObjectMetadata({ zone: target.value });
+		zoneState.updateSelectedObjectZone(target.value);
 	}
 
 	function handleStatusChange(e: Event) {
@@ -188,6 +195,15 @@
 	function handleColorChange(e: Event) {
 		const target = e.target as HTMLInputElement;
 		zoneState.updateSelectedObjectMetadata({ color: target.value });
+	}
+
+	async function copyReservationSeatId() {
+		if (!currentReservationSeatId) return;
+		try {
+			await navigator.clipboard.writeText(currentReservationSeatId);
+		} catch {
+			alertModal.failure("คัดลอกรหัสไม่สำเร็จ", "ไม่สามารถคัดลอกรหัสที่นั่งได้ กรุณาลองอีกครั้ง");
+		}
 	}
 </script>
 
@@ -340,6 +356,25 @@
 							</span>
 						{/if}
 					</div>
+				</div>
+
+				<div class="bg-slate-50 p-2.5 rounded border border-slate-200 text-xs">
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-slate-500">รหัสภายในสำหรับเช็คอิน:</span>
+						{#if currentReservationSeatId}
+							<button
+								type="button"
+								onclick={copyReservationSeatId}
+								class="rounded border border-slate-300 px-2 py-1 font-medium text-slate-700 hover:bg-white"
+								aria-label="คัดลอกรหัสภายในที่นั่ง"
+							>
+								คัดลอก
+							</button>
+						{/if}
+					</div>
+					<p class="mt-1 break-all font-mono font-bold text-slate-800">
+						{currentReservationSeatId || (selectedObjects.length > 1 ? '(เลือกทีละที่นั่ง)' : 'ยังไม่มีรหัส')}
+					</p>
 				</div>
 
 				{#if hasManualLabel}

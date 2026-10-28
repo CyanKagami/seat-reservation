@@ -22,18 +22,18 @@
 </script>
 
 <nav aria-label="ขั้นตอนการจองที่นั่ง" class="w-full max-w-xl mx-auto my-6 px-4">
-    <ol class="flex items-center justify-between w-full relative">
+    <ol class="grid w-full grid-cols-3 items-center relative">
         <!-- Connecting Line Background -->
-        <div class="absolute left-6 right-6 top-4 h-0.5 bg-border-strong -z-0"></div>
+        <div class="absolute left-[16.6667%] right-[16.6667%] top-4 h-0.5 bg-border-strong -z-0"></div>
         <!-- Active Progress Line Fill -->
         <div 
-            class="absolute left-6 top-4 h-0.5 bg-secondary transition-all duration-300 -z-0"
-            style="width: {status === 'confirm' ? 'calc(100% - 3rem)' : status === 'seat' ? 'calc(50% - 1.5rem)' : '0%'};"
+            class="absolute left-[16.6667%] top-4 h-0.5 bg-secondary transition-all duration-300 -z-0"
+            style="width: {status === 'confirm' ? '66.6667%' : status === 'seat' ? '33.3333%' : '0%'};"
         ></div>
 
         {#each steps as step}
             {@const state = getStepState(step.id)}
-            <li class="flex flex-col items-center relative z-10">
+            <li class="flex w-full flex-col items-center relative z-10">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 {
                     state === 'completed'
                         ? 'bg-secondary text-white shadow-xs'

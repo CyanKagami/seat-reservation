@@ -1,7 +1,7 @@
 // src/lib/type/reservation.ts
 export type ReservationStatus = 'reserved' | 'checked-in';
 
-// The record as stored. seatId is "<zone>-<seat>" (see $lib/seat.ts).
+// seatId is the opaque internal seat key; zone/seat are presentation values.
 export interface Reservation {
   eventId: string;
   seatId: string;
@@ -12,7 +12,7 @@ export interface Reservation {
   reservedSeatId?: string;
 }
 
-// What the API returns: the stored record plus zone/seat extracted from seatId by the server.
+// What the API returns: the stored record plus display values from the event layout.
 export interface ReservationView extends Reservation {
   zone: string;
   seat: string;
@@ -27,5 +27,6 @@ export interface EventSummary {
 }
 
 export interface ReservationWithEvent extends ReservationView {
+  checkInSeatId: string;
   event: EventSummary | null; // null if the event was deleted
 }

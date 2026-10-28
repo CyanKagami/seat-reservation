@@ -9,11 +9,14 @@
         event: EventSummary;
         seat: string;
         zone: string;
+        seatId: string;
+        checkInSeatId: string;
         eventId: string;
         onCancelled?: () => void;
     }
 
-    const { event, seat, zone, eventId, onCancelled }: Props = $props();
+    const { event, seat, zone, seatId, checkInSeatId, eventId, onCancelled }: Props = $props();
+    let isSeatCodeOpen = $state(false);
 
     const date = untrack(() => event.date);
     const start_date = new Date(date?.start || Date.now());
@@ -22,14 +25,14 @@
     function handleCancel() {
         alertModal.warning(
             "ยกเลิกการจองที่นั่ง", 
-            `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองที่นั่ง "${seat}" (โซน ${zone}) ในกิจกรรม "${event.name}"?`, 
+            `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองที่นั่ง "${seat}"${zone ? ` (โซน ${zone})` : ''} ในกิจกรรม "${event.name}"?`,
             {
                 showCancel: true,
                 confirmText: "ยืนยันยกเลิก",
                 cancelText: "เก็บที่นั่งไว้",
                 onconfirm: async () => {
                     try {
-                        await cancelSeat(eventId, seat, zone);
+                        await cancelSeat(eventId, seatId);
                         alertModal.success("ยกเลิกเรียบร้อย", "ยกเลิกการจองที่นั่งสำเร็จแล้ว", () => {
                             if (onCancelled) onCancelled();
                         });
@@ -54,9 +57,12 @@
             <div class="absolute inset-0 bg-gradient-to-t from-dark/60 via-transparent to-transparent"></div>
             
             <!-- Confirmed Seat Tag (No Pill Capsule, No Pseudo-Dot) -->
-            <div class="absolute top-3 right-3 bg-dark/85 backdrop-blur-md px-2.5 py-1 rounded-md shadow-xs border border-white/20 text-xs font-bold text-white tracking-tight">
-                โซน {zone} · ที่นั่ง {seat}
-            </div>
+            {#if zone || seat}
+                <div class="absolute top-3 right-3 bg-dark/85 backdrop-blur-md px-2.5 py-1 rounded-md shadow-xs border border-white/20 text-xs font-bold text-white tracking-tight">
+                    {#if zone}โซน {zone}{/if}
+                    {#if seat}{#if zone} · {/if}ที่นั่ง {seat}{/if}
+                </div>
+            {/if}
 
             <div class="absolute bottom-3 left-3 text-white text-xs font-medium drop-shadow-xs">
                 {formatThaiDateTimeShort(start_date, end_date)}
@@ -90,12 +96,70 @@
         >
             ยกเลิกที่นั่ง
         </button>
-
-        <a 
-            href="/event-info/{eventId}"
-            class="flex-1 py-2.5 px-3 rounded-xl bg-secondary hover:bg-secondary-hover text-white font-semibold text-xs sm:text-sm transition-colors text-center shadow-2xs"
+        <button
+            type="button"
+            onclick={() => (isSeatCodeOpen = true)}
+            class="flex-1 py-2.5 px-3 rounded-xl bg-secondary text-white hover:bg-secondary-hover font-semibold text-xs sm:text-sm transition-colors cursor-pointer shadow-2xs"
         >
-            ดูรายละเอียด
-        </a>
+            แสดงรหัสที่นั่ง
+        </button>
     </div>
 </article>
+
+{#if isSeatCodeOpen}
+    <div
+        class="fixed inset-0 z-50 flex h-dvh w-screen items-center justify-center bg-dark/75 p-0 backdrop-blur-sm sm:p-6"
+        role="presentation"
+        onclick={(event) => {
+            if (event.target === event.currentTarget) isSeatCodeOpen = false;
+        }}
+        onkeydown={(event) => {
+            if (event.key === 'Escape') isSeatCodeOpen = false;
+        }}
+    >
+        <div
+            class="relative flex h-full w-full flex-col items-center justify-center bg-white px-6 py-10 text-center sm:h-auto sm:max-h-[90dvh] sm:max-w-xl sm:rounded-3xl sm:px-10"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="seat-code-title"
+            tabindex="-1"
+        >
+            <button
+                type="button"
+                onclick={() => (isSeatCodeOpen = false)}
+                class="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border-subtle text-2xl text-dark hover:bg-surface-subtle"
+                aria-label="ปิดรหัสที่นั่ง"
+            >
+                &times;
+            </button>
+
+            <p class="text-sm font-semibold text-dark-soft">{event.name}</p>
+            <h2 id="seat-code-title" class="mt-3 text-xl font-bold text-dark sm:text-2xl">
+                แสดงรหัสนี้แก่เจ้าหน้าที่
+            </h2>
+            {#if zone || seat}
+                <p class="mt-3 text-base text-dark-soft">
+                    {#if zone}โซน {zone}{/if}
+                    {#if seat}{#if zone} · {/if}ที่นั่ง {seat}{/if}
+                </p>
+            {/if}
+
+            <div class="mt-8 w-full rounded-2xl border-2 border-border-subtle bg-surface-subtle px-4 py-8 sm:px-6">
+                <p class="text-xs font-semibold uppercase tracking-wide text-dark-soft">รหัสที่นั่ง</p>
+                <p class="mt-3 break-all font-mono text-3xl font-bold tracking-wider text-dark sm:text-4xl">
+                    {checkInSeatId}
+                </p>
+            </div>
+            <p class="mt-5 text-sm text-dark-soft">
+                เจ้าหน้าที่สามารถกรอกรหัสนี้ในหน้าตรวจสอบการเข้าร่วมกิจกรรม
+            </p>
+            <button
+                type="button"
+                onclick={() => (isSeatCodeOpen = false)}
+                class="mt-8 min-h-12 w-full rounded-xl bg-secondary px-5 py-3 text-base font-semibold text-white hover:bg-secondary-hover sm:w-auto sm:min-w-40"
+            >
+                ปิด
+            </button>
+        </div>
+    </div>
+{/if}

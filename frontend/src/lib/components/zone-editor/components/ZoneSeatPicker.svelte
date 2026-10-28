@@ -3,7 +3,9 @@
   import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject } from "../types";
 	import type { SeatType } from "$lib/components/canvas-shared/types";
-  import { getSeatId } from "../utils/zoneUtils";
+  import { getReservationSeatId, getSeatId } from "../utils/zoneUtils";
+
+	const NO_ZONE_ID = "zone-no-zone";
 
 	let {
 		zoneName = "เลือกที่นั่ง",
@@ -29,13 +31,36 @@
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
 
+	function belongsToSelectedZone(seat: CanvasObject) {
+		return selectedZoneId === NO_ZONE_ID
+			? !seat.metadata?.zone
+			: seat.metadata?.zone === selectedZoneId;
+	}
+
 	let isSmallScreen = $state(false);
+	let pickerContainer: HTMLDivElement;
+	let svgElement: SVGSVGElement;
+	let zoomLevel = $state(1);
+	let viewCenterX: number | null = $state(null);
+	let viewCenterY: number | null = $state(null);
+	let pinchStart: {
+		distance: number;
+		zoom: number;
+		focalX: number;
+		focalY: number;
+		midpointX: number;
+		midpointY: number;
+	} | null = null;
 	onMount(() => {
 		const mediaQuery = window.matchMedia("(max-width: 639px)");
 		const updateScreenSize = () => (isSmallScreen = mediaQuery.matches);
 		updateScreenSize();
 		mediaQuery.addEventListener("change", updateScreenSize);
-		return () => mediaQuery.removeEventListener("change", updateScreenSize);
+		pickerContainer.addEventListener("touchmove", handleTouchMove, { passive: false });
+		return () => {
+			mediaQuery.removeEventListener("change", updateScreenSize);
+			pickerContainer.removeEventListener("touchmove", handleTouchMove);
+		};
 	});
 
 	// Helper to extract polygon relative points, centroid, and absolute bounds
@@ -80,29 +105,32 @@
 		};
 	}
 
-	// Auto-zoom ViewBox calculation focused on the selected zone
-	let viewBox = $derived.by(() => {
+	// Keep the viewport centered on seats; environment objects provide context but never expand it.
+	let baseViewBox = $derived.by(() => {
 		if (!objects.length) return "0 0 800 600";
 
-		const zoneObjects = objects.filter(
-			(s) => s.metadata.zone === selectedZoneId && s.metadata.status === 'available'
+		const zoneSeats = objects.filter(
+			(object) => object.type === 'seat' && belongsToSelectedZone(object)
 		);
 
-		const targetObjects = zoneObjects.length > 0 ? zoneObjects : objects;
+		const targetSeats = zoneSeats.length > 0
+			? zoneSeats
+			: objects.filter((object) => object.type === 'seat');
+		if (targetSeats.length === 0) return "0 0 800 600";
 
 		let minX = Infinity,
 			minY = Infinity,
 			maxX = -Infinity,
 			maxY = -Infinity;
 
-		targetObjects.forEach((s) => {
-			const x = s.x ?? 0;
-			const y = s.y ?? 0;
-			const w = s.width ?? 32;
-			const h = s.height ?? 32;
+		targetSeats.forEach((seat) => {
+			const x = seat.x ?? 0;
+			const y = seat.y ?? 0;
+			const w = seat.width ?? 32;
+			const h = seat.height ?? 32;
 
-			if (s.points && Array.isArray(s.points) && s.points.length > 0) {
-				const poly = getPolyData(s);
+			if (seat.points && Array.isArray(seat.points) && seat.points.length > 0) {
+				const poly = getPolyData(seat);
 				minX = Math.min(minX, poly.minX);
 				minY = Math.min(minY, poly.minY);
 				maxX = Math.max(maxX, poly.maxX);
@@ -121,26 +149,66 @@
 
 		return `${minX - padding} ${minY - padding} ${width} ${height}`;
 	});
-	let mobileMapSize = $derived.by(() => {
-		const [, , viewWidth = 800, viewHeight = 600] = viewBox.split(/\s+/).map(Number);
-		const zoneSeats = objects.filter(
-			(object) =>
-				object.type === "seat" &&
-				object.metadata?.zone === selectedZoneId &&
-				object.metadata?.status === "available"
-		);
-		const seatWidths = zoneSeats
-			.map((seat) => seat.width ?? 28)
-			.filter((width) => Number.isFinite(width) && width > 0)
-			.sort((a, b) => a - b);
-		const typicalSeatWidth = seatWidths[Math.floor(seatWidths.length / 2)] ?? 28;
-		const scale = Math.max(1, 44 / typicalSeatWidth);
 
-		return {
-			width: Math.ceil(viewWidth * scale),
-			height: Math.ceil(viewHeight * scale)
-		};
+	let viewBox = $derived.by(() => {
+		const [baseX, baseY, baseWidth, baseHeight] = baseViewBox.split(/\s+/).map(Number);
+		const width = baseWidth / zoomLevel;
+		const height = baseHeight / zoomLevel;
+		const centerX = viewCenterX ?? baseX + baseWidth / 2;
+		const centerY = viewCenterY ?? baseY + baseHeight / 2;
+		return `${centerX - width / 2} ${centerY - height / 2} ${width} ${height}`;
 	});
+
+	function handleTouchStart(event: TouchEvent) {
+		if (!isSmallScreen || event.touches.length !== 2 || !svgElement) return;
+
+		const [first, second] = Array.from(event.touches);
+		const rect = svgElement.getBoundingClientRect();
+		const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(/\s+/).map(Number);
+		const midpointX = (first.clientX + second.clientX) / 2 - rect.left;
+		const midpointY = (first.clientY + second.clientY) / 2 - rect.top;
+		const normalizedX = midpointX / rect.width;
+		const normalizedY = midpointY / rect.height;
+
+		pinchStart = {
+			distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY),
+			zoom: zoomLevel,
+			focalX: viewX + normalizedX * viewWidth,
+			focalY: viewY + normalizedY * viewHeight,
+			midpointX: normalizedX,
+			midpointY: normalizedY
+		};
+	}
+
+	function handleTouchMove(event: TouchEvent) {
+		if (!pinchStart || event.touches.length !== 2) return;
+		event.preventDefault();
+
+		const [first, second] = Array.from(event.touches);
+		const distance = Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+		const nextZoom = Math.min(5, Math.max(1, pinchStart.zoom * distance / pinchStart.distance));
+		const [baseX, baseY, baseWidth, baseHeight] = baseViewBox.split(/\s+/).map(Number);
+		const viewWidth = baseWidth / nextZoom;
+		const viewHeight = baseHeight / nextZoom;
+		const svgRect = svgElement.getBoundingClientRect();
+		const nextMidpointX = ((first.clientX + second.clientX) / 2 - svgRect.left) / svgRect.width;
+		const nextMidpointY = ((first.clientY + second.clientY) / 2 - svgRect.top) / svgRect.height;
+		const normalizedX = Number.isFinite(nextMidpointX) ? nextMidpointX : pinchStart.midpointX;
+		const normalizedY = Number.isFinite(nextMidpointY) ? nextMidpointY : pinchStart.midpointY;
+
+		zoomLevel = nextZoom;
+		if (nextZoom === 1) {
+			viewCenterX = null;
+			viewCenterY = null;
+		} else {
+			viewCenterX = pinchStart.focalX + (0.5 - normalizedX) * viewWidth;
+			viewCenterY = pinchStart.focalY + (0.5 - normalizedY) * viewHeight;
+		}
+	}
+
+	function handleTouchEnd(event: TouchEvent) {
+		if (event.touches.length < 2) pinchStart = null;
+	}
 
 	// Currently selected seats objects
 	let selectedSeats = $derived(
@@ -149,7 +217,7 @@
 	let visibleSeatTypes = $derived.by(() => {
 		const zoneSeatTypes = new Map<string, SeatType>();
 		for (const seat of objects) {
-			if (seat.type !== 'seat' || seat.metadata?.zone !== selectedZoneId || seat.metadata?.status !== 'available') {
+			if (seat.type !== 'seat' || !belongsToSelectedZone(seat) || (seat.metadata?.status ?? 'available') !== 'available') {
 				continue;
 			}
 			const key = seat.metadata?.seatType ?? 'standard';
@@ -160,12 +228,12 @@
 	});
 
 	function toggleSeat(seat: CanvasObject) {
-		const isZoneSeat = seat.metadata?.zone === selectedZoneId;
+		const isZoneSeat = belongsToSelectedZone(seat);
 		const status = seat.metadata?.status ?? "available";
-		const seatId = getSeatId(seat)
-		const isReserved = reservedIds.has(seatId);
+		const reservationId = getReservationSeatId(seat);
+		const isReserved = reservedIds.has(reservationId);
 
-		if (!isZoneSeat || status === "unavailable" || !seatId || isReserved) return;
+		if (!isZoneSeat || status === "unavailable" || isReserved) return;
 
 
 		if (selectedSeatIds.includes(seat.id)) {
@@ -224,13 +292,18 @@
 	</div>
 
 	<!-- Canvas Viewport (Responsive Height & SVG Aspect Scaler) -->
-	<div class="relative flex-1 w-full h-full min-h-[320px] sm:min-h-[450px] bg-white select-none overflow-auto sm:overflow-hidden flex items-start sm:items-center justify-start sm:justify-center overscroll-contain [touch-action:pan-x_pan-y]">
+	<div
+		bind:this={pickerContainer}
+		class="relative flex-1 w-full h-full min-h-[320px] sm:min-h-[450px] bg-white select-none overflow-hidden flex items-center justify-center overscroll-contain touch-pan-x touch-pan-y"
+		ontouchstart={handleTouchStart}
+		ontouchend={handleTouchEnd}
+		ontouchcancel={handleTouchEnd}
+	>
 		<svg
+			bind:this={svgElement}
 			viewBox={viewBox}
 			preserveAspectRatio="xMidYMid meet"
-			width={isSmallScreen ? mobileMapSize.width : undefined}
-			height={isSmallScreen ? mobileMapSize.height : undefined}
-			class="block select-none relative z-10 transition-all duration-500 ease-out {isSmallScreen ? 'shrink-0' : 'h-full w-full'} sm:h-full sm:w-full sm:max-w-full sm:max-h-full"
+			class="block h-full w-full select-none relative z-10 transition-all duration-200 ease-out"
 		>
 			{#each objects as obj (obj.id)}
 				{@const screenX = obj.x ?? 0}
@@ -239,21 +312,22 @@
 				{@const screenHeight = obj.height ?? 28}
 				{@const centerX = screenX + screenWidth / 2}
 				{@const centerY = screenY + screenHeight / 2}
-				{@const isZoneObject = obj.metadata.zone === selectedZoneId && obj.metadata.status === 'available'}
+				{@const isZoneObject = belongsToSelectedZone(obj) && (obj.metadata?.status ?? 'available') === 'available'}
 
 				<!-- 1. SEATS -->
 				{#if obj.type === 'seat'}
 					{@const isSelected = selectedSeatIds.includes(obj.id)}
 					{@const status = obj.metadata.status ?? 'available'}
 					{@const seatId = getSeatId(obj)}
+					{@const reservationId = getReservationSeatId(obj)}
 					{@const seatTypeKey = obj.metadata.seatType ?? 'standard'}
 					{@const seatType = seatTypes[seatTypeKey] ?? { name: seatTypeKey, color: '#e2e8f0' }}
-					{@const isReserved = reservedIds.has(seatId)}
-					{@const isMine = myReservedIds.has(seatId)}
+					{@const isReserved = reservedIds.has(reservationId)}
+					{@const isMine = myReservedIds.has(reservationId)}
 
 					{@const statusClasses = !isZoneObject
 						? 'fill-slate-200 stroke-slate-300 opacity-25'
-						: status === 'unavailable' || !seatId
+						: status === 'unavailable'
 							? 'fill-stone-700 stroke-stone-600'
 							: isMine
 								? 'fill-emerald-500 stroke-emerald-600 ring-2 ring-emerald-400'
@@ -269,7 +343,7 @@
 						class="transition-colors focus:outline-none 
 							{!isZoneObject 
 								? 'pointer-events-none' 
-								: status === 'unavailable' || !seatId
+								: status === 'unavailable'
 									? 'cursor-not-allowed opacity-60 pointer-events-auto' 
 									: 'cursor-pointer pointer-events-auto'}"
 					>
@@ -318,8 +392,8 @@
 						height={screenHeight} 
 						rx={2}
 						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
-						style="fill: {isZoneObject ? (obj.metadata?.color ?? '#e2e8f0') : '#e2e8f0'};"
-						class="stroke-2 pointer-events-none transition-all {isZoneObject ? 'stroke-slate-500 opacity-90' : 'stroke-slate-300 opacity-25'}"
+						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+						class="stroke-2 stroke-slate-500 pointer-events-none opacity-90"
 					/>
 
 				<!-- 3. ENVIRONMENT CIRCLE -->
@@ -330,8 +404,8 @@
 						rx={screenWidth / 2} 
 						ry={screenHeight / 2} 
 						transform="rotate({obj.rotation ?? 0}, {centerX}, {centerY})"
-						style="fill: {isZoneObject ? (obj.metadata?.color ?? '#e2e8f0') : '#e2e8f0'};"
-						class="stroke-2 pointer-events-none transition-all {isZoneObject ? 'stroke-slate-500 opacity-90' : 'stroke-slate-300 opacity-25'}"
+						style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+						class="stroke-2 stroke-slate-500 pointer-events-none opacity-90"
 					/>
 
 				<!-- 4. ENVIRONMENT POLYGON -->
@@ -339,12 +413,12 @@
 					{@const poly = getPolyData(obj)}
 					<g 
 						transform="translate({poly.screenX}, {poly.screenY}) rotate({obj.rotation ?? 0}, {poly.centerRelX}, {poly.centerRelY})"
-						class="pointer-events-none transition-all {isZoneObject ? 'opacity-90' : 'opacity-25'}"
+						class="pointer-events-none opacity-90"
 					>
 						<polygon 
 							points={poly.relativeSvgPoints} 
-							style="fill: {isZoneObject ? (obj.metadata?.color ?? '#e2e8f0') : '#e2e8f0'};"
-							class="stroke-2 {isZoneObject ? 'stroke-slate-500' : 'stroke-slate-300'}"
+							style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+							class="stroke-2 stroke-slate-500"
 						/>
 					</g>
 
@@ -353,12 +427,12 @@
 					{@const poly = getPolyData(obj)}
 					<g 
 						transform="translate({poly.screenX}, {poly.screenY}) rotate({obj.rotation ?? 0}, {poly.centerRelX}, {poly.centerRelY})"
-						class="pointer-events-none transition-all {isZoneObject ? 'opacity-100' : 'opacity-30'}"
+						class="pointer-events-none opacity-100"
 					>
 						<polygon 
 							points={poly.relativeSvgPoints} 
-							style="fill: {isZoneObject ? (obj.metadata?.color ?? '#e2e8f0') : '#e2e8f0'};"
-							class="stroke-2 {isZoneObject ? 'stroke-slate-500' : 'stroke-slate-300'}"
+							style="fill: {obj.metadata?.color ?? '#e2e8f0'};"
+							class="stroke-2 stroke-slate-500"
 						/>
 						<foreignObject 
 							x={poly.centerRelX - 40} 

@@ -3,6 +3,7 @@ import type { Point } from '../../canvas-shared/types';
 import type { ToolContext } from './types';
 import { BOX_SIZE } from '../../canvas-shared/constants';
 import { screenToCanvas } from '../../canvas-shared/utils';
+import { createReservationSeatId } from '../../zone-editor/utils/zoneUtils';
 
 export abstract class BaseToolStrategy {
 	abstract readonly id: ToolType;
@@ -45,7 +46,8 @@ export abstract class BaseToolStrategy {
 			height: BOX_SIZE,
 			metadata: {
 				status:'available',
-				seatType: 'standard'
+				seatType: 'standard',
+				reservationId: createReservationSeatId()
 			}
 		};
 	}

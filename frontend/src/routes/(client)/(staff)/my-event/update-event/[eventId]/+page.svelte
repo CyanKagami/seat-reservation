@@ -525,7 +525,7 @@
         </a>
         <div class="flex flex-col-reverse gap-3 border-t border-border-subtle pt-5">
           <a
-            href="/my-event"
+            href="/my-event/event-info/{params.eventId}"
             class="inline-flex w-full items-center justify-center rounded-xl border border-border-strong bg-white px-5 py-3 text-sm font-semibold text-dark transition-colors hover:bg-surface-subtle"
           >
             ยกเลิก

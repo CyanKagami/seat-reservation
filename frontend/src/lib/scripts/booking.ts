@@ -40,11 +40,11 @@ export async function getSeatMap(eventId: string, fetchFunc: typeof fetch = fetc
   return apiFetchJson(`/booking?eventId=${encodeURIComponent(eventId)}`, {}, fetchFunc);
 }
 
-// seatId is "<zone>-<seat>", e.g. "Front-A5" (build it with makeSeatId from $lib/seat).
-export async function reserveSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
+// seatId is the opaque internal ID stored in the event layout.
+export async function reserveSeat(eventId: string, seatId: string, fetchFunc: typeof fetch = fetch): Promise<{ reservation: ReservationView }> {
   return apiFetchJson('/booking', {
       method: 'POST',
-      body: JSON.stringify({ eventId, seatId: `${zone}-${seatId}` })
+      body: JSON.stringify({ eventId, seatId })
     }, fetchFunc);
 }
 
@@ -55,9 +55,9 @@ export async function checkInSeat(eventId: string, identifier: string, fetchFunc
     }, fetchFunc);
 }
 
-export async function cancelSeat(eventId: string, seatId: string, zone: string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
+export async function cancelSeat(eventId: string, seatId: string, fetchFunc: typeof fetch = fetch): Promise<{ message: string }> {
   return apiFetchJson(
-    `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(`${zone}-${seatId}`)}`,
+    `/booking?eventId=${encodeURIComponent(eventId)}&seatId=${encodeURIComponent(seatId)}`,
     { method: 'DELETE' },
     fetchFunc
   );

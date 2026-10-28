@@ -26,6 +26,11 @@ import {
   fetchEventSummaries,
   withSeatParts,
   isValidSeatId,
+  isInternalSeatId,
+  parseSeatId,
+  getReservationSeatId,
+  getSeatLabel,
+  getLegacySeatIds,
   classifyIdentifier,
   isEventCheckInDay,
   FACULTY_MAP,
@@ -85,19 +90,121 @@ function getZoneMetaData(objects, takenId) {
         const zId = obj.metadata.zone;
         if (!groups[zId]) groups[zId] = { id: zId, name: obj.metadata.zone ?? 'โซนทั่วไป', capacity: 0, takenCount: 0 };
         groups[zId].capacity += 1;
-        // Derive seatId the same way as zone-editor: zone-seat (row + seatNo)
-        const seatLabel = (obj.metadata?.row && obj.metadata?.seatNo)
-          ? `${obj.metadata.row}${obj.metadata.seatNo}`
-          : (obj.metadata?.label || obj.id?.replace('seat_', '') || '');
-        if (takenId.has(`${obj.metadata.zone}-${seatLabel}`)) groups[zId].takenCount += 1;
+        if (takenId.has(getReservationSeatId(obj)) ||
+          getLegacySeatIds(obj).some((legacyId) => takenId.has(legacyId))) {
+          groups[zId].takenCount += 1;
+        }
       } else {
         const noZoneId = 'zone-no-zone';
         if (!groups[noZoneId]) groups[noZoneId] = { id: noZoneId, name: 'ไม่มีโซน / No Zone', capacity: 0, takenCount: 0, isNoZone: true };
         groups[noZoneId].capacity += 1;
+        if (takenId.has(getReservationSeatId(obj)) ||
+          getLegacySeatIds(obj).some((legacyId) => takenId.has(legacyId))) {
+          groups[noZoneId].takenCount += 1;
+        }
       }
     }
   });
   return groups;
+}
+
+async function findReservationBySeatIdentifier(eventId, identifier) {
+  const directReservation = await fetchData('reservations', { eventId, seatId: identifier });
+  if (directReservation?.status !== undefined) return directReservation;
+
+  if (isInternalSeatId(identifier)) {
+    const layout = decode(await readFileAsByteArray(`layouts/event/${eventId}.msgpack`));
+    const seats = Array.isArray(layout?.objects) ? layout.objects : [];
+    const matchingSeat = seats.find((object) =>
+      object.type === 'seat' &&
+      (getReservationSeatId(object) === identifier || getLegacySeatIds(object).includes(identifier))
+    );
+
+    if (matchingSeat) {
+      const reservationIds = [
+        getReservationSeatId(matchingSeat),
+        ...getLegacySeatIds(matchingSeat)
+      ];
+      for (const reservationId of new Set(reservationIds)) {
+        if (reservationId === identifier) continue;
+        const reservation = await fetchData('reservations', { eventId, seatId: reservationId });
+        if (reservation?.status !== undefined) return reservation;
+      }
+    }
+  }
+
+  const seatParts = parseSeatId(identifier);
+  if (seatParts?.zone) {
+    const reservations = await listReservations(eventId);
+    return reservations.find((item) => {
+      const parts = withSeatParts(item);
+      return parts.zone === seatParts.zone && parts.seat === seatParts.seat;
+    }) ?? null;
+  }
+
+  return null;
+}
+
+async function getCheckInSeatId(reservation, layoutCache) {
+  if (/^S-[0-9A-HJKMNP-TV-Z]{10}$/.test(reservation.seatId)) {
+    return reservation.seatId;
+  }
+
+  if (reservation.zone && reservation.seat) {
+    const readableLegacyId = `${reservation.zone}-${reservation.seat}`;
+    const parts = parseSeatId(readableLegacyId);
+    if (parts?.zone === reservation.zone && parts.seat === reservation.seat) {
+      return readableLegacyId;
+    }
+  }
+
+  let layoutPromise = layoutCache.get(reservation.eventId);
+  if (!layoutPromise) {
+    layoutPromise = readFileAsByteArray(`layouts/event/${reservation.eventId}.msgpack`)
+      .then((buffer) => decode(buffer));
+    layoutCache.set(reservation.eventId, layoutPromise);
+  }
+
+  const layout = await layoutPromise;
+  const seats = Array.isArray(layout?.objects) ? layout.objects : [];
+  const seat = seats.find((object) =>
+    object.type === 'seat' &&
+    (getReservationSeatId(object) === reservation.seatId ||
+      getLegacySeatIds(object).includes(reservation.seatId))
+  );
+  if (!seat) return reservation.seatId;
+
+  const currentId = getReservationSeatId(seat);
+  if (/^S-[0-9A-HJKMNP-TV-Z]{10}$/.test(currentId)) return currentId;
+
+  const readableLegacyId = getLegacySeatIds(seat).find((id) => parseSeatId(id)?.zone);
+  return readableLegacyId ?? reservation.seatId;
+}
+
+async function resolveReservableSeat(eventId, requestedSeatId) {
+  const layout = decode(await readFileAsByteArray(`layouts/event/${eventId}.msgpack`));
+  const seats = Array.isArray(layout?.objects) ? layout.objects : [];
+  const seat = seats.find((object) => {
+    if (object.type !== 'seat' || (object.metadata?.status ?? 'available') !== 'available') return false;
+    const reservationId = getReservationSeatId(object);
+    return requestedSeatId === reservationId || getLegacySeatIds(object).includes(requestedSeatId);
+  });
+
+  if (!seat) throw new BookingError('NOT_FOUND', 'ไม่พบที่นั่งที่สามารถจองได้');
+
+  const seatId = getReservationSeatId(seat);
+  const zone = typeof seat.metadata?.zone === 'string' ? seat.metadata.zone : '';
+  const label = getSeatLabel(seat);
+  for (const legacySeatId of getLegacySeatIds(seat)) {
+    if (legacySeatId !== seatId) {
+      const legacyReservation = await fetchData('reservations', { eventId, seatId: legacySeatId });
+      if (legacyReservation?.status !== undefined) {
+        throw new BookingError('SEAT_TAKEN', 'ที่นั่งที่ท่านเลือกถูกจองไว้แล้ว');
+      }
+    }
+  }
+
+  return { seatId, zone, label };
 }
 
 // ---- Routes ----
@@ -115,9 +222,13 @@ router.post('/check-in', requireRole('organizer', 'admin'), async (req, res) => 
       return res.status(403).json({ error: 'เช็กชื่อได้เฉพาะวันที่จัดกิจกรรม' });
     }
 
-    const reservation = await (input.identifierType === 'SeatId'
-      ? checkInWithSeatId(ev.eventId, input.identifier)
-      : checkInWithStudentId(ev.eventId, input.identifier));
+    let reservation;
+    if (input.identifierType === 'SeatId') {
+      const matchedReservation = await findReservationBySeatIdentifier(ev.eventId, input.identifier);
+      reservation = await checkInWithSeatId(ev.eventId, matchedReservation?.seatId ?? input.identifier);
+    } else {
+      reservation = await checkInWithStudentId(ev.eventId, input.identifier);
+    }
 
     return res.status(201).json({ body: { message: 'เช็คชื่อสำเร็จ', reservation: withSeatParts(reservation) } });
   } catch (error) {
@@ -131,8 +242,15 @@ router.get('/mine', async (req, res) => {
   try {
     const reservations = await listUserReservations(req.user.email, req.user.googleId);
     const events = await fetchEventSummaries(reservations.map((r) => r.eventId));
+    const layoutCache = new Map();
     return res.status(200).json({
-      body: reservations.map((r) => withSeatParts({ ...r, event: events.get(r.eventId) ?? null }))
+      body: await Promise.all(reservations.map(async (reservation) =>
+        withSeatParts({
+          ...reservation,
+          checkInSeatId: await getCheckInSeatId(reservation, layoutCache),
+          event: events.get(reservation.eventId) ?? null
+        })
+      ))
     });
   } catch (error) {
     logError('Failed to fetch user reservations', error, requestLogContext(req));
@@ -174,7 +292,7 @@ router.get('/registered', requireRole('organizer', 'admin'), async (req, res) =>
       if (!reservation) return res.status(404).json({ error: 'ไม่พบการจอง' });
       return res.status(200).json({ body: withSeatParts(reservation) });
     } else if (result.type === 'SeatId') {
-      const reservation = await fetchData('reservations', { eventId, seatId: result.value });
+      const reservation = await findReservationBySeatIdentifier(eventId, result.value);
       if (!reservation) return res.status(404).json({ error: 'ไม่พบการจอง' });
       return res.status(200).json({ body: withSeatParts(reservation) });
     }
@@ -274,7 +392,9 @@ router.get('/', async (req, res) => {
     const reservations = all.map((r) => {
       const bookerId = r.email ?? r.googleId ?? '';
       const mine = (r.email && r.email === req.user.email) || (r.googleId && r.googleId === req.user.googleId);
-      return withSeatParts(people ? { ...r, mine, user: people.get(bookerId) ?? null } : { seatId: r.seatId, mine });
+      return withSeatParts(people
+        ? { ...r, mine, user: people.get(bookerId) ?? null }
+        : { seatId: r.seatId, zone: r.zone, seat: r.seat, mine });
     });
 
     const found = all.find((r) => (r.email && r.email === req.user.email) || (r.googleId && r.googleId === req.user.googleId));
@@ -297,7 +417,8 @@ router.post('/', async (req, res) => {
     if (!ev) return res.status(404).json({ error: 'ไม่พบกิจกรรม' });
     if (!registrationOpen(ev)) return res.status(403).json({ error: 'กิจกรรมนี้ไม่ถูกเปิดให้จองในช่วงเวลานี้' });
 
-    const reservation = await reserveSeat(input.eventId, input.seatId, req.user);
+    const seat = await resolveReservableSeat(input.eventId, input.seatId);
+    const reservation = await reserveSeat(input.eventId, seat, req.user);
     return res.status(201).json({ body: { message: 'จองที่นั่งสำเร็จ', reservation: withSeatParts(reservation) } });
   } catch (error) {
     const result = bookingErrorResponse(error, requestLogContext(req, { eventId: input.eventId }));

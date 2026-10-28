@@ -96,8 +96,94 @@ export function getSeatId(object:CanvasObject) {
 	if (object.type !== "seat") {
 		throw Error('Argument is not a seat object');
 	}
+	return getSeatLabel(object);
+}
+
+export function getSeatLabel(object: CanvasObject) {
+	if (object.type !== "seat") {
+		throw Error('Argument is not a seat object');
+	}
 	const row = object.metadata?.row?.trim() ?? '';
 	const seatNo = object.metadata?.seatNo?.trim() ?? '';
-	if (!row || !seatNo) return '';
-	return `${row}${seatNo}`;
+	if (row && seatNo) return `${row}${seatNo}`;
+	return object.metadata?.label?.trim() || object.label?.trim() || '';
+}
+
+export function getReservationSeatId(object: CanvasObject) {
+	if (object.type !== "seat") {
+		throw Error('Argument is not a seat object');
+	}
+	const storedId = object.metadata?.reservationId;
+	if (isInternalReservationSeatId(storedId)) {
+		return storedId;
+	}
+	const internalId = object.id;
+	const encodedId = Array.from(new TextEncoder().encode(internalId), (byte) =>
+		byte.toString(16).padStart(2, '0')
+	).join('');
+	return `seatkey_legacy_${encodedId}`;
+}
+
+export function isInternalReservationSeatId(value: unknown): value is string {
+	return typeof value === 'string' &&
+		(/^(?:S-[0-9A-HJKMNP-TV-Z]{10}|seatkey_(?:[a-f0-9]{32}|legacy_[a-f0-9]+))$/).test(value);
+}
+
+export function ensureReadableReservationSeatIds(objects: CanvasObject[]) {
+	const usedIds = new Set(
+		objects
+			.filter((object) => object.type === 'seat')
+			.map((object) => getReservationSeatId(object))
+			.filter(isReadableReservationSeatId)
+	);
+
+	return objects.map((object) => {
+		if (object.type !== 'seat') return object;
+
+		const previousId = getReservationSeatId(object);
+		const reservationId = isReadableReservationSeatId(previousId)
+			? previousId
+			: createReservationSeatId(usedIds);
+		usedIds.add(reservationId);
+
+		const legacyReservationIds = new Set(getLegacySeatIds(object));
+		if (previousId !== reservationId) legacyReservationIds.add(previousId);
+
+		return {
+			...object,
+			metadata: {
+				...(object.metadata ?? {}),
+				reservationId,
+				legacyReservationIds: [...legacyReservationIds].filter((id) => id !== reservationId)
+			}
+		};
+	});
+}
+
+function isReadableReservationSeatId(value: string): boolean {
+	return /^S-[0-9A-HJKMNP-TV-Z]{10}$/.test(value);
+}
+
+export function getLegacySeatIds(object: CanvasObject) {
+	if (object.type !== "seat") {
+		throw Error('Argument is not a seat object');
+	}
+	const storedIds = Array.isArray(object.metadata?.legacyReservationIds)
+		? object.metadata.legacyReservationIds.filter((id: unknown): id is string => typeof id === 'string')
+		: [];
+	const zone = typeof object.metadata?.zone === 'string' ? object.metadata.zone : '';
+	const label = getSeatLabel(object);
+	return [...new Set([...storedIds, ...(zone && label ? [`${zone}-${label}`] : [])])];
+}
+
+export function createReservationSeatId(reservedIds: Iterable<string> = []) {
+	const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+	const usedIds = new Set(reservedIds);
+	let reservationId: string;
+	do {
+		const bytes = new Uint8Array(10);
+		globalThis.crypto.getRandomValues(bytes);
+		reservationId = `S-${Array.from(bytes, (byte) => alphabet[byte & 31]).join('')}`;
+	} while (usedIds.has(reservationId));
+	return reservationId;
 }

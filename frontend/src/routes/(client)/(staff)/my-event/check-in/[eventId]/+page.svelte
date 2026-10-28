@@ -106,7 +106,7 @@
             <div class="text-center">
                 <h2 class="text-lg font-bold text-dark sm:text-2xl">ตรวจบัตรเข้าร่วมงาน</h2>
                 <p class="mt-2 text-sm leading-relaxed text-dark-muted">
-                    กรอกรหัสนักศึกษาหรือรหัสที่นั่ง (ชื่อโซน-ที่นั่ง) เพื่อตรวจสอบสิทธิ์เข้าร่วมงาน
+                    กรอกรหัสนักศึกษาหรือรหัสที่นั่ง เพื่อตรวจสอบสิทธิ์เข้าร่วมงาน
                 </p>
             </div>
 
@@ -117,7 +117,7 @@
                     bind:value={identifier}
                     type="text"
                     autocomplete="off"
-                    placeholder="เช่น 65000000 หรือ A-01"
+                    placeholder="เช่น 65000000 หรือ S-7K2M9W4P3D"
                     class="w-full min-w-0 rounded-xl border border-border-strong bg-surface-base px-4 py-3 text-base text-dark placeholder:text-dark-soft focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden"
                 />
                 <button
@@ -145,14 +145,18 @@
                 <p class="text-xl font-semibold">สรุปข้อมูล</p>
                 <hr class="w-full mt-3">
                 <p class="my-5 max-w-full break-all text-center font-semibold">{reservationData.email}</p>
-                <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
-                    <p>Zone</p>
-                    <p class="text-orange-600">{reservationData.zone}</p>
-                </div>
-                <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
-                    <p>Seat</p>
-                    <p class="text-orange-600">{reservationData.seat}</p>
-                </div>
+                {#if reservationData.zone}
+                    <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
+                        <p>Zone</p>
+                        <p class="text-orange-600">{reservationData.zone}</p>
+                    </div>
+                {/if}
+                {#if reservationData.seat}
+                    <div class="flex flex-wrap justify-center gap-3 text-xl font-bold sm:text-2xl">
+                        <p>Seat</p>
+                        <p class="text-orange-600">{reservationData.seat}</p>
+                    </div>
+                {/if}
                 <button onclick={handleSubmit} class="bg-secondary hover:bg-secondary-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-5">Confirm</button>
                 <button onclick={() => {status = 'initial';}} class="bg-accent hover:bg-accent-hover hover:cursor-pointer text-white p-2 w-full rounded-lg mt-3">Cancel</button>
             </div>

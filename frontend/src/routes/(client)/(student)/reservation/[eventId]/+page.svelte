@@ -7,7 +7,7 @@
   import { getSeatMap, reserveSeat, type SeatMap } from "$lib/scripts/booking.js";
   import { ApiError } from "$lib/scripts/api.js";
   import { onMount } from "svelte";
-  import { getSeatId } from "$lib/components/zone-editor/utils/zoneUtils.js";
+  import { getLegacySeatIds, getReservationSeatId, getSeatId, getSeatLabel } from "$lib/components/zone-editor/utils/zoneUtils.js";
   import { alertModal } from "$lib/store/alert.svelte.js";
   import { goto } from "$app/navigation";
 
@@ -24,33 +24,24 @@
     reservationMap = data.seatMap;
   });
   let hasExistingReservation = $derived(reservationMap.myReservation !== null);
+  let zoneDisplayName = $derived(zone === 'zone-no-zone' ? 'ไม่มีโซน / No Zone' : zone);
 
-  let reservedId: Record<string, Set<string>> = $derived.by(() => {
-    let group = Object.groupBy(reservationMap.reservations, (s) => s.zone);
-    let newGroup: Record<string, Set<string>> = {};
-    for (var key in group) {
-      let reservations = group[key];
-      if (reservations) {
-        newGroup[key] = new Set(reservations.map((s) => s.seat));
+  function reservationIdsFor(reservations: SeatMap['reservations']) {
+    const ids = new Set(reservations.map((reservation) => reservation.seatId));
+    for (const object of data.seatState.objects) {
+      if (object.type !== 'seat') continue;
+      const aliases = getLegacySeatIds(object);
+      if (aliases.some((alias) => reservations.some((reservation) => reservation.seatId === alias))) {
+        ids.add(getReservationSeatId(object));
       }
     }
-    return newGroup;
-  });
+    return ids;
+  }
 
-  let myReservedId: Record<string, Set<string>> = $derived.by(() => {
-    let group = Object.groupBy(
-      reservationMap.reservations.filter((reservation) => reservation.mine),
-      (reservation) => reservation.zone
-    );
-    let newGroup: Record<string, Set<string>> = {};
-    for (var key in group) {
-      let reservations = group[key];
-      if (reservations) {
-        newGroup[key] = new Set(reservations.map((reservation) => reservation.seat));
-      }
-    }
-    return newGroup;
-  });
+  let reservedId = $derived(reservationIdsFor(reservationMap.reservations));
+  let myReservedId = $derived(reservationIdsFor(
+    reservationMap.reservations.filter((reservation) => reservation.mine)
+  ));
 
   let selectedSeats = $state<CanvasObject[]>([]);
   let existingReservationSeat = $derived.by(() => {
@@ -59,19 +50,21 @@
     const reservedSeat = data.seatState.objects.find(
       (object) =>
         object.type === "seat" &&
-        object.metadata?.zone === reservation.zone &&
-        getSeatId(object) === reservation.seat
+        (getReservationSeatId(object) === reservation.seatId ||
+          getLegacySeatIds(object).includes(reservation.seatId) ||
+          ((object.metadata?.zone ?? '') === reservation.zone &&
+            getSeatLabel(object) === reservation.seat))
     );
     return {
-      id: reservedSeat?.id ?? `${reservation.zone}-${reservation.seat}`,
+      id: reservedSeat?.id ?? reservation.seatId,
       zone: reservation.zone,
-      seatId: reservation.seat,
+      seatId: reservation.seat || '',
       seatTypeKey: reservedSeat?.metadata?.seatType ?? "standard"
     };
   });
   let confirmationSeats = $derived(selectedSeats.map((selectedSeat) => ({
       id: selectedSeat.id,
-      zone,
+      zone: selectedSeat.metadata?.zone || '',
       seatId: getSeatId(selectedSeat),
       seatTypeKey: selectedSeat.metadata?.seatType ?? "standard"
     })));
@@ -91,10 +84,10 @@
     isSubmitting = true;
     let allSeat = [];
     for (let i = 0; i < selectedSeats.length; i++) {
-      let seatId = getSeatId(selectedSeats[i]);
+      let seatId = getReservationSeatId(selectedSeats[i]);
       try {
-        let { reservation } = await reserveSeat(data.event.eventId, seatId, zone);
-        allSeat.push(reservation.seatId);
+        let { reservation } = await reserveSeat(data.event.eventId, seatId);
+        if (reservation.seat) allSeat.push(reservation.seat);
         alertModal.success("การจองสำเร็จ", "คุณได้ทำการจองที่นั่งเรียบร้อยแล้ว", () => {});
       } catch (err) {
         if (err instanceof ApiError) {
@@ -123,8 +116,18 @@
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex flex-col items-center">
   <!-- Event Header Title -->
-  <div class="text-center max-w-2xl mb-20">
-    <h1 class="text-2xl sm:text-3xl font-bold text-dark tracking-tight">
+  <div class="w-full max-w-2xl mb-10 sm:mb-20">
+    <a
+      href="/event-info/{data.event.eventId}"
+      class="mb-5 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-dark-muted transition-colors hover:bg-surface-subtle hover:text-dark"
+      aria-label="กลับไปหน้ารายละเอียดกิจกรรม"
+    >
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span>กลับไปหน้ากิจกรรม</span>
+    </a>
+    <h1 class="text-center text-2xl sm:text-3xl font-bold text-dark tracking-tight">
       {data.event.name}
     </h1>
   </div>
@@ -174,7 +177,8 @@
               {/if}
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-secondary">
-                  โซน {existingReservationSeat.zone} · ที่นั่ง {existingReservationSeat.seatId}
+                  {#if existingReservationSeat.zone}โซน {existingReservationSeat.zone}{/if}
+                  {#if existingReservationSeat.seatId}{#if existingReservationSeat.zone} · {/if}ที่นั่ง {existingReservationSeat.seatId}{/if}
                 </p>
                 <p class="mt-0.5 text-sm font-semibold text-dark">{seatType.name}</p>
                 {#if seatType.description}
@@ -224,7 +228,7 @@
     <div class="w-full max-w-5xl bg-white rounded-2xl border border-border-subtle shadow-xs p-6 sm:p-8 flex flex-col gap-6">
       <div class="flex items-center justify-between pb-4 border-b border-border-subtle">
         <div>
-          <h2 class="text-lg font-bold text-dark">เลือกที่นั่งในโซน: {zone}</h2>
+          <h2 class="text-lg font-bold text-dark">เลือกที่นั่งในโซน: {zoneDisplayName}</h2>
           <p class="text-xs sm:text-sm text-dark-soft mt-0.5">เลือกที่นั่งที่คุณต้องการ (สูงสุด 1 ที่นั่งต่อบัญชี)</p>
         </div>
         <button
@@ -241,13 +245,13 @@
 
       <div class="w-full bg-surface-subtle/60 rounded-xl p-4 flex justify-center items-center overflow-auto border border-border-subtle">
         <ZoneSeatPicker
-          zoneName={zone}
+          zoneName={zoneDisplayName}
           selectedZoneId={zone}
           maxSeats={1}
           objects={data.seatState.objects}
           seatTypes={data.seatState.seatTypes}
-          reservedIds={reservedId[zone]}
-          myReservedIds={myReservedId[zone]}
+          reservedIds={reservedId}
+          myReservedIds={myReservedId}
           onBack={() => {
             status = "zone";
           }}
@@ -307,7 +311,8 @@
                 {/if}
                 <div class="min-w-0 flex-1">
                   <p class="text-sm font-bold text-secondary">
-                    โซน {selectedSeat.zone} · ที่นั่ง {selectedSeat.seatId}
+                    {#if selectedSeat.zone}โซน {selectedSeat.zone}{/if}
+                    {#if selectedSeat.seatId}{#if selectedSeat.zone} · {/if}ที่นั่ง {selectedSeat.seatId}{/if}
                   </p>
                   <p class="mt-0.5 text-sm font-semibold text-dark">{seatType.name}</p>
                   {#if seatType.description}

@@ -92,7 +92,10 @@
                         <div class="space-y-3">
                             <div class="flex items-center justify-between text-xs font-semibold text-secondary bg-secondary-subtle/50 px-3.5 py-2.5 rounded-lg border border-secondary/20">
                                 <span>คุณจองที่นั่งในกิจกรรมนี้แล้ว</span>
-                                <span class="font-normal">โซน {existingReservation.zone} · ที่นั่ง {existingReservation.seat}</span>
+                                <span class="font-normal">
+                                    {#if existingReservation.zone}โซน {existingReservation.zone}{/if}
+                                    {#if existingReservation.seat}{#if existingReservation.zone} · {/if}ที่นั่ง {existingReservation.seat}{/if}
+                                </span>
                             </div>
                             <button
                                 type="button"

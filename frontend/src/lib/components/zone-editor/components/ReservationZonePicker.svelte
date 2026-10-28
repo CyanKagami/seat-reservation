@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject, Zone } from "../types";
-  import { getSeatId } from "../utils/zoneUtils";
+  import { getReservationSeatId, getSeatId } from "../utils/zoneUtils";
 
 	interface Point {
 		x: number;
@@ -17,7 +18,7 @@
 		padding = 40,
 		width = "100%",
 		height = "100%",
-		reservedIds = {},
+		reservedIds = new Set(),
 		className = "",
 		onZoneSelect
 	}: {
@@ -29,10 +30,36 @@
 		padding?: number;
 		width?: string;
 		height?: string;
-		reservedIds?:Record<string, Set<string>>;
+		reservedIds?: Set<string>;
 		className?: string;
 		onZoneSelect?: (zoneId: string, seats: CanvasObject[]) => void;
 	} = $props();
+
+	let isSmallScreen = $state(false);
+	let pickerContainer: HTMLDivElement;
+	let svgElement: SVGSVGElement;
+	let zoomLevel = $state(1);
+	let viewCenterX: number | null = $state(null);
+	let viewCenterY: number | null = $state(null);
+	let pinchStart: {
+		distance: number;
+		zoom: number;
+		focalX: number;
+		focalY: number;
+		midpointX: number;
+		midpointY: number;
+	} | null = null;
+	onMount(() => {
+		const mediaQuery = window.matchMedia("(max-width: 639px)");
+		const updateScreenSize = () => (isSmallScreen = mediaQuery.matches);
+		updateScreenSize();
+		mediaQuery.addEventListener("change", updateScreenSize);
+		pickerContainer.addEventListener("touchmove", handleTouchMove, { passive: false });
+		return () => {
+			mediaQuery.removeEventListener("change", updateScreenSize);
+			pickerContainer.removeEventListener("touchmove", handleTouchMove);
+		};
+	});
 
 	// Robustly extracts vertices for all object shapes (polygons, flat point arrays, rects, circles)
 	function getObjectPoints(obj: CanvasObject): Point[] {
@@ -278,7 +305,7 @@
 					groups[uId].seats.push(obj);
 				} else if (obj.metadata?.zone) {
 					const zId = obj.metadata.zone;
-					const isReserved = reservedIds[zId] ? reservedIds[zId].has(getSeatId(obj)): false;
+					const isReserved = reservedIds.has(getReservationSeatId(obj));
 					if (!groups[zId]) {
 						groups[zId] = {
 							id: zId,
@@ -307,6 +334,9 @@
 						};
 					}
 					groups[noZoneId].seats.push(obj);
+					if (reservedIds.has(getReservationSeatId(obj))) {
+						groups[noZoneId].reservedCount += 1;
+					}
 				}
 			}
 		});
@@ -323,11 +353,11 @@
 				isUnavailableZone: g.isUnavailableZone ?? false,
 				isNoZone: g.isNoZone ?? false,
 				seats: g.seats,
-				availableCount: (g.isUnavailableZone || g.isNoZone) ? 0 : g.seats.length - g.reservedCount,
+				availableCount: g.isUnavailableZone ? 0 : g.seats.length - g.reservedCount,
 				totalCount: g.seats.length,
 				reservedSeats: g.seats.filter(
-					(seat) => !g.isUnavailableZone && !g.isNoZone &&
-						(reservedIds[g.id]?.has(getSeatId(seat)) ?? false)
+					(seat) => !g.isUnavailableZone &&
+						reservedIds.has(getReservationSeatId(seat))
 				),
 				loops,
 				pathData,
@@ -355,9 +385,9 @@
 		});
 	});
 
-	// --- 5. Dynamic ViewBox (Calculated across all object points) ---
-	let viewBox = $derived.by(() => {
-		if (gridWidth && gridHeight) {
+	// --- 5. Dynamic ViewBox ---
+	let baseViewBox = $derived.by(() => {
+		if (!isSmallScreen && gridWidth && gridHeight) {
 			const w = gridWidth * 10;
 			const h = gridHeight * 10;
 			return `0 0 ${w} ${h}`;
@@ -390,6 +420,70 @@
 		return `${minX - padding} ${minY - padding} ${width} ${height}`;
 	});
 
+	let viewBox = $derived.by(() => {
+		const [baseX, baseY, baseWidth, baseHeight] = baseViewBox.split(/\s+/).map(Number);
+		const width = baseWidth / zoomLevel;
+		const height = baseHeight / zoomLevel;
+		const centerX = viewCenterX ?? baseX + baseWidth / 2;
+		const centerY = viewCenterY ?? baseY + baseHeight / 2;
+		return `${centerX - width / 2} ${centerY - height / 2} ${width} ${height}`;
+	});
+
+	let pickerHeight = $derived(
+		isSmallScreen && height === "100%" ? "min(70dvh, 42rem)" : height
+	);
+
+	function handleTouchStart(event: TouchEvent) {
+		if (!isSmallScreen || event.touches.length !== 2 || !svgElement) return;
+
+		const [first, second] = Array.from(event.touches);
+		const rect = svgElement.getBoundingClientRect();
+		const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(/\s+/).map(Number);
+		const midpointX = (first.clientX + second.clientX) / 2 - rect.left;
+		const midpointY = (first.clientY + second.clientY) / 2 - rect.top;
+		const normalizedX = midpointX / rect.width;
+		const normalizedY = midpointY / rect.height;
+
+		pinchStart = {
+			distance: Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY),
+			zoom: zoomLevel,
+			focalX: viewX + normalizedX * viewWidth,
+			focalY: viewY + normalizedY * viewHeight,
+			midpointX: normalizedX,
+			midpointY: normalizedY
+		};
+	}
+
+	function handleTouchMove(event: TouchEvent) {
+		if (!pinchStart || event.touches.length !== 2) return;
+		event.preventDefault();
+
+		const [first, second] = Array.from(event.touches);
+		const distance = Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+		const nextZoom = Math.min(5, Math.max(1, pinchStart.zoom * distance / pinchStart.distance));
+		const [baseX, baseY, baseWidth, baseHeight] = baseViewBox.split(/\s+/).map(Number);
+		const viewWidth = baseWidth / nextZoom;
+		const viewHeight = baseHeight / nextZoom;
+		const svgRect = svgElement.getBoundingClientRect();
+		const nextMidpointX = ((first.clientX + second.clientX) / 2 - svgRect.left) / svgRect.width;
+		const nextMidpointY = ((first.clientY + second.clientY) / 2 - svgRect.top) / svgRect.height;
+		const normalizedX = Number.isFinite(nextMidpointX) ? nextMidpointX : pinchStart.midpointX;
+		const normalizedY = Number.isFinite(nextMidpointY) ? nextMidpointY : pinchStart.midpointY;
+
+		zoomLevel = nextZoom;
+		if (nextZoom === 1) {
+			viewCenterX = null;
+			viewCenterY = null;
+		} else {
+			viewCenterX = pinchStart.focalX + (0.5 - normalizedX) * viewWidth;
+			viewCenterY = pinchStart.focalY + (0.5 - normalizedY) * viewHeight;
+		}
+	}
+
+	function handleTouchEnd(event: TouchEvent) {
+		if (event.touches.length < 2) pinchStart = null;
+	}
+
 	function handleZoneClick(zoneId: string, seats: CanvasObject[]) {
 		if (selectedZoneId === zoneId) {
 			selectedZoneId = "";
@@ -403,13 +497,19 @@
 
 <!-- Arbitrary Dimensions Responsive Container -->
 <div
-	class="relative bg-white rounded-xl overflow-hidden shadow-lg p-2 select-none flex items-center justify-center touch-manipulation {className}"
-	style="width: {width}; height: {height};"
+	bind:this={pickerContainer}
+	class="relative bg-white rounded-xl overflow-hidden shadow-lg p-0 sm:p-2 select-none flex items-center justify-center touch-pan-x touch-pan-y {className}"
+	style="width: {width}; height: {pickerHeight}; min-height: {isSmallScreen ? '22rem' : '0'};"
+	ontouchstart={handleTouchStart}
+	ontouchend={handleTouchEnd}
+	ontouchcancel={handleTouchEnd}
 >
 	<svg
+		bind:this={svgElement}
 		viewBox={viewBox}
 		preserveAspectRatio="xMidYMid meet"
-		class="w-full h-full block max-w-full max-h-full"
+		style="width: 100%; height: 100%; max-width: 100%; max-height: 100%;"
+		class="block"
 	>
 		<!-- LAYER 1: Environment Objects -->
 		<g class="environment-layer">
@@ -496,11 +596,11 @@
 				{@const isSelected = selectedZoneId === zone.id}
 				{@const isUnavailable = zone.isUnavailableZone}
 				{@const isNoZone = zone.isNoZone}
-				{@const isInactive = isUnavailable || isNoZone}
+				{@const isInactive = isUnavailable}
 
 				<path
 					d={zone.pathData}
-					style="fill: {isUnavailable ? '#090d16' : isNoZone ? '#9ca3af' : zone.color}; stroke: {isInactive ? (isNoZone ? '#6b7280' : '#1e293b') : isSelected ? '#ffffff' : zone.color};"
+					style="fill: {isUnavailable ? '#090d16' : isNoZone ? '#9ca3af' : zone.color}; stroke: {isInactive ? '#1e293b' : isSelected ? '#ffffff' : isNoZone ? '#6b7280' : zone.color};"
 					class="transition-all duration-200 outline-0 rounded-sm
 						{isInactive ? 'cursor-not-allowed fill-opacity-90 stroke-1' : 'cursor-pointer'}
 						{!isInactive && isSelected 
@@ -544,7 +644,7 @@
 				{@const isSelected = selectedZoneId === zone.id}
 				{@const isUnavailable = zone.isUnavailableZone}
 				{@const isNoZone = zone.isNoZone}
-				{@const isInactive = isUnavailable || isNoZone}
+				{@const isInactive = isUnavailable}
 
 				<foreignObject
 					x={zone.centerX - 65}
@@ -558,7 +658,7 @@
 							class="px-2.5 py-1 rounded-md text-center shadow-md border transition-transform
 								{isUnavailable 
 									? 'bg-slate-950/90 text-slate-400 border-slate-800' 
-									: isNoZone
+									: isNoZone && !isSelected
 										? 'bg-gray-500/90 text-gray-100 border-gray-600'
 										: isSelected 
 											? 'bg-white text-slate-900 border-white ring-2 ring-indigo-500 scale-105' 
@@ -571,10 +671,8 @@
 							<div class="text-[9px] mt-0.5 font-medium flex items-center justify-center gap-1">
 								{#if isUnavailable}
 									<span class="text-rose-400/80">{zone.totalCount} ที่นั่ง</span>
-								{:else if isNoZone}
-									<span class="text-gray-200/80">{zone.totalCount} ที่นั่ง</span>
 								{:else}
-									<span class={zone.availableCount === 0 ? 'text-red-600' : (isSelected ? 'text-indigo-600' : 'text-emerald-400')}>
+									<span class={zone.availableCount === 0 ? 'text-red-600' : (isSelected ? 'text-indigo-600' : isNoZone ? 'text-gray-200/80' : 'text-emerald-400')}>
 										ว่าง {zone.availableCount}/{zone.totalCount} ที่
 									</span>
 								{/if}

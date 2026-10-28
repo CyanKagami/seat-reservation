@@ -2,6 +2,10 @@ import { untrack } from "svelte";
 import { BOX_SIZE, GRID_SIZE, MIN_SCALE, MAX_SCALE, GAP } from "./constants";
 import type { Point, Rect, ToolType, CanvasObject, SeatType } from "./types";
 import { rotatePoint } from '../canvas-shared/utils';
+import {
+	createReservationSeatId,
+	ensureReadableReservationSeatIds
+} from '../zone-editor/utils/zoneUtils';
 import { toolRegistry } from "./tools";
 import type { LineToolStrategy } from "./tools/LineTool";
 import type { ArrayToolStrategy } from "./tools/ArrayTool";
@@ -462,6 +466,7 @@ export class SeatEditorState {
 	loadFromMessagePack(buffer: ArrayBuffer) {
 		try {
 			const layout = decodeLayout(buffer);
+			layout.objects = ensureReadableReservationSeatIds(layout.objects);
 			this.restoreLayoutSnapshot(layout);
 			this.centerGrid();
 			this.clearHistory();
@@ -844,7 +849,12 @@ export class SeatEditorState {
 				label:src.label,
 				points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
 				rotation: src.rotation,
-				metadata: src.metadata ? JSON.parse(JSON.stringify(src.metadata)) : {}
+				metadata: {
+					...(src.metadata ? JSON.parse(JSON.stringify(src.metadata)) : {}),
+					...(src.type === 'seat'
+						? { reservationId: createReservationSeatId(), legacyReservationIds: [] }
+						: {})
+				}
 			});
 			nextSelected.add(newId);
 		});
