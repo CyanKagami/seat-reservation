@@ -160,6 +160,7 @@
           selectedZoneId={zone}
           maxSeats={1}
           objects={data.seatState.objects}
+          seatTypes={data.seatState.seatTypes}
           reservedIds={reservedId[zone]}
           myReservedIds={myReservedId[zone]}
           onBack={() => {
@@ -200,11 +201,35 @@
           <span class="font-medium text-dark text-right">{data.event.host}</span>
         </div>
 
-        <div class="pt-3 border-t border-border-subtle flex items-center justify-between">
+        <div class="pt-3 border-t border-border-subtle space-y-3">
           <span class="text-dark-soft font-medium">ที่นั่งที่เลือก</span>
-          <span class="text-base font-bold text-secondary bg-secondary-subtle px-3 py-1 rounded-lg">
-            โซน {zone} · ที่นั่ง {seat}
-          </span>
+          <div class="space-y-2">
+            {#each selectedSeats as selectedSeat (selectedSeat.id)}
+              {@const seatTypeKey = selectedSeat.metadata?.seatType ?? "standard"}
+              {@const seatType = data.seatState.seatTypes[seatTypeKey] ?? {
+                name: seatTypeKey,
+                color: "#e2e8f0"
+              }}
+              <div class="flex items-center gap-3 rounded-lg border border-border-subtle bg-white p-3">
+                {#if seatType.picture}
+                  <img
+                    src={seatType.picture}
+                    alt={`รูปภาพประเภทที่นั่ง ${seatType.name}`}
+                    class="h-14 w-14 shrink-0 rounded-md border border-border-subtle object-cover"
+                  />
+                {/if}
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-bold text-secondary">
+                    โซน {zone} · ที่นั่ง {getSeatId(selectedSeat)}
+                  </p>
+                  <p class="mt-0.5 text-sm font-semibold text-dark">{seatType.name}</p>
+                  {#if seatType.description}
+                    <p class="mt-1 text-xs text-dark-soft">{seatType.description}</p>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
 

@@ -115,7 +115,7 @@
             <!-- Action buttons -->
             <div class="pt-6 border-t border-border-subtle mt-6 flex flex-col sm:flex-row gap-3">
               <a 
-                href="/event-info/{featuredEvent.eventId}" 
+                href="/reservation/{featuredEvent.eventId}" 
                 class="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-all shadow-xs"
               >
                 <span>เลือกที่นั่งทันที</span>

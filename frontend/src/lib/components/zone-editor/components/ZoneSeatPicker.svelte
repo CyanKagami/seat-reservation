@@ -1,12 +1,15 @@
 <script lang="ts">
+	import { onMount } from "svelte";
   import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject } from "../types";
+	import type { SeatType } from "$lib/components/canvas-shared/types";
   import { getSeatId } from "../utils/zoneUtils";
 
 	let {
 		zoneName = "เลือกที่นั่ง",
 		selectedZoneId = "",
 		objects = [],
+		seatTypes = {},
 		selectedSeatIds = $bindable([]),
 		maxSeats = 1,
 		reservedIds = new Set(),
@@ -17,6 +20,7 @@
 		zoneName?: string;
 		selectedZoneId?: string;
 		objects: CanvasObject[];
+		seatTypes?: Record<string, SeatType>;
 		selectedSeatIds?: string[];
 		maxSeats?: number;
 		reservedIds: Set<string>;
@@ -24,6 +28,15 @@
 		onBack?: () => void;
 		onConfirm?: (selectedSeats: CanvasObject[]) => void;
 	} = $props();
+
+	let isSmallScreen = $state(false);
+	onMount(() => {
+		const mediaQuery = window.matchMedia("(max-width: 639px)");
+		const updateScreenSize = () => (isSmallScreen = mediaQuery.matches);
+		updateScreenSize();
+		mediaQuery.addEventListener("change", updateScreenSize);
+		return () => mediaQuery.removeEventListener("change", updateScreenSize);
+	});
 
 	// Helper to extract polygon relative points, centroid, and absolute bounds
 	function getPolyData(obj: CanvasObject) {
@@ -108,11 +121,43 @@
 
 		return `${minX - padding} ${minY - padding} ${width} ${height}`;
 	});
+	let mobileMapSize = $derived.by(() => {
+		const [, , viewWidth = 800, viewHeight = 600] = viewBox.split(/\s+/).map(Number);
+		const zoneSeats = objects.filter(
+			(object) =>
+				object.type === "seat" &&
+				object.metadata?.zone === selectedZoneId &&
+				object.metadata?.status === "available"
+		);
+		const seatWidths = zoneSeats
+			.map((seat) => seat.width ?? 28)
+			.filter((width) => Number.isFinite(width) && width > 0)
+			.sort((a, b) => a - b);
+		const typicalSeatWidth = seatWidths[Math.floor(seatWidths.length / 2)] ?? 28;
+		const scale = Math.max(1, 44 / typicalSeatWidth);
+
+		return {
+			width: Math.ceil(viewWidth * scale),
+			height: Math.ceil(viewHeight * scale)
+		};
+	});
 
 	// Currently selected seats objects
 	let selectedSeats = $derived(
 		objects.filter((s) => s.type === "seat" && selectedSeatIds.includes(s.id))
 	);
+	let visibleSeatTypes = $derived.by(() => {
+		const zoneSeatTypes = new Map<string, SeatType>();
+		for (const seat of objects) {
+			if (seat.type !== 'seat' || seat.metadata?.zone !== selectedZoneId || seat.metadata?.status !== 'available') {
+				continue;
+			}
+			const key = seat.metadata?.seatType ?? 'standard';
+			const seatType = seatTypes[key] ?? { name: key, color: '#e2e8f0' };
+			if (seatType.name !== 'standard') zoneSeatTypes.set(key, seatType);
+		}
+		return [...zoneSeatTypes.values()].sort((a, b) => a.name.localeCompare(b.name));
+	});
 
 	function toggleSeat(seat: CanvasObject) {
 		const isZoneSeat = seat.metadata?.zone === selectedZoneId;
@@ -183,11 +228,13 @@
 	</div>
 
 	<!-- Canvas Viewport (Responsive Height & SVG Aspect Scaler) -->
-	<div class="relative flex-1 w-full h-full min-h-[320px] sm:min-h-[450px] bg-white select-none overflow-hidden flex items-center justify-center">
+	<div class="relative flex-1 w-full h-full min-h-[320px] sm:min-h-[450px] bg-white select-none overflow-auto sm:overflow-hidden flex items-start sm:items-center justify-start sm:justify-center overscroll-contain [touch-action:pan-x_pan-y]">
 		<svg
 			viewBox={viewBox}
 			preserveAspectRatio="xMidYMid meet"
-			class="w-full h-full max-w-full max-h-full block select-none relative z-10 transition-all duration-500 ease-out"
+			width={isSmallScreen ? mobileMapSize.width : undefined}
+			height={isSmallScreen ? mobileMapSize.height : undefined}
+			class="block select-none relative z-10 transition-all duration-500 ease-out {isSmallScreen ? 'shrink-0' : 'h-full w-full'} sm:h-full sm:w-full sm:max-w-full sm:max-h-full"
 		>
 			{#each objects as obj (obj.id)}
 				{@const screenX = obj.x ?? 0}
@@ -203,6 +250,8 @@
 					{@const isSelected = selectedSeatIds.includes(obj.id)}
 					{@const status = obj.metadata.status ?? 'available'}
 					{@const seatId = getSeatId(obj)}
+					{@const seatTypeKey = obj.metadata.seatType ?? 'standard'}
+					{@const seatType = seatTypes[seatTypeKey] ?? { name: seatTypeKey, color: '#e2e8f0' }}
 					{@const isReserved = reservedIds.has(seatId)}
 					{@const isMine = myReservedIds.has(seatId)}
 
@@ -228,6 +277,7 @@
 									? 'cursor-not-allowed opacity-60 pointer-events-auto' 
 									: 'cursor-pointer pointer-events-auto'}"
 					>
+						<title>{seatId}{seatType.name ? ` · ${seatType.name}` : ''}</title>
 						<rect 
 							x={screenX} 
 							y={screenY} 
@@ -237,6 +287,18 @@
 							class="stroke-1 transition-colors {statusClasses}"
 						/>
 
+						{#if isZoneObject && seatType.name !== 'standard'}
+							<rect
+								x={screenX + 1}
+								y={screenY + 1}
+								width={Math.max(0, screenWidth - 2)}
+								height={Math.max(2, Math.min(5, screenHeight * 0.18))}
+								rx={1}
+								fill={seatType.color || '#e2e8f0'}
+								class="pointer-events-none"
+							/>
+						{/if}
+
 						{#if seatId && isZoneObject}
 							<text
 								x={centerX}
@@ -244,7 +306,7 @@
 								text-anchor="middle"
 								dominant-baseline="central"
 								transform="rotate({-(obj.rotation ?? 0)}, {centerX}, {centerY})"
-								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' || isReserved ? 'fill-stone-300' : 'fill-slate-800'}"
+								class="text-[10px] font-bold pointer-events-none tracking-tighter {status === 'unavailable' || isReserved ? 'fill-white' : 'fill-slate-800'}"
 							>
 								{seatId}
 							</text>
@@ -332,6 +394,27 @@
 				{/if}
 			{/each}
 		</svg>
+
+		{#if visibleSeatTypes.length > 0}
+			<aside
+				class="pointer-events-none absolute left-3 top-3 z-20 max-w-[min(14rem,calc(100%-1.5rem))] rounded-lg border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm"
+				aria-label="Seat type legend"
+			>
+				<h4 class="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">ประเภทที่นั่ง</h4>
+				<ul class="flex flex-col gap-1.5">
+					{#each visibleSeatTypes as seatType (seatType.name)}
+						<li class="flex min-w-0 items-center gap-2 text-xs text-slate-700">
+							<span
+								class="h-3 w-3 shrink-0 rounded-sm border border-slate-300"
+								style={`background-color: ${seatType.color || '#e2e8f0'}`}
+								aria-hidden="true"
+							></span>
+							<span class="truncate" title={seatType.name}>{seatType.name}</span>
+						</li>
+					{/each}
+				</ul>
+			</aside>
+		{/if}
 	</div>
 
 	<!-- Bottom Action Bar (Stack Vertically on Mobile) -->
@@ -343,8 +426,13 @@
 					<span class="text-xs text-slate-400 italic">ยังไม่ได้เลือกที่นั่ง</span>
 				{:else}
 					{#each selectedSeats as s}
-						<span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] font-semibold">
-							{getSeatId(s)}
+						{@const seatTypeKey = s.metadata?.seatType ?? 'standard'}
+						{@const seatType = seatTypes[seatTypeKey] ?? { name: seatTypeKey, color: '#e2e8f0' }}
+						<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-300 text-[11px] font-semibold">
+							{#if seatType.name !== 'standard'}
+								<span class="h-2 w-2 rounded-sm shrink-0" style={`background-color: ${seatType.color}`} aria-hidden="true"></span>
+							{/if}
+							{getSeatId(s)}{seatType.name ? ` · ${seatType.name}` : ''}
 						</span>
 					{/each}
 				{/if}

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RectToolStrategy } from './tools/RectTool';
 import type { ToolContext } from './tools/types';
+import { GRID_SIZE } from './constants';
 
 describe('RectToolStrategy', () => {
 	let tool: RectToolStrategy;
@@ -12,6 +13,8 @@ describe('RectToolStrategy', () => {
 			panX: 0,
 			panY: 0,
 			scale: 1,
+			gridWidth: 10,
+			gridHeight: 10,
 		} as unknown as ToolContext['state'];
 	});
 
@@ -68,6 +71,63 @@ describe('RectToolStrategy', () => {
 			y: 10,
 			width: 40,
 			height: 40
+		});
+	});
+
+	it('clamps a drag endpoint released outside the canvas to the edge', () => {
+		const bounds = tool.calculateRectBounds(
+			{ x: 90, y: 80 },
+			{ x: 150, y: 140 },
+			false,
+			mockState
+		);
+
+		expect(bounds).toEqual({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE * 2
+		});
+	});
+
+	it('keeps a shift-constrained square inside the canvas near an edge', () => {
+		const bounds = tool.calculateRectBounds(
+			{ x: 90, y: 80 },
+			{ x: 150, y: 140 },
+			true,
+			mockState
+		);
+
+		expect(bounds).toEqual({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE
+		});
+	});
+
+	it('uses the release position when it is outside the canvas', () => {
+		Object.assign(mockState, {
+			isRectDrawing: true,
+			rectStart: { x: 90, y: 80 },
+			rectEnd: { x: 95, y: 85 },
+			objects: [],
+			selectedIds: new Set(),
+			createObjectId: () => 'env_1'
+		});
+
+		tool.onMouseUp({
+			state: mockState,
+			event: { shiftKey: false } as MouseEvent,
+			screenPoint: { x: 150, y: 140 },
+			canvasPoint: { x: 150, y: 140 }
+		});
+
+		expect(mockState.objects[0]).toMatchObject({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE * 2
 		});
 	});
 });

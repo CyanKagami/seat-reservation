@@ -51,6 +51,44 @@ describe('SeatEditorState', () => {
             expect(state.isPointInsideCanvas(800, 600)).toBe(true); // 80 * 10 = 800, 60 * 10 = 600
         });
 
+        describe('canvas click with an existing selection', () => {
+            it('clears the selection without starting the active tool', () => {
+                state.canvasElement = {
+                    getBoundingClientRect: () => ({ left: 0, top: 0 })
+                } as HTMLDivElement;
+                state.objects = [
+                    { id: 'seat_1', type: 'seat', x: 10, y: 10, width: 20, height: 20, metadata: {} }
+                ];
+                state.selectedIds = new Set(['seat_1']);
+                state.activeTool = 'add-circle';
+
+                state.handleCanvasMouseDown({
+                    button: 0,
+                    clientX: 50,
+                    clientY: 50
+                } as MouseEvent);
+
+                expect(state.selectedIds.size).toBe(0);
+                expect(state.isCircleDrawing).toBe(false);
+                expect(state.objects).toHaveLength(1);
+            });
+
+            it('keeps the active tool behavior when nothing is selected', () => {
+                state.canvasElement = {
+                    getBoundingClientRect: () => ({ left: 0, top: 0 })
+                } as HTMLDivElement;
+                state.activeTool = 'add-circle';
+
+                state.handleCanvasMouseDown({
+                    button: 0,
+                    clientX: 50,
+                    clientY: 50
+                } as MouseEvent);
+
+                expect(state.isCircleDrawing).toBe(true);
+            });
+        });
+
         it('should return false for points outside the canvas', () => {
             state.gridWidth = 80;
             state.gridHeight = 60;

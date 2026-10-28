@@ -919,6 +919,11 @@ export class SeatEditorState {
 			return;
 		}
 
+		if (event.button === 0 && this.selectedIds.size > 0) {
+			this.selectedIds = new Set();
+			return;
+		}
+
 		const rect = this.canvasElement.getBoundingClientRect();
 		const worldX = (event.clientX - rect.left - this.panX) / this.scale;
 		const worldY = (event.clientY - rect.top - this.panY) / this.scale;

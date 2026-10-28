@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CircleToolStrategy } from './tools/CircleTool';
 import type { ToolContext } from './tools/types';
+import { GRID_SIZE } from './constants';
 
 describe('CircleToolStrategy', () => {
 	let tool: CircleToolStrategy;
@@ -12,6 +13,8 @@ describe('CircleToolStrategy', () => {
 			panX: 0,
 			panY: 0,
 			scale: 1,
+			gridWidth: 10,
+			gridHeight: 10,
 		} as unknown as ToolContext['state'];
 	});
 
@@ -68,6 +71,63 @@ describe('CircleToolStrategy', () => {
 			y: 10,
 			width: 40,
 			height: 40
+		});
+	});
+
+	it('clamps a drag endpoint released outside the canvas to the edge', () => {
+		const bounds = tool.calculateCircleBounds(
+			{ x: 90, y: 80 },
+			{ x: 150, y: 140 },
+			false,
+			mockState
+		);
+
+		expect(bounds).toEqual({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE * 2
+		});
+	});
+
+	it('keeps a shift-constrained circle inside the canvas near an edge', () => {
+		const bounds = tool.calculateCircleBounds(
+			{ x: 90, y: 80 },
+			{ x: 150, y: 140 },
+			true,
+			mockState
+		);
+
+		expect(bounds).toEqual({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE
+		});
+	});
+
+	it('uses the release position when it is outside the canvas', () => {
+		Object.assign(mockState, {
+			isCircleDrawing: true,
+			circleStart: { x: 90, y: 80 },
+			circleEnd: { x: 95, y: 85 },
+			objects: [],
+			selectedIds: new Set(),
+			createObjectId: () => 'env_circle_1'
+		});
+
+		tool.onMouseUp({
+			state: mockState,
+			event: { shiftKey: false } as MouseEvent,
+			screenPoint: { x: 150, y: 140 },
+			canvasPoint: { x: 150, y: 140 }
+		});
+
+		expect(mockState.objects[0]).toMatchObject({
+			x: 90,
+			y: 80,
+			width: GRID_SIZE,
+			height: GRID_SIZE * 2
 		});
 	});
 });

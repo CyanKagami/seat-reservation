@@ -1,6 +1,7 @@
 import { BaseToolStrategy } from './BaseToolStrategy';
 import type { ToolContext } from './types';
 import type { Point, Rect } from '../types';
+import { GRID_SIZE } from '../constants';
 
 export class CircleToolStrategy extends BaseToolStrategy {
 	readonly id = 'add-circle';
@@ -11,17 +12,29 @@ export class CircleToolStrategy extends BaseToolStrategy {
 		isShiftPressed: boolean,
 		state: ToolContext['state']
 	): Rect {
-		const p1 = this.screenToCanvas(startScreen, state.panX, state.panY, state.scale);
-		let p2 = this.screenToCanvas(endScreen, state.panX, state.panY, state.scale);
+		const canvasWidth = state.gridWidth * GRID_SIZE;
+		const canvasHeight = state.gridHeight * GRID_SIZE;
+		const rawStart = this.screenToCanvas(startScreen, state.panX, state.panY, state.scale);
+		const rawEnd = this.screenToCanvas(endScreen, state.panX, state.panY, state.scale);
+		const p1 = {
+			x: Math.max(0, Math.min(canvasWidth, rawStart.x)),
+			y: Math.max(0, Math.min(canvasHeight, rawStart.y))
+		};
+		let p2 = {
+			x: Math.max(0, Math.min(canvasWidth, rawEnd.x)),
+			y: Math.max(0, Math.min(canvasHeight, rawEnd.y))
+		};
 
 		let dx = p2.x - p1.x;
 		let dy = p2.y - p1.y;
 
 		// Constrain to perfect circle (1:1 ratio) when Shift is held
 		if (isShiftPressed) {
-			const size = Math.max(Math.abs(dx), Math.abs(dy));
 			const signX = dx >= 0 ? 1 : -1;
 			const signY = dy >= 0 ? 1 : -1;
+			const availableWidth = signX > 0 ? canvasWidth - p1.x : p1.x;
+			const availableHeight = signY > 0 ? canvasHeight - p1.y : p1.y;
+			const size = Math.min(Math.max(Math.abs(dx), Math.abs(dy)), availableWidth, availableHeight);
 
 			p2 = {
 				x: p1.x + size * signX,
@@ -51,8 +64,9 @@ export class CircleToolStrategy extends BaseToolStrategy {
 		}
 	}
 
-	override onMouseUp({ state, event }: ToolContext) {
+	override onMouseUp({ state, event, screenPoint }: ToolContext) {
 		if (!state.isCircleDrawing) return;
+		state.circleEnd = screenPoint;
 
 		const bounds = this.calculateCircleBounds(
 			state.circleStart,
