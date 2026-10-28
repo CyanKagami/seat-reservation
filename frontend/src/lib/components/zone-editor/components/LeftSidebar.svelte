@@ -13,18 +13,8 @@
 				confirmText: "ลบโซน",
 				cancelText: "ยกเลิก",
 				showCancel: true,
-				onconfirm: () => {
-					zoneState.objects = zoneState.objects.map((obj) => {
-						if (obj.metadata?.zone === zoneName) {
-							const metadata = { ...obj.metadata };
-							delete metadata.zone;
-							return { ...obj, metadata };
-						}
-						return obj;
-					});
-					delete zoneState.zones[zoneName];
+					onconfirm: () => zoneState.deleteZone(zoneName)
 				}
-			}
 		);
 	}
 	function handleApplyZone(zoneName: string) {

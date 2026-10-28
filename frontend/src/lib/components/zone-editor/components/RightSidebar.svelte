@@ -186,50 +186,17 @@
 	function handleRowChange(e: Event) {
 		const target = e.target as HTMLInputElement;
 		const row = target.value.trim().toUpperCase();
-		zoneState.objects = zoneState.objects.map((obj) => {
-			if (zoneState.selectedIds.has(obj.id)) {
-				const seatNo = obj.metadata?.seatNo ?? '';
-				return {
-					...obj,
-					metadata: {
-						...(obj.metadata || {}),
-						row,
-						isManualLabel: true
-					}
-				};
-			}
-			return obj;
-		});
+		zoneState.updateSelectedObjectMetadata({ row, isManualLabel: true });
 	}
 
 	function handleSeatNoChange(e: Event) {
 		const target = e.target as HTMLInputElement;
 		const seatNo = target.value.trim();
-		zoneState.objects = zoneState.objects.map((obj) => {
-			if (zoneState.selectedIds.has(obj.id)) {
-				const row = obj.metadata?.row ?? '';
-				return {
-					...obj,
-					metadata: {
-						...(obj.metadata || {}),
-						seatNo,
-						isManualLabel: true
-					}
-				};
-			}
-			return obj;
-		});
+		zoneState.updateSelectedObjectMetadata({ seatNo, isManualLabel: true });
 	}
 
 	function handleClearManualLabel() {
-		zoneState.objects = zoneState.objects.map((obj) => {
-			if (zoneState.selectedIds.has(obj.id)) {
-				const newMeta = { ...(obj.metadata || {}) };
-				delete newMeta.isManualLabel;
-				return { ...obj, metadata: newMeta };
-			}
-			return obj;
-		});
+		zoneState.clearSelectedObjectManualLabels();
 	}
 
 	function handleColorChange(e: Event) {
@@ -376,7 +343,7 @@
 							id="seat-row"
 							type="text"
 							value={currentRow}
-							oninput={handleRowChange}
+							onchange={handleRowChange}
 							placeholder={selectedObjects.length > 1 ? "หลายแถว" : "เช่น A"}
 							class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 						/>
@@ -389,7 +356,7 @@
 							id="seat-no"
 							type="text"
 							value={currentSeatNo}
-							oninput={handleSeatNoChange}
+							onchange={handleSeatNoChange}
 							placeholder={selectedObjects.length > 1 ? "หลายเลข" : "เช่น 1"}
 							class="w-full text-xs bg-slate-50 border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 						/>
@@ -448,7 +415,7 @@
 							type="color"
 							id="shape-color"
 							value={currentColor === 'มีหลายค่าเลือกอยู่' ? '#ffffff': currentColor}
-							oninput={handleColorChange}
+							onchange={handleColorChange}
 							class="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0.5 bg-white"
 						/>
 						<span class="text-xs font-mono text-slate-600 uppercase">{currentColor}</span>

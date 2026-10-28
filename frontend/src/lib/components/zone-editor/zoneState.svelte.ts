@@ -14,7 +14,17 @@ import { apiFetch } from "$lib/scripts/api";
 import { alertModal } from "$lib/store/alert.svelte";
 import { TOOLS } from "./config/tools";
 
+interface ZoneLayoutSnapshot {
+	objects: CanvasObject[];
+	zones: Record<string, Zone>;
+	seatTypes: Record<string, SeatType>;
+	gridWidth: number;
+	gridHeight: number;
+}
+
 export class ZoneEditorState {
+	private static readonly MAX_HISTORY_DEPTH = 50;
+
 	locationId = $state("");
 	eventId = $state("");
 	gridWidth = $state(80);
@@ -29,6 +39,11 @@ export class ZoneEditorState {
 	selectedIds = $state<Set<string>>(new Set());
 	activeTool = $state<ToolType>('pointer');
 	canvasElement = $state<HTMLDivElement | null>(null);
+
+	history = $state<ZoneLayoutSnapshot[]>([]);
+	historyIndex = $state(-1);
+	canUndo = $derived(this.historyIndex > 0);
+	canRedo = $derived(this.historyIndex < this.history.length - 1);
 
 	// Viewport State
 	panX = $state(0);
@@ -49,7 +64,58 @@ export class ZoneEditorState {
 	constructor(locationId:string, eventId:string) {
 		this.locationId = locationId;
 		this.eventId = eventId;
+		this.commitHistory();
 	}
+
+	private createLayoutSnapshot(): ZoneLayoutSnapshot {
+		return {
+			objects: $state.snapshot(this.objects) as CanvasObject[],
+			zones: $state.snapshot(this.zones) as Record<string, Zone>,
+			seatTypes: $state.snapshot(this.seatTypes) as Record<string, SeatType>,
+			gridWidth: this.gridWidth,
+			gridHeight: this.gridHeight
+		};
+	}
+
+	private restoreLayoutSnapshot(snapshot: ZoneLayoutSnapshot) {
+		const copy = JSON.parse(JSON.stringify(snapshot)) as ZoneLayoutSnapshot;
+		this.objects = copy.objects;
+		this.zones = copy.zones;
+		this.seatTypes = copy.seatTypes;
+		this.gridWidth = copy.gridWidth;
+		this.gridHeight = copy.gridHeight;
+		this.selectedIds = new Set();
+	}
+
+	commitHistory() {
+		const snapshot = this.createLayoutSnapshot();
+		const current = this.history[this.historyIndex];
+		if (current && JSON.stringify(current) === JSON.stringify(snapshot)) return;
+
+		const nextHistory = this.history.slice(0, this.historyIndex + 1);
+		nextHistory.push(snapshot);
+		if (nextHistory.length > ZoneEditorState.MAX_HISTORY_DEPTH) nextHistory.shift();
+		this.history = nextHistory;
+		this.historyIndex = nextHistory.length - 1;
+	}
+
+	private resetHistory() {
+		this.history = [];
+		this.historyIndex = -1;
+		this.commitHistory();
+	}
+
+	undo = () => {
+		if (!this.canUndo) return;
+		this.historyIndex--;
+		this.restoreLayoutSnapshot(this.history[this.historyIndex]);
+	};
+
+	redo = () => {
+		if (!this.canRedo) return;
+		this.historyIndex++;
+		this.restoreLayoutSnapshot(this.history[this.historyIndex]);
+	};
 
 	private rafPending = false;
 
@@ -334,6 +400,7 @@ export class ZoneEditorState {
 			this.zones = data.zones ?? {};
 			this.selectedIds.clear();
 			this.centerGrid();
+			this.resetHistory();
 			return true;
 		} catch (err) {
 			alertModal.failure("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ผังที่นั่งได้");
@@ -344,7 +411,21 @@ export class ZoneEditorState {
 	createZone = ({name, color}:{name:string, color:string}) => {
 		if (this.zones[name]) return null;
 		this.zones[name] = {color};
+		this.commitHistory();
 		return this.zones[name];
+	}
+
+	deleteZone(zoneName: string) {
+		if (!this.zones[zoneName]) return;
+
+		this.objects = this.objects.map((obj) => {
+			if (obj.metadata?.zone !== zoneName) return obj;
+			const metadata = { ...obj.metadata };
+			delete metadata.zone;
+			return { ...obj, metadata };
+		});
+		delete this.zones[zoneName];
+		this.commitHistory();
 	}
 
 	updateSelectedObjectZone(zone: string, selectedIds: ReadonlySet<string> = this.selectedIds) {
@@ -367,6 +448,7 @@ export class ZoneEditorState {
 
 			return { ...obj, metadata };
 		});
+		this.commitHistory();
 	}
 
 	clearSeatLabels(seatIds: readonly string[]) {
@@ -380,6 +462,7 @@ export class ZoneEditorState {
 			delete metadata.isManualLabel;
 			return { ...obj, metadata };
 		});
+		this.commitHistory();
 	}
 
 	updateSelectedObjectMetadata(metadataUpdates: Record<string, any>) {
@@ -395,6 +478,17 @@ export class ZoneEditorState {
 			}
 			return obj;
 		});
+		this.commitHistory();
+	}
+
+	clearSelectedObjectManualLabels() {
+		this.objects = this.objects.map((obj) => {
+			if (!this.selectedIds.has(obj.id)) return obj;
+			const metadata = { ...(obj.metadata || {}) };
+			delete metadata.isManualLabel;
+			return { ...obj, metadata };
+		});
+		this.commitHistory();
 	}
 
 	autoLabelSelectedSeats = (seatIds: readonly string[], overwriteManual: boolean = false) => {
@@ -411,6 +505,7 @@ export class ZoneEditorState {
 		for (const seats of seatsByZone.values()) {
 			this.autoLabelSeats(seats, overwriteManual);
 		}
+		this.commitHistory();
 	};
 
 	autoLabelZone = (zoneName: string, overwriteManual: boolean = false) => {
@@ -419,6 +514,7 @@ export class ZoneEditorState {
 			(o) => o.type === 'seat' && o.metadata?.zone === zoneName
 		);
 		this.autoLabelSeats(zoneSeats, overwriteManual);
+		this.commitHistory();
 	};
 
 	private autoLabelSeats(seats: CanvasObject[], overwriteManual: boolean) {
@@ -580,6 +676,7 @@ export class ZoneEditorState {
 
 		this.objects = [...this.objects, newObj];
 		this.selectedIds = new Set([newObj.id]);
+		this.commitHistory();
 	};
 
 	handleDragOver = (event: DragEvent) => {
@@ -872,6 +969,7 @@ export class ZoneEditorState {
 		if (this.isSaving) return;
 		if (this.activeVertexDrag) {
 			this.activeVertexDrag = null;
+			this.commitHistory();
 			return;
 		}
 		const rect = this.canvasElement?.getBoundingClientRect();
@@ -888,6 +986,7 @@ export class ZoneEditorState {
 
 		// Reset global transform states
 		this.isPanning = false;
+		this.commitHistory();
 	};
 
 	handleWheel = (event: WheelEvent) => {
@@ -907,6 +1006,17 @@ export class ZoneEditorState {
 			target instanceof HTMLElement &&
 			(target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 		) return;
+		if (event.ctrlKey || event.metaKey) {
+			if (event.code === 'KeyZ') {
+				event.preventDefault();
+				if (event.shiftKey) this.redo();
+				else this.undo();
+			} else if (event.code === 'KeyY') {
+				event.preventDefault();
+				this.redo();
+			}
+			return;
+		}
 		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
 
 		const tool = TOOLS.find((item) => item.shortcut && event.code === `Key${item.shortcut}`);

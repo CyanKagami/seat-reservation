@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { encode } from '@msgpack/msgpack';
 import { ZoneEditorState } from './zoneState.svelte';
 import type { CanvasObject } from './types';
 import {
@@ -517,5 +518,56 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		state.handleKeyDown(createKeyEvent('KeyV', { ctrlKey: true }));
 
 		expect(state.activeTool).toBe('lasso');
+	});
+
+	it('undoes and redoes zone and seat assignment changes', () => {
+		state.objects = [{
+			id: 'seat_undo',
+			type: 'seat',
+			x: 0,
+			y: 0,
+			width: 20,
+			height: 20,
+			metadata: {}
+		}];
+		state.createZone({ name: 'Undo Zone', color: '#00ff00' });
+		state.updateSelectedObjectZone('Undo Zone', new Set(['seat_undo']));
+
+		state.undo();
+		expect(state.objects[0].metadata?.zone).toBeUndefined();
+		expect(state.zones['Undo Zone']).toBeDefined();
+
+		state.undo();
+		expect(state.zones['Undo Zone']).toBeUndefined();
+
+		state.redo();
+		state.redo();
+		expect(state.objects[0].metadata?.zone).toBe('Undo Zone');
+	});
+
+	it('does not allow undoing past a loaded layout baseline', () => {
+		const layout = encode({
+			canvas: { gridWidth: 12, gridHeight: 8 },
+			objects: [],
+			zones: { Loaded: { color: '#123456' } }
+		});
+		state.loadFromMessagePack(layout.buffer.slice(layout.byteOffset, layout.byteOffset + layout.byteLength));
+
+		expect(state.canUndo).toBe(false);
+		state.undo();
+		expect(state.zones.Loaded).toBeDefined();
+	});
+
+	it('supports undo and redo keyboard shortcuts', () => {
+		state.createZone({ name: 'Keyboard Zone', color: '#abcdef' });
+		const undoEvent = createKeyEvent('KeyZ', { ctrlKey: true });
+
+		state.handleKeyDown(undoEvent);
+
+		expect(undoEvent.preventDefault).toHaveBeenCalledOnce();
+		expect(state.zones['Keyboard Zone']).toBeUndefined();
+
+		state.handleKeyDown(createKeyEvent('KeyY', { ctrlKey: true }));
+		expect(state.zones['Keyboard Zone']).toBeDefined();
 	});
 });

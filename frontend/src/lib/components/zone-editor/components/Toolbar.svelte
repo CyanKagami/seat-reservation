@@ -47,6 +47,22 @@
 
 	<!-- Zoom Controls -->
 	<div class="ml-auto flex items-center gap-1 text-xs">
+		<button
+			type="button"
+			onclick={state.undo}
+			disabled={!state.canUndo || state.isSaving}
+			title="ยกเลิกการเปลี่ยนแปลง (Ctrl+Z)"
+			aria-label="Undo"
+			class="w-7 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+		>↶</button>
+		<button
+			type="button"
+			onclick={state.redo}
+			disabled={!state.canRedo || state.isSaving}
+			title="ทำซ้ำการเปลี่ยนแปลง (Ctrl+Y หรือ Ctrl+Shift+Z)"
+			aria-label="Redo"
+			class="w-7 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+		>↷</button>
 		<button onclick={state.zoomOut} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer">-</button>
 		<span class="w-10 text-center font-mono text-[11px]">{Math.round(state.scale * 100)}%</span>
 		<button onclick={state.zoomIn} class="w-6 h-6 bg-white border border-slate-300 rounded font-bold hover:bg-slate-100 cursor-pointer">+</button>
