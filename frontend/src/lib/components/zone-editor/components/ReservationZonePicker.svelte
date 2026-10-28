@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { SeatMap } from "$lib/scripts/booking";
 	import type { CanvasObject, Zone } from "../types";
   import { getReservationSeatId, getSeatId } from "../utils/zoneUtils";
 
@@ -12,8 +11,6 @@
 	let {
 		objects = [],
 		zone = {},
-		gridWidth,
-		gridHeight,
 		selectedZoneId = $bindable(""),
 		padding = 40,
 		width = "100%",
@@ -25,8 +22,6 @@
 	}: {
 		objects: CanvasObject[];
 		zone: { [key: string]: Zone };
-		gridWidth?: number;
-		gridHeight?: number;
 		selectedZoneId?: string;
 		padding?: number;
 		width?: string;

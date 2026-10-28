@@ -213,8 +213,6 @@
         <ReservationZonePicker
           objects={data.seatState.objects}
           zone={data.seatState.zones}
-          gridWidth={data.seatState.gridWidth}
-          gridHeight={data.seatState.gridHeight}
           reservedIds={reservedId}
           fillContainer
           onZoneSelect={(zoneId) => {

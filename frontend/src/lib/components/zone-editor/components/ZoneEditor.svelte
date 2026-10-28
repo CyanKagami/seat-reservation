@@ -6,9 +6,7 @@
 	import type { ZoneEditorState } from "../zoneState.svelte";
 	import type { Place } from "$lib/type/place";
 	import ReservationZonePicker from "./ReservationZonePicker.svelte";
-	import type { CanvasObject } from "../types";
   import LeftSidebar from "./LeftSidebar.svelte";
-  import { GRID_SIZE } from "../constants";
   import { alertModal } from "$lib/store/alert.svelte";
 
 	let isCreateZonePopupOpen = $state(false)
@@ -17,11 +15,6 @@
 	let zoneColor = $state('#ffffff');
 	let {zoneState, place, backLink} :  {zoneState:ZoneEditorState, place:Place, backLink:string} = $props();
 	let selectedZoneId = $state("");
-	let selectedSeatsInZone: CanvasObject[] = $state([]);
-
-	function handleZoneSelect(zoneId: string, seats: CanvasObject[]) {
-		selectedSeatsInZone = seats;
-	}
 
 	function onZonePopupToggle(){
 		isCreateZonePopupOpen = !isCreateZonePopupOpen;
@@ -45,7 +38,7 @@
 	}
 </script>
 
-<svelte:body onkeydown={zoneState.handleKeyDown} onkeyup={zoneState.handleKeyUp} onblur={zoneState.handleWindowBlur} />
+
 
 <div class="fixed inset-0 top-20 flex flex-col bg-[#e8ecef] select-none text-slate-800 font-sans overflow-hidden">
 	<SubHeader state={zoneState} {backLink} {place} bind:isPreview={isPreview}/>
@@ -59,10 +52,7 @@
 			<ReservationZonePicker
 					objects={zoneState.objects}
 					zone={zoneState.zones}
-					gridWidth={zoneState.gridWidth}
-					gridHeight={zoneState.gridHeight}
 					bind:selectedZoneId
-					onZoneSelect={handleZoneSelect}
 					width={zoneState.gridWidth * 10 + 'px'}
 					height={zoneState.gridHeight * 10 + 'px'}
 				/>

@@ -25,7 +25,6 @@ export class ZoneEditorState {
 	objects = $state<CanvasObject[]>([]);
 	zones = $state<{[key: string]: Zone;}>({})
 	seatTypes = $state<{[key: string]: SeatType;}>({ 'standard': { name: 'standard', color: '#e2e8f0', description: 'Standard seat' } });
-	copiedObjects = $state<CanvasObject[]>([]);
 	selectedIds = $state<Set<string>>(new Set());
 	activeTool = $state<ToolType>('pointer');
 	canvasElement = $state<HTMLDivElement | null>(null);
@@ -39,38 +38,12 @@ export class ZoneEditorState {
 	isPanning = $state(false);
 	panStart = $state<Point>({ x: 0, y: 0 });
 
-	isDragging = $state(false);
-	dragStart = $state<Point>({ x: 0, y: 0 });
-	initialPositions = new Map<string, Point>();
-
-	isRotating = $state(false);
-	rotateStartAngle = $state(0);
-	rotateCenter = $state<Point>({ x: 0, y: 0 });
-	initialStates = new Map<string, { x: number; y: number; rotation: number }>();
-
 	isBoxSelecting = $state(false);
 	boxStart = $state<Point>({ x: 0, y: 0 });
 	boxEnd = $state<Point>({ x: 0, y: 0 });
 
 	isLassoSelecting = $state(false);
 	lassoPoints = $state<Point[]>([]);
-
-	isLineDrawing = $state(false);
-	lineStart = $state<Point>({ x: 0, y: 0 });
-	lineEnd = $state<Point>({ x: 0, y: 0 });
-
-	isArrayDrawing = $state(false);
-	arrayStart = $state<Point>({ x: 0, y: 0 });
-	arrayEnd = $state<Point>({ x: 0, y: 0 });
-
-	isRectDrawing = $state(false);
-	rectStart = $state<Point>({ x: 0, y: 0 });
-	rectEnd = $state<Point>({ x: 0, y: 0 });
-
-	isCircleDrawing = $state(false);
-	circleStart = $state<Point>({ x: 0, y: 0 });
-	circleEnd = $state<Point>({ x: 0, y: 0 });
-	isShiftPressed = $state(false);
 
 	constructor(locationId:string, eventId:string) {
 		this.locationId = locationId;
@@ -371,15 +344,6 @@ export class ZoneEditorState {
 		if (this.zones[name]) return null;
 		this.zones[name] = {color};
 		return this.zones[name];
-	}
-
-	assignZone = (zoneId:number) => {
-		this.objects.forEach((obj) => {
-			if (this.selectedIds.has(obj.id)) {
-				zoneId
-			}
-			return obj;
-		});
 	}
 
 	updateSelectedObjectZone(zone: string, selectedIds: ReadonlySet<string> = this.selectedIds) {
@@ -705,59 +669,6 @@ export class ZoneEditorState {
 		return rotatePoint(px, py, cx, cy, angleDegrees);
 	}
 
-	getObjectWorldExtents(
-		obj: CanvasObject,
-		customPos?: { x: number; y: number }
-	): { minX: number; maxX: number; minY: number; maxY: number } {
-		const posX = customPos ? customPos.x : obj.x;
-		const posY = customPos ? customPos.y : obj.y;
-		const rotation = obj.rotation ?? 0;
-
-		let points: { x: number; y: number }[] = [];
-
-		if ((obj.type === 'env-polygon' || obj.type === 'env-icon-polygon') && obj.points) {
-			const centerRelX = obj.points.reduce((acc, p) => acc + p.x, 0) / obj.points.length;
-			const centerRelY = obj.points.reduce((acc, p) => acc + p.y, 0) / obj.points.length;
-			const cx = posX + centerRelX;
-			const cy = posY + centerRelY;
-
-			points = obj.points.map((p) => 
-				this.rotatePoint(posX + p.x, posY + p.y, cx, cy, rotation)
-			);
-		} else if (obj.type === 'env-circle') {
-			const cx = posX + obj.width / 2;
-			const cy = posY + obj.height / 2;
-			const a = obj.width / 2;
-			const b = obj.height / 2;
-			const rad = (rotation * Math.PI) / 180;
-
-			const rx = Math.sqrt(Math.pow(a * Math.cos(rad), 2) + Math.pow(b * Math.sin(rad), 2));
-			const ry = Math.sqrt(Math.pow(a * Math.sin(rad), 2) + Math.pow(b * Math.cos(rad), 2));
-
-			return { minX: cx - rx, maxX: cx + rx, minY: cy - ry, maxY: cy + ry };
-		} else {
-			const cx = posX + obj.width / 2;
-			const cy = posY + obj.height / 2;
-			const corners = [
-				{ x: posX, y: posY },
-				{ x: posX + obj.width, y: posY },
-				{ x: posX + obj.width, y: posY + obj.height },
-				{ x: posX, y: posY + obj.height }
-			];
-			points = corners.map((p) => this.rotatePoint(p.x, p.y, cx, cy, rotation));
-		}
-
-		const xs = points.map((p) => p.x);
-		const ys = points.map((p) => p.y);
-
-		return {
-			minX: Math.min(...xs),
-			maxX: Math.max(...xs),
-			minY: Math.min(...ys),
-			maxY: Math.max(...ys)
-		};
-	}
-
 	isObjectOutOfBounds(obj: CanvasObject): boolean {
 		const canvasWidth = this.gridWidth * GRID_SIZE;
 		const canvasHeight = this.gridHeight * GRID_SIZE;
@@ -841,88 +752,6 @@ export class ZoneEditorState {
 
 
 
-	// Start rotation interaction when user clicks rotation handle
-	// handleRotateStart = (event: MouseEvent) => {
-	// 	if (this.isSaving) return;
-	// 	if (event.button !== 0 || !this.selectionBounds || !this.canvasElement) return;
-	// 		event.stopPropagation();
-
-	// 		this.isRotating = true;
-
-	// 		// Snapshot initial positions and rotations
-	// 		this.initialPositions = new Map();
-	// 		this.objects.forEach((obj) => {
-	// 			if (this.selectedIds.has(obj.id)) {
-	// 				this.initialStates.set(obj.id, {
-	// 					x: obj.x,
-	// 					y: obj.y,
-	// 					rotation: obj.rotation ?? 0
-	// 				});
-	// 			}
-	// 		});
-
-	// 		// Save group center pivot in WORLD coordinates
-	// 		const bounds = this.selectionBounds;
-	// 		const worldCenterX = (bounds.minX + bounds.maxX) / 2;
-	// 		const worldCenterY = (bounds.minY + bounds.maxY) / 2;
-	// 		this.rotateCenter = { x: worldCenterX, y: worldCenterY };
-
-	// 		// Calculate initial mouse angle relative to group center screen position
-	// 		const rect = this.canvasElement.getBoundingClientRect();
-	// 		const mouseX = event.clientX - rect.left;
-	// 		const mouseY = event.clientY - rect.top;
-
-	// 		const screenCenterX = worldCenterX * this.scale + this.panX;
-	// 		const screenCenterY = worldCenterY * this.scale + this.panY;
-
-	// 		this.rotateStartAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
-	// };
-
-	// removeSelected = () => {
-	// 	if (this.selectedIds.size === 0) return;
-	// 	this.objects = this.objects.filter(o => !this.selectedIds.has(o.id));
-	// 	this.selectedIds = new Set();
-	// };
-
-	// copySelected = () => {
-	// 	if (this.selectedIds.size === 0) return;
-	// 	this.copiedObjects = this.objects
-	// 		.filter(o => this.selectedIds.has(o.id))
-	// 		.map(o => ({ ...o }));
-
-	// };
-
-	// pasteSquares = () => {
-	// 	if (this.copiedObjects.length === 0) return;
-
-	// 	const nextBatch: CanvasObject[] = [];
-	// 	const nextSelected = new Set<string>();
-
-	// 	this.copiedObjects.forEach((src, idx) => {
-	// 		const newId = `${src.type}_${this.objects.length + idx + 1}`;
-	// 		const targetX = src.x + GRID_SIZE * 2;
-	// 		const targetY = src.y + GRID_SIZE * 2;
-
-	// 		nextBatch.push({
-	// 			id: newId,
-	// 			x: Math.max(0, Math.min(this.gridWidth * GRID_SIZE - BOX_SIZE, targetX)),
-	// 			y: Math.max(0, Math.min(this.gridHeight * GRID_SIZE - BOX_SIZE, targetY)),
-	// 			type: src.type,
-	// 			width: src.width,
-	// 			height: src.height,
-	// 			iconType:src.iconType,
-	// 			label:src.label,
-	// 			points:src.points?.map((p) => ({x:p.x, y:p.y} as Point)),
-	// 			rotation: src.rotation
-	// 		});
-	// 		nextSelected.add(newId);
-	// 	});
-
-	// 	this.objects = [...this.objects, ...nextBatch];
-	// 	this.selectedIds = nextSelected;
-	// 	this.copiedObjects = nextBatch.map(s => ({ ...s }));
-	// };
-
 	// Generic MouseDown handler for seats AND environment rectangles
 	handleObjectMouseDown = (obj: CanvasObject, event: MouseEvent) => {
 		if (this.isSaving) return;
@@ -945,15 +774,6 @@ export class ZoneEditorState {
 			}
 		}
 
-		// Prepare unified drag
-		// this.isDragging = true;
-		// this.dragStart = { x: event.clientX, y: event.clientY };
-		// this.initialPositions.clear();
-		// this.objects.forEach(o => {
-		// 	if (this.selectedIds.has(o.id)) {
-		// 		this.initialPositions.set(o.id, { x: o.x, y: o.y });
-		// 	}
-		// });
 	};
 
 	handleSelectionBoundsMouseDown = (event: MouseEvent) => {
@@ -964,16 +784,6 @@ export class ZoneEditorState {
 		// Prevent event from bubbling to the canvas background
 		event.stopPropagation();
 
-		// this.isDragging = true;
-		// this.dragStart = { x: event.clientX, y: event.clientY };
-
-		// // Store initial positions for all currently selected objects
-		// this.initialPositions = new Map();
-		// this.objects.forEach((obj) => {
-		// 	if (this.selectedIds.has(obj.id)) {
-		// 		this.initialPositions.set(obj.id, { x: obj.x, y: obj.y });
-		// 	}
-		// });
 	};
 
 	handleCanvasMouseDown = (event: MouseEvent) => {
@@ -1006,7 +816,6 @@ export class ZoneEditorState {
 	};
 
 	handleMouseMove = (event: MouseEvent) => {
-		this.isShiftPressed = event.shiftKey;
 		if (this.rafPending) return;
 		this.rafPending = true;
 
@@ -1022,120 +831,6 @@ export class ZoneEditorState {
 			if (this.isPanning) {
 				this.panX = clientX - this.panStart.x;
 				this.panY = clientY - this.panStart.y;
-				return;
-			}
-
-			// 2. Group Rotation (Rotation Handle Drag)
-			if (this.isRotating) {
-
-				const rect = this.canvasElement.getBoundingClientRect();
-				const mouseX = event.clientX - rect.left;
-				const mouseY = event.clientY - rect.top;
-
-				const screenCenterX = this.rotateCenter.x * this.scale + this.panX;
-				const screenCenterY = this.rotateCenter.y * this.scale + this.panY;
-
-				const currentAngle = Math.atan2(mouseY - screenCenterY, mouseX - screenCenterX) * (180 / Math.PI);
-				let deltaAngle = currentAngle - this.rotateStartAngle;
-
-				// --- 1. ROTATION SNAPPING ---
-				const SNAP_INCREMENT = 15; // Degrees to snap to
-
-				if (this.isShiftPressed) {
-					if (this.selectedIds.size === 1) {
-						// Single Object: Snap target absolute angle to nearest step (e.g. 0°, 15°, 45°, 90°)
-						const singleObjId = Array.from(this.selectedIds)[0];
-						const initRot = this.initialStates.get(singleObjId)?.rotation ?? 0;
-						const targetAbsoluteRot = initRot + deltaAngle;
-						const snappedAbsoluteRot = Math.round(targetAbsoluteRot / SNAP_INCREMENT) * SNAP_INCREMENT;
-
-						deltaAngle = snappedAbsoluteRot - initRot;
-					} else {
-						// Group Selection: Snap group delta step to preserve relative spatial alignment
-						deltaAngle = Math.round(deltaAngle / SNAP_INCREMENT) * SNAP_INCREMENT;
-					}
-				}
-
-				// --- 2. ORBIT CALCULATIONS ---
-				const rad = (deltaAngle * Math.PI) / 180;
-				const cos = Math.cos(rad);
-				const sin = Math.sin(rad);
-
-				const updatedObjects = this.objects.map((obj) => {
-					if (!this.selectedIds.has(obj.id)) return obj;
-
-					const init = this.initialStates.get(obj.id);
-					if (!init) return obj;
-
-					// Orbit origin (x, y) around group pivot center
-					const dx = init.x - this.rotateCenter.x;
-					const dy = init.y - this.rotateCenter.y;
-
-					const newX = this.rotateCenter.x + (dx * cos - dy * sin);
-					const newY = this.rotateCenter.y + (dx * sin + dy * cos);
-
-					// Increment orientation
-					const newRot = (init.rotation + deltaAngle) % 360;
-
-					return {
-						...obj,
-						x: newX,
-						y: newY,
-						rotation: newRot < 0 ? newRot + 360 : newRot
-					};
-				});
-
-				// --- 3. BOUNDARY VALIDATION ---
-				const hasViolation = updatedObjects.some(
-					(obj) => this.selectedIds.has(obj.id) && this.isObjectOutOfBounds(obj)
-				);
-
-				if (!hasViolation) {
-					this.objects = updatedObjects;
-				}
-				return;
-			}
-
-			// 3. Object Dragging (Universal Object Movement)
-			if (this.isDragging) {
-				const rawDx = (event.clientX - this.dragStart.x) / this.scale;
-				const rawDy = (event.clientY - this.dragStart.y) / this.scale;
-
-				const canvasWidth = this.gridWidth * GRID_SIZE;
-				const canvasHeight = this.gridHeight * GRID_SIZE;
-
-				// Calculate current collective bounding box of all selected objects at initial positions
-				let groupMinX = Infinity, groupMaxX = -Infinity;
-				let groupMinY = Infinity, groupMaxY = -Infinity;
-
-				this.objects.forEach((obj) => {
-					if (!this.selectedIds.has(obj.id)) return;
-					const init = this.initialPositions.get(obj.id) || { x: obj.x, y: obj.y };
-					const extents = this.getObjectWorldExtents(obj, { x: init.x, y: init.y });
-
-					groupMinX = Math.min(groupMinX, extents.minX);
-					groupMaxX = Math.max(groupMaxX, extents.maxX);
-					groupMinY = Math.min(groupMinY, extents.minY);
-					groupMaxY = Math.max(groupMaxY, extents.maxY);
-				});
-
-				// Calculate maximum permissible delta along each axis
-				const minAllowedDx = 0 - groupMinX;
-				const maxAllowedDx = canvasWidth - groupMaxX;
-				const minAllowedDy = 0 - groupMinY;
-				const maxAllowedDy = canvasHeight - groupMaxY;
-
-				// Clamp delta values independently (enables wall sliding)
-				const clampedDx = Math.max(minAllowedDx, Math.min(maxAllowedDx, rawDx));
-				const clampedDy = Math.max(minAllowedDy, Math.min(maxAllowedDy, rawDy));
-
-				this.objects = this.objects.map((obj) => {
-					if (!this.selectedIds.has(obj.id)) return obj;
-					const init = this.initialPositions.get(obj.id);
-					if (!init) return obj;
-
-					return { ...obj, x: init.x + clampedDx, y: init.y + clampedDy };
-				});
 				return;
 			}
 
@@ -1192,8 +887,6 @@ export class ZoneEditorState {
 
 		// Reset global transform states
 		this.isPanning = false;
-		this.isRotating = false;
-		this.isDragging = false;
 	};
 
 	handleWheel = (event: WheelEvent) => {
@@ -1203,27 +896,6 @@ export class ZoneEditorState {
 		} else {
 			this.zoomOut();
 		}
-	};
-
-	handleKeyDown = (event: KeyboardEvent) => {
-		if (this.isSaving) return;
-		if (event.key === 'Shift') {
-			this.isShiftPressed = true;
-		}
-		// Polygon keyboard controls removed
-		const isModifier = event.ctrlKey || event.metaKey;
-		if (!isModifier) return;
-	};
-
-	handleKeyUp = (event: KeyboardEvent) => {
-		if (event.key === 'Shift') {
-			this.isShiftPressed = false;
-		}
-	};
-
-	// Optional: Reset on window blur to avoid stuck state
-	handleWindowBlur = () => {
-		this.isShiftPressed = false;
 	};
 
 	handleContextMenu = (event: MouseEvent) => {

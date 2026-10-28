@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { ZoneEditorState } from "../zoneState.svelte";
-	import { BOX_SIZE } from "../constants";
 	import { TOOLS } from '$lib/components/zone-editor/config/tools';
 	import ToolButton from './ToolButton.svelte';
 
