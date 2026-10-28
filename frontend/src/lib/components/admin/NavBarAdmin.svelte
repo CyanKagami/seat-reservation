@@ -9,7 +9,15 @@
     let isMobileMenuOpen = $state(false);
 
     function toggleDropdown() {
-        isDropdownOpen = !isDropdownOpen;
+        const shouldOpen = !isDropdownOpen;
+        isDropdownOpen = shouldOpen;
+        if (shouldOpen) isMobileMenuOpen = false;
+    }
+
+    function toggleMobileMenu() {
+        const shouldOpen = !isMobileMenuOpen;
+        isMobileMenuOpen = shouldOpen;
+        if (shouldOpen) isDropdownOpen = false;
     }
 
     function handleLogout() {
@@ -82,7 +90,7 @@
 
             <button
                 type="button"
-                onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
+                onclick={toggleMobileMenu}
                 aria-label={isMobileMenuOpen ? "ปิดเมนูนำทาง" : "เปิดเมนูนำทาง"}
                 aria-expanded={isMobileMenuOpen}
                 class="md:hidden h-10 w-10 inline-flex items-center justify-center rounded-lg border border-border-subtle text-dark hover:bg-surface-subtle cursor-pointer"
