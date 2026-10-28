@@ -21,6 +21,7 @@ import {
 	movePolygonVertex,
 	snapPolygonVertexToNeighborAxis
 } from "./polygonGeometry";
+import { TOOLS } from "./config/tools";
 
 export class SeatEditorState {
 	locationId = $state("v_123");
@@ -1197,9 +1198,18 @@ export class SeatEditorState {
 		if (this.isUneditable) return;
 		const target = event.target;
 		if (
+			typeof HTMLElement !== 'undefined' &&
 			target instanceof HTMLElement &&
 			(target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 		) return;
+		if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+			const tool = TOOLS.find((item) => item.shortcut && event.code === `Key${item.shortcut}`);
+			if (tool) {
+				event.preventDefault();
+				this.activeTool = tool.id;
+				return;
+			}
+		}
 		if (event.code === 'Delete' || event.code === 'Backspace') {
 			event.preventDefault();
 			this.removeSelected();

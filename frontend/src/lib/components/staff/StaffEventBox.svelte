@@ -24,6 +24,11 @@
             <div class="absolute bottom-3 left-3 text-white text-xs font-medium drop-shadow-xs">
                 {formatThaiDateTimeShort(start_date, end_date)}
             </div>
+            <div class="absolute right-3 top-3">
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {event.status === 'Published' ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-subtle text-dark-muted'}">
+                    {event.status === "Published" ? "เผยแพร่แล้ว" : "ยังไม่เผยแพร่"}
+                </span>
+            </div>
         </div>
 
         <!-- Body Content -->

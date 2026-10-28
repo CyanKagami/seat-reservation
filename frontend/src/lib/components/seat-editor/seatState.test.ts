@@ -1,13 +1,46 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SeatEditorState } from './seatState.svelte';
 import { GRID_SIZE, BOX_SIZE, MAX_SCALE, MIN_SCALE } from './constants';
 import type { CanvasObject } from './types';
+import { TOOLS } from './config/tools';
+
+function createKeyEvent(code: string, modifiers: Partial<KeyboardEvent> = {}) {
+    return {
+        code,
+        target: null,
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        preventDefault: vi.fn(),
+        ...modifiers
+    } as unknown as KeyboardEvent;
+}
 
 describe('SeatEditorState', () => {
     let state: SeatEditorState;
 
     beforeEach(() => {
         state = new SeatEditorState('test_location');
+    });
+
+    describe('tool shortcuts', () => {
+        it.each(TOOLS.filter((tool) => tool.shortcut))('selects $id with its shortcut', (tool) => {
+            const event = createKeyEvent(`Key${tool.shortcut}`);
+
+            state.handleKeyDown(event);
+
+            expect(state.activeTool).toBe(tool.id);
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+        });
+
+        it('does not select a tool when a modifier is held', () => {
+            state.activeTool = 'add-square';
+
+            state.handleKeyDown(createKeyEvent('KeyL', { ctrlKey: true }));
+
+            expect(state.activeTool).toBe('add-square');
+        });
     });
 
     describe('moveSquareOnOutOfBound', () => {

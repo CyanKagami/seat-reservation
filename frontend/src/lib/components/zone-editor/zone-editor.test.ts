@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ZoneEditorState } from './zoneState.svelte';
 import type { CanvasObject } from './types';
 import {
@@ -10,6 +10,20 @@ import {
 } from './utils/zoneUtils';
 import { alertModal } from '$lib/store/alert.svelte';
 import { classifyIdentifier } from '$lib/scripts/checkIn';
+import { TOOLS } from './config/tools';
+
+function createKeyEvent(code: string, modifiers: Partial<KeyboardEvent> = {}) {
+	return {
+		code,
+		target: null,
+		ctrlKey: false,
+		metaKey: false,
+		altKey: false,
+		shiftKey: false,
+		preventDefault: vi.fn(),
+		...modifiers
+	} as unknown as KeyboardEvent;
+}
 
 describe('ZoneEditorState - Seat Status and Labeling', () => {
 	let state: ZoneEditorState;
@@ -486,5 +500,22 @@ describe('ZoneEditorState - Seat Status and Labeling', () => {
 		expect(state.isSaving).toBe(false);
 		expect(alertModal.title).toBe('ยังบันทึกผังไม่ได้');
 		expect(alertModal.message).toContain('A1');
+	});
+
+	it.each(TOOLS.filter((tool) => tool.shortcut))('selects $id with its shortcut', (tool) => {
+		const event = createKeyEvent(`Key${tool.shortcut}`);
+
+		state.handleKeyDown(event);
+
+		expect(state.activeTool).toBe(tool.id);
+		expect(event.preventDefault).toHaveBeenCalledOnce();
+	});
+
+	it('does not select a tool when a modifier is held', () => {
+		state.activeTool = 'lasso';
+
+		state.handleKeyDown(createKeyEvent('KeyV', { ctrlKey: true }));
+
+		expect(state.activeTool).toBe('lasso');
 	});
 });

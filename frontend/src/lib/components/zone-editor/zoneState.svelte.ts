@@ -12,6 +12,7 @@ import {
 } from "./utils/zoneUtils";
 import { apiFetch } from "$lib/scripts/api";
 import { alertModal } from "$lib/store/alert.svelte";
+import { TOOLS } from "./config/tools";
 
 export class ZoneEditorState {
 	locationId = $state("");
@@ -896,6 +897,23 @@ export class ZoneEditorState {
 		} else {
 			this.zoomOut();
 		}
+	};
+
+	handleKeyDown = (event: KeyboardEvent) => {
+		if (this.isSaving) return;
+		const target = event.target;
+		if (
+			typeof HTMLElement !== 'undefined' &&
+			target instanceof HTMLElement &&
+			(target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+		) return;
+		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+
+		const tool = TOOLS.find((item) => item.shortcut && event.code === `Key${item.shortcut}`);
+		if (!tool) return;
+
+		event.preventDefault();
+		this.activeTool = tool.id;
 	};
 
 	handleContextMenu = (event: MouseEvent) => {

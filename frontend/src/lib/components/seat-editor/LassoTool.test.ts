@@ -54,7 +54,7 @@ describe('LassoToolStrategy', () => {
 		expect(state.lassoPoints[1]).toEqual({ x: 10, y: 10 });
 	});
 
-	it('should select objects whose center is inside the lasso polygon on mouseup', () => {
+	it('should select objects overlapped by the lasso polygon on mouseup', () => {
 		state.isLassoSelecting = true;
 		// A lasso that bounds (30, 30) which is center of seat_1 (20,20 + 10,10)
 		state.lassoPoints = [
@@ -76,5 +76,24 @@ describe('LassoToolStrategy', () => {
 		expect(state.selectedIds.size).toBe(1);
 		expect(state.selectedIds.has('seat_1')).toBe(true);
 		expect(state.isLassoSelecting).toBe(false);
+	});
+
+	it('should select a seat when the lasso overlaps its edge without crossing its center', () => {
+		state.isLassoSelecting = true;
+		state.lassoPoints = [
+			{ x: 15, y: 25 },
+			{ x: 25, y: 25 },
+			{ x: 25, y: 35 },
+			{ x: 15, y: 35 }
+		];
+
+		lassoTool.onMouseUp({
+			state,
+			event: { shiftKey: false, metaKey: false, ctrlKey: false } as unknown as MouseEvent,
+			canvasPoint: { x: 15, y: 35 },
+			screenPoint: { x: 15, y: 35 }
+		} as ToolContext);
+
+		expect(state.selectedIds.has('seat_1')).toBe(true);
 	});
 });

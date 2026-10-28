@@ -1,22 +1,9 @@
 import { BaseToolStrategy } from './BaseToolStrategy';
 import type { ToolContext } from './types';
-import type { Point } from '../types';
+import { polygonsIntersect, rotatePoint } from '../../canvas-shared/utils';
 
 export class LassoToolStrategy extends BaseToolStrategy {
 	readonly id = 'lasso';
-
-	private pointInPolygon(point: Point, polygon: Point[]): boolean {
-		let inside = false;
-		for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-			const xi = polygon[i].x, yi = polygon[i].y;
-			const xj = polygon[j].x, yj = polygon[j].y;
-			const intersect =
-				yi > point.y !== yj > point.y &&
-				point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
-			if (intersect) inside = !inside;
-		}
-		return inside;
-	}
 
 	override onMouseDown({ state, screenPoint, event }: ToolContext) {
 		state.isLassoSelecting = true;
@@ -51,7 +38,13 @@ export class LassoToolStrategy extends BaseToolStrategy {
 		state.objects.forEach((o) => {
 			if (o.type !== 'seat') return;
 			const center = { x: o.x + o.width / 2, y: o.y + o.height / 2 };
-			if (this.pointInPolygon(center, polyCanvas)) {
+			const corners = [
+				{ x: o.x, y: o.y },
+				{ x: o.x + o.width, y: o.y },
+				{ x: o.x + o.width, y: o.y + o.height },
+				{ x: o.x, y: o.y + o.height }
+			].map((point) => rotatePoint(point.x, point.y, center.x, center.y, o.rotation ?? 0));
+			if (polygonsIntersect(corners, polyCanvas)) {
 				nextSelected.add(o.id);
 			}
 		});

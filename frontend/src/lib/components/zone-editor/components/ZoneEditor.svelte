@@ -38,7 +38,7 @@
 	}
 </script>
 
-
+<svelte:window onkeydown={zoneState.handleKeyDown} />
 
 <div class="fixed inset-0 top-20 flex flex-col bg-[#e8ecef] select-none text-slate-800 font-sans overflow-hidden">
 	<SubHeader state={zoneState} {backLink} {place} bind:isPreview={isPreview}/>
