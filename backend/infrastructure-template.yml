@@ -68,6 +68,8 @@ Resources:
       Handler: lambda.handler
       Layers:
         - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref AuthServiceLogGroup
       Events:
         AuthApiRoute:
           Type: HttpApi
@@ -84,6 +86,14 @@ Resources:
           FRONTEND_ORIGIN: !Ref FrontendOrigin
           ADMIN_EMAILS: !Ref AdminEmails
 
+  AuthServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/k-seat/${AWS::StackName}/auth'
+      RetentionInDays: 14
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
   BookingServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -92,6 +102,8 @@ Resources:
       Handler: lambda.handler
       Layers:
         - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref BookingServiceLogGroup
       Events:
         BookingApiBaseRoute:
           Type: HttpApi
@@ -112,6 +124,14 @@ Resources:
           FRONTEND_ORIGIN: !Ref FrontendOrigin
           S3_BUCKET: !Ref S3BucketName
 
+  BookingServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/k-seat/${AWS::StackName}/booking'
+      RetentionInDays: 14
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
   CoreApiServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -120,6 +140,8 @@ Resources:
       Handler: lambda.handler
       Layers:
         - !Ref SharedLayer
+      LoggingConfig:
+        LogGroup: !Ref CoreApiServiceLogGroup
       Events:
         CoreApiRoute:
           Type: HttpApi
@@ -133,6 +155,14 @@ Resources:
           JWT_SECRET: !Ref JwtSecret
           FRONTEND_ORIGIN: !Ref FrontendOrigin
           S3_BUCKET: !Ref S3BucketName
+
+  CoreApiServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/k-seat/${AWS::StackName}/core'
+      RetentionInDays: 14
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
 Outputs:
   ApiEndpoint:

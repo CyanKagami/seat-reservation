@@ -240,7 +240,7 @@ router.post('/check-in', requireRole('organizer', 'admin'), async (req, res) => 
 // GET /mine
 router.get('/mine', async (req, res) => {
   try {
-    const reservations = await listUserReservations(req.user.email, req.user.googleId);
+    const reservations = await listUserReservations(req.user.email);
     const events = await fetchEventSummaries(reservations.map((r) => r.eventId));
     const layoutCache = new Map();
     return res.status(200).json({

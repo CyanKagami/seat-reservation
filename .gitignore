@@ -30,7 +30,6 @@ localstack
 dev-scripts
 AGENTS.md
 .agents
-la+.docx
 *.bat
 *.cmd
 *.ps1

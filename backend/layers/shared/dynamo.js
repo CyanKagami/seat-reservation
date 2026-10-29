@@ -4,7 +4,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   ScanCommand,
-  paginateScan,
+  QueryCommand,
   UpdateCommand,
   GetCommand,
   DeleteCommand,
@@ -176,17 +176,31 @@ export async function fetchAllData(tableName, filter) {
 }
 
 export async function fetchEventFromHost(creatorId) {
-  const paginatorConfig = { client: docClient, pageSize: 25 };
-  const scanParams = {
+  return queryAllItems({
     TableName: 'events',
-    FilterExpression: 'creatorId = :creatorId',
+    IndexName: 'CreatorIndex',
+    KeyConditionExpression: 'creatorId = :creatorId',
     ExpressionAttributeValues: { ':creatorId': creatorId }
-  };
+  }, 'Failed to query events by creator', { creatorId });
+}
+
+async function queryAllItems(params, message, context) {
   const allItems = [];
-  for await (const page of paginateScan(paginatorConfig, scanParams)) {
-    if (page.Items) allItems.push(...page.Items);
+  let lastEvaluatedKey;
+  try {
+    do {
+      const response = await docClient.send(new QueryCommand({
+        ...params,
+        ExclusiveStartKey: lastEvaluatedKey
+      }));
+      allItems.push(...(response.Items ?? []));
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+    return allItems;
+  } catch (error) {
+    logError(message, error, { tableName: params.TableName, ...context });
+    throw error;
   }
-  return allItems;
 }
 
 export async function fetchEventFromEventId(eventId) {

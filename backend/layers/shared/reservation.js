@@ -7,7 +7,6 @@ import {
   BatchWriteCommand,
   GetCommand,
   QueryCommand,
-  ScanCommand,
   TransactWriteCommand
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, fetchData, updateAllAttributes } from './dynamo.js';
@@ -290,33 +289,27 @@ export async function deleteReservationsForEvent(eventId) {
   return deletedCount;
 }
 
-export async function listUserReservations(email, googleId) {
+export async function listUserReservations(email) {
+  const items = await queryReservationsByEmail(email);
+  return items.filter((reservation) => reservation.status !== undefined)
+    .sort((a, b) => (b.reservedAt ?? '').localeCompare(a.reservedAt ?? ''));
+}
+
+async function queryReservationsByEmail(email) {
   const items = [];
   let startKey;
-
-  const exprValues = { ':e': email };
-  let filterExpr = 'email = :e';
-  if (googleId) {
-    exprValues[':g'] = googleId;
-    filterExpr = '(email = :e OR googleId = :g)';
-  }
-  filterExpr += ' AND attribute_exists(#status)';
-
   do {
-    const res = await docClient.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: filterExpr,
-        ExpressionAttributeNames: STATUS_NAME,
-        ExpressionAttributeValues: exprValues,
-        ExclusiveStartKey: startKey
-      })
-    );
-    items.push(...(res.Items ?? []));
-    startKey = res.LastEvaluatedKey;
+    const response = await docClient.send(new QueryCommand({
+      TableName: TABLE,
+      IndexName: 'EmailIndex',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: { ':email': email },
+      ExclusiveStartKey: startKey
+    }));
+    items.push(...(response.Items ?? []));
+    startKey = response.LastEvaluatedKey;
   } while (startKey);
-
-  return items.sort((a, b) => b.reservedAt.localeCompare(a.reservedAt));
+  return items;
 }
 
 // Internal batchGet helper.
@@ -359,44 +352,15 @@ export async function fetchUserSummaries(identifiers) {
   const unique = [...new Set(identifiers.filter(Boolean))];
   if (unique.length === 0) return new Map();
 
-  const emailCandidates = unique.filter((id) => id.includes('@'));
   const resultMap = new Map();
 
-  if (emailCandidates.length > 0) {
-    const items = await batchGetItems(
-      'users',
-      emailCandidates.map((email) => ({ email })),
-      { ProjectionExpression: 'googleId, #n, email', ExpressionAttributeNames: { '#n': 'name' } }
-    );
-    for (const u of items) {
-      if (u.email) resultMap.set(u.email, { name: u.name, email: u.email });
-      if (u.googleId) resultMap.set(u.googleId, { name: u.name, email: u.email });
-    }
-  }
-
-  const remaining = unique.filter((id) => !resultMap.has(id));
-  if (remaining.length > 0) {
-    const remSet = new Set(remaining);
-    let exclusiveStartKey;
-    do {
-      const res = await docClient.send(
-        new ScanCommand({
-          TableName: 'users',
-          ProjectionExpression: 'googleId, #n, email',
-          ExpressionAttributeNames: { '#n': 'name' },
-          ExclusiveStartKey: exclusiveStartKey
-        })
-      );
-      if (res.Items) {
-        for (const u of res.Items) {
-          if (remSet.has(u.googleId) || remSet.has(u.email)) {
-            if (u.email) resultMap.set(u.email, { name: u.name, email: u.email });
-            if (u.googleId) resultMap.set(u.googleId, { name: u.name, email: u.email });
-          }
-        }
-      }
-      exclusiveStartKey = res.LastEvaluatedKey;
-    } while (exclusiveStartKey);
+  const users = await batchGetItems(
+    'users',
+    unique.map((email) => ({ email })),
+    { ProjectionExpression: 'googleId, #n, email', ExpressionAttributeNames: { '#n': 'name' } }
+  );
+  for (const user of users) {
+    if (user.email) resultMap.set(user.email, { name: user.name, email: user.email });
   }
 
   return resultMap;
