@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { apiFetch } from "$lib/scripts/api.js";
-  import { invalidateAll } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { alertModal } from "$lib/store/alert.svelte";
   import type { CampusLocation } from "$lib/type/location";
   import type { Place } from "$lib/type/place";
@@ -13,6 +13,7 @@
   let imageFile = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
   let isSubmitting = $state(false);
+  let isDeleting = $state(false);
   let errorMessage = $state<string | null>(null);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -89,6 +90,48 @@
       alertModal.failure("เกิดข้อผิดพลาด", "ส่งข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
     } finally {
       isSubmitting = false;
+    }
+  }
+
+  function confirmDeletePlace() {
+    const linkedEvents = data.events;
+    const listedEvents = linkedEvents.slice(0, 3).map((event) => event.name || event.eventId).join(", ");
+    const remainingEventCount = linkedEvents.length - 3;
+    const message = linkedEvents.length > 0
+      ? `สถานที่นี้ถูกใช้โดยกิจกรรม ${linkedEvents.length} รายการ (${listedEvents}${remainingEventCount > 0 ? ` และอีก ${remainingEventCount} รายการ` : ""}) การลบจะลบกิจกรรม การจอง รูปภาพ และแผนผังที่เกี่ยวข้องทั้งหมดอย่างถาวร`
+      : "การลบจะนำสถานที่ รูปภาพ และแผนผังออกอย่างถาวร ไม่สามารถกู้คืนได้";
+
+    alertModal.warning("ยืนยันการลบสถานที่", message, {
+      showCancel: true,
+      confirmText: "ลบสถานที่",
+      cancelText: "ยกเลิก",
+      onconfirm: () => {
+        void handleDeletePlace();
+      }
+    });
+  }
+
+  async function handleDeletePlace() {
+    isDeleting = true;
+    try {
+      const response = await apiFetch(`/place?placeId=${encodeURIComponent(params.placeId)}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        const result: { error?: string } = await response.json();
+        alertModal.failure("ลบสถานที่ไม่สำเร็จ", result.error || "ไม่สามารถลบสถานที่ได้");
+        return;
+      }
+
+      alertModal.success("ลบสถานที่สำเร็จ", "ลบสถานที่และข้อมูลที่เกี่ยวข้องแล้ว", () => {
+        void goto("/admin/places");
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alertModal.failure("ลบสถานที่ไม่สำเร็จ", message);
+    } finally {
+      isDeleting = false;
     }
   }
 </script>
@@ -222,5 +265,26 @@
         </a>
       </section>
     </form>
+
+    <section class="mt-6 flex flex-col gap-4 rounded-2xl border border-red-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div>
+        <h2 class="font-bold text-red-700">ลบสถานที่</h2>
+        <p class="mt-1 text-sm text-dark-soft">
+          {#if data.events.length > 0}
+            มี {data.events.length} กิจกรรมใช้สถานที่นี้ การลบจะลบกิจกรรม การจอง และไฟล์ที่เกี่ยวข้องด้วย
+          {:else}
+            ลบสถานที่พร้อมรูปภาพและแผนผังที่นั่งที่เกี่ยวข้อง
+          {/if}
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={confirmDeletePlace}
+        disabled={isDeleting || isSubmitting}
+        class="inline-flex shrink-0 items-center cursor-pointer justify-center rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isDeleting ? "กำลังลบ..." : "ลบสถานที่"}
+      </button>
+    </section>
   {/if}
 </div>

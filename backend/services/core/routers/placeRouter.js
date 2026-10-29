@@ -15,6 +15,7 @@ import {
   deleteItem,
   deleteFile,
   deleteObjectsWithPrefix,
+  deleteReservationsForEvent,
   getObjectURL,
   getLocation,
   requireRole,
@@ -57,6 +58,15 @@ async function formatData(data, creator) {
     result.location = getLocation(data.location);
   }
   return result;
+}
+
+function getEventsForPlace(events, placeId) {
+  return events.filter((event) => {
+    const eventPlaceId = typeof event.place === 'object' && event.place !== null
+      ? event.place.placeId
+      : event.place;
+    return eventPlaceId === placeId;
+  });
 }
 
 // --- /layout routes registered BEFORE /:placeId ---
@@ -212,15 +222,47 @@ router.patch('/', requireRole('admin'), upload.single('picture'), async (req, re
   }
 });
 
+// GET /:placeId/events — list events that will be removed with the place
+router.get('/:placeId/events', requireRole('admin'), async (req, res) => {
+  const { placeId } = req.params;
+  try {
+    const events = getEventsForPlace(await fetchAllData('events'), placeId)
+      .map(({ eventId, name }) => ({ eventId, name }));
+    return res.status(200).json({ body: { data: events } });
+  } catch (error) {
+    logError('Failed to fetch events for place', error, requestLogContext(req, { placeId }));
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
+  }
+});
+
 // DELETE /?placeId= — delete a place and its assets
 router.delete('/', requireRole('admin'), async (req, res) => {
   const { placeId } = req.query;
-  if (!placeId) return res.status(400).json({ error: 'กรุณาระบุรหัสสถานที่' });
+  if (typeof placeId !== 'string' || !placeId) {
+    return res.status(400).json({ error: 'กรุณาระบุรหัสสถานที่' });
+  }
   try {
+    const events = getEventsForPlace(await fetchAllData('events'), placeId);
+    if (events.some((event) => typeof event.eventId !== 'string' || !event.eventId)) {
+      throw new Error(`Cannot delete place '${placeId}' because a linked event has no eventId`);
+    }
+
+    for (const event of events) {
+      await deleteReservationsForEvent(event.eventId);
+      await deleteFile('pictures/event', `${event.eventId}.webp`);
+      await deleteFile('pictures/event', event.eventId);
+      await deleteFile('layouts/event', `${event.eventId}.msgpack`);
+      await deleteItem('events', { eventId: event.eventId });
+    }
+
+    await deleteFile('pictures/place', `${placeId}.webp`);
+    await deleteFile('pictures/place', placeId);
+    await deleteObjectsWithPrefix(`layouts/place/${placeId}/`);
+    await deleteFile('layouts/place', `${placeId}.msgpack`);
     await deleteItem('places', { placeId });
-    await deleteFile('pictures/place', `${placeId}.webp`).catch(() => {});
-    await deleteObjectsWithPrefix(`layouts/place/${placeId}`);
-    return res.status(200).json({ body: { message: 'ลบสถานที่สำเร็จ' } });
+    return res.status(200).json({
+      body: { message: 'ลบสถานที่สำเร็จ', deletedEventCount: events.length }
+    });
   } catch (error) {
     logError('Failed to delete place', error, requestLogContext(req, { placeId }));
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ กรุณาลองอีกครั้งภายหลัง' });
