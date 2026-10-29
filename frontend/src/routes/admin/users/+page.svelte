@@ -113,17 +113,7 @@
         <span class="truncate font-semibold text-dark-muted">บัญชีผู้ใช้</span>
     </nav>
     <h1 class="mb-6 text-3xl font-bold tracking-tight text-dark sm:text-4xl">บัญชีผู้ใช้</h1>
-    <div class="mb-5 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-white p-4 shadow-xs sm:flex-row sm:items-end sm:justify-between sm:p-5">
-        <div class="w-full sm:max-w-xs">
-            <label for="user-search" class="mb-2 block text-sm font-semibold text-dark">ค้นหาผู้ใช้</label>
-            <input
-                id="user-search"
-                type="search"
-                placeholder="ค้นหาบัญชีผู้ใช้"
-                class="w-full rounded-lg border border-border-strong bg-surface-base px-3 py-2 text-sm text-dark placeholder:text-dark-soft focus:border-secondary focus:ring-2 focus:ring-secondary/20 focus:outline-hidden"
-            >
-        </div>
-    </div>
+
     <section class="w-full overflow-hidden rounded-2xl border border-border-subtle bg-white shadow-xs">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[44rem] border-collapse text-left text-sm">

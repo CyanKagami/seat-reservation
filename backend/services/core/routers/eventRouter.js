@@ -261,6 +261,7 @@ router.delete('/', requireRole('admin', 'organizer'), async (req, res) => {
       deleteFile('pictures/event', `${eventId}.webp`),
       deleteFile('pictures/event', eventId)
     ]).catch(() => {}); // Keep deleting events that have no image or a legacy image.
+    await deleteFile('layouts/event', `${eventId}.msgpack`);
     return res.status(200).json({ body: { message: 'ลบกิจกรรมสำเร็จ' } });
   } catch (error) {
     logError('Failed to delete event', error, requestLogContext(req, { eventId }));
